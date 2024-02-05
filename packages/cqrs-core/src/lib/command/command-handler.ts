@@ -2,9 +2,8 @@
 import { CommandContract } from './command';
 
 export interface CommandHandlerContract<
-  BaseCommand extends CommandContract = CommandContract
+  TCommand extends CommandContract = CommandContract,
+  TReturn = any
 > {
-  execute<TCommand extends BaseCommand, TResponse = any>(
-    command: TCommand
-  ): Promise<TResponse>;
+  execute(command: TCommand): Promise<TReturn>;
 }
