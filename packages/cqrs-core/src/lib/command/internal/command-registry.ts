@@ -1,5 +1,5 @@
 import { VoidFunction } from '../../internal/types';
-import { CommandContract } from '../command';
+import { CommandContract, CommandName } from '../command';
 import { CommandHandlerContract } from '../command-handler';
 
 export interface CommandRegistryContract<
@@ -16,17 +16,14 @@ export interface CommandRegistryContract<
 }
 
 export class CommandRegistry implements CommandRegistryContract {
-  protected handlers: Map<
-    CommandContract['commandName'],
-    CommandHandlerContract
-  >;
+  protected handlers: Map<CommandName, CommandHandlerContract>;
 
   constructor() {
     this.handlers = new Map();
   }
 
   public register<TCommand extends CommandContract>(
-    commandName: CommandContract['commandName'],
+    commandName: CommandName,
     handler: CommandHandlerContract<TCommand>
   ): VoidFunction {
     if (this.handlers.has(commandName)) {
@@ -40,9 +37,7 @@ export class CommandRegistry implements CommandRegistryContract {
     return () => this.handlers.delete(commandName);
   }
 
-  public resolve(
-    commandName: CommandContract['commandName']
-  ): CommandHandlerContract {
+  public resolve(commandName: CommandName): CommandHandlerContract {
     const handler = this.handlers.get(commandName);
     if (!handler) {
       throw new Error(`Command handler for "${commandName}" is not registered`);
