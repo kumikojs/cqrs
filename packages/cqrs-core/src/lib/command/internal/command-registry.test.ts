@@ -1,4 +1,7 @@
-import { CommandRegistry, CommandRegistryContract } from './command-registry';
+import {
+  CommandRegistry,
+  type CommandRegistryContract,
+} from './command-registry';
 
 describe('CommandRegistry', () => {
   let registry: CommandRegistryContract;

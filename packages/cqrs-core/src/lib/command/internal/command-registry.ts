@@ -1,6 +1,6 @@
-import { VoidFunction } from '../../internal/types';
-import { CommandContract, CommandName } from '../command';
-import { CommandHandlerContract } from '../command-handler';
+import type { VoidFunction } from '../../internal/types';
+import type { CommandContract, CommandName } from '../command';
+import type { CommandHandlerContract } from '../command-handler';
 
 export interface CommandRegistryContract<
   BaseCommand extends CommandContract = CommandContract

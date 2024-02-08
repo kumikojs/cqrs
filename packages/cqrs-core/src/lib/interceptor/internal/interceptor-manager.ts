@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { InterceptorContract } from '../interceptor';
+import type { InterceptorContract } from '../interceptor';
 
-type Interceptor<T> = (
+export type Interceptor<T> = (
   context: T,
   next?: (context: T) => Promise<T>
 ) => Promise<any>;

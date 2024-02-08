@@ -3,7 +3,8 @@ import { Nullable } from '../internal/types';
 
 export type CommandName = string;
 
-export interface CommandContract<TPayload = any> {
+export interface CommandContract<TPayload = any, TOptions = unknown> {
   commandName: CommandName;
   payload?: Nullable<TPayload>;
+  options?: Nullable<TOptions>;
 }

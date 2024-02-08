@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CommandContract, CommandName } from './command';
-import { CommandHandlerContract } from './command-handler';
+import type { CommandContract, CommandName } from './command';
+import type { CommandHandlerContract } from './command-handler';
 import {
   CommandRegistry,
-  CommandRegistryContract,
+  type CommandRegistryContract,
 } from './internal/command-registry';
 
 type CommandHandlerFn<

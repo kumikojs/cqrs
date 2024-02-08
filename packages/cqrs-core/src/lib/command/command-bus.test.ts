@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CommandContract } from './command';
-import { CommandBusContract, CommandBus } from './command-bus';
-import { CommandHandlerContract } from './command-handler';
+import type { CommandContract } from './command';
+import { CommandBus, type CommandBusContract } from './command-bus';
+import type { CommandHandlerContract } from './command-handler';
 
 describe('CommandBus', () => {
   let commandBus: CommandBusContract;

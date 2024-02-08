@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CommandContract } from './command';
+import type { CommandContract } from './command';
 
 export interface CommandHandlerContract<
   TCommand extends CommandContract = CommandContract,
