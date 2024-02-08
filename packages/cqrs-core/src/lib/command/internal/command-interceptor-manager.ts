@@ -19,6 +19,17 @@ type ApplyWhenSyntax = {
 
 export type ApplySyntax = ApplyToSyntax & ApplyToAllSyntax & ApplyWhenSyntax;
 
+export interface CommandInterceptorManagerContract {
+  apply<TCommand extends CommandContract>(
+    interceptor: CommandInterceptor<TCommand>
+  ): ApplySyntax;
+
+  execute<TCommand extends CommandContract>(
+    command: TCommand,
+    handler: CommandHandlerContract<TCommand>['execute']
+  ): Promise<any>;
+}
+
 export class CommandInterceptorManager {
   #interceptorManager: InterceptorManager<CommandContract>;
 

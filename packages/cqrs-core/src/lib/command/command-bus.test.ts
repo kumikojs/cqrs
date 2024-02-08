@@ -2,6 +2,7 @@
 import type { CommandContract } from './command';
 import { CommandBus, type CommandBusContract } from './command-bus';
 import type { CommandHandlerContract } from './command-handler';
+import { CommandInterceptorManager } from './internal/command-interceptor-manager';
 
 describe('CommandBus', () => {
   let commandBus: CommandBusContract;
@@ -15,7 +16,9 @@ describe('CommandBus', () => {
   }
 
   beforeEach(() => {
-    commandBus = new CommandBus();
+    commandBus = new CommandBus({
+      commandInterceptorManager: new CommandInterceptorManager(),
+    });
   });
 
   describe('register', () => {

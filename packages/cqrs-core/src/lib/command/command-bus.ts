@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CommandContract, CommandName } from './command';
 import type { CommandHandlerContract } from './command-handler';
+import { CommandInterceptorManagerContract } from './internal/command-interceptor-manager';
 import {
   CommandRegistry,
   type CommandRegistryContract,
@@ -26,13 +27,17 @@ export interface CommandBusContract<
 
 export class CommandBus implements CommandBusContract {
   #commandRegistry: CommandRegistryContract;
+  #commandInterceptorManager: CommandInterceptorManagerContract;
 
   constructor({
     commandRegistry = new CommandRegistry(),
+    commandInterceptorManager,
   }: {
     commandRegistry?: CommandRegistryContract;
-  } = {}) {
+    commandInterceptorManager: CommandInterceptorManagerContract;
+  }) {
     this.#commandRegistry = commandRegistry;
+    this.#commandInterceptorManager = commandInterceptorManager;
   }
 
   register<TCommand extends CommandContract>(
@@ -53,6 +58,6 @@ export class CommandBus implements CommandBusContract {
   ): Promise<TResponse> {
     const handler = this.#commandRegistry.resolve(command.commandName);
 
-    return handler.execute(command);
+    return this.#commandInterceptorManager.execute(command, handler.execute);
   }
 }
