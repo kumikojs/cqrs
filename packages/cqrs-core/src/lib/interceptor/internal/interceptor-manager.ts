@@ -1,11 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { InterceptorContract } from '../interceptor';
-
-export type Interceptor<T> = (
-  context: T,
-  next?: (context: T) => Promise<T>
-) => Promise<any>;
+import type { Interceptor, InterceptorContract } from '../interceptor';
 
 type Handler<T> = (context: T) => Promise<any>;
 
