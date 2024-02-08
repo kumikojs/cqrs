@@ -16,29 +16,29 @@ export interface CommandRegistryContract<
 }
 
 export class CommandRegistry implements CommandRegistryContract {
-  protected handlers: Map<CommandName, CommandHandlerContract>;
+  #handlers: Map<CommandName, CommandHandlerContract>;
 
   constructor() {
-    this.handlers = new Map();
+    this.#handlers = new Map();
   }
 
   public register<TCommand extends CommandContract>(
     commandName: CommandName,
     handler: CommandHandlerContract<TCommand>
   ): VoidFunction {
-    if (this.handlers.has(commandName)) {
+    if (this.#handlers.has(commandName)) {
       throw new Error(
         `Command handler for "${commandName}" is already registered`
       );
     }
 
-    this.handlers.set(commandName, handler);
+    this.#handlers.set(commandName, handler);
 
-    return () => this.handlers.delete(commandName);
+    return () => this.#handlers.delete(commandName);
   }
 
   public resolve(commandName: CommandName): CommandHandlerContract {
-    const handler = this.handlers.get(commandName);
+    const handler = this.#handlers.get(commandName);
     if (!handler) {
       throw new Error(`Command handler for "${commandName}" is not registered`);
     }
@@ -47,6 +47,6 @@ export class CommandRegistry implements CommandRegistryContract {
   }
 
   public clear(): void {
-    this.handlers.clear();
+    this.#handlers.clear();
   }
 }

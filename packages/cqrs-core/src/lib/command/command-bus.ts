@@ -25,17 +25,17 @@ export interface CommandBusContract<
 }
 
 export class CommandBus implements CommandBusContract {
-  private commandRegistry: CommandRegistryContract;
+  #commandRegistry: CommandRegistryContract;
 
   constructor({
     commandRegistry = new CommandRegistry(),
   }: {
     commandRegistry?: CommandRegistryContract;
   } = {}) {
-    this.commandRegistry = commandRegistry;
+    this.#commandRegistry = commandRegistry;
   }
 
-  public register<TCommand extends CommandContract>(
+  register<TCommand extends CommandContract>(
     commandName: CommandName,
     handler: CommandHandlerContract<TCommand> | CommandHandlerFn<TCommand>
   ): VoidFunction {
@@ -45,13 +45,13 @@ export class CommandBus implements CommandBusContract {
       };
     }
 
-    return this.commandRegistry.register(commandName, handler);
+    return this.#commandRegistry.register(commandName, handler);
   }
 
-  public async execute<TCommand extends CommandContract, TResponse = any>(
+  async execute<TCommand extends CommandContract, TResponse = any>(
     command: TCommand
   ): Promise<TResponse> {
-    const handler = this.commandRegistry.resolve(command.commandName);
+    const handler = this.#commandRegistry.resolve(command.commandName);
 
     return handler.execute(command);
   }
