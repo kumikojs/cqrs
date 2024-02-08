@@ -5,6 +5,20 @@ import type { CommandInterceptor } from '../command-interceptor';
 
 import { InterceptorManager } from '../../interceptor/internal/interceptor-manager';
 
+type ApplyToSyntax = {
+  to: (...commandNames: CommandName[]) => void;
+};
+
+type ApplyToAllSyntax = {
+  toAll: () => void;
+};
+
+type ApplyWhenSyntax = {
+  when: (options: Record<string, any>) => void;
+};
+
+export type ApplySyntax = ApplyToSyntax & ApplyToAllSyntax & ApplyWhenSyntax;
+
 export class CommandInterceptorManager {
   #interceptorManager: InterceptorManager<CommandContract>;
 
@@ -16,7 +30,7 @@ export class CommandInterceptorManager {
 
   apply<TCommand extends CommandContract>(
     interceptor: CommandInterceptor<TCommand>
-  ) {
+  ): ApplySyntax {
     return {
       to: (...commandNames: CommandName[]) => {
         this.#applyToCommandNames(interceptor, commandNames);
@@ -33,14 +47,14 @@ export class CommandInterceptorManager {
   async execute<TCommand extends CommandContract>(
     command: TCommand,
     handler: CommandHandlerContract<TCommand>['execute']
-  ) {
+  ): Promise<any> {
     return this.#interceptorManager.execute(command, handler);
   }
 
   #applyToCommandNames<TCommand extends CommandContract>(
     interceptor: CommandInterceptor<TCommand>,
     commandNames: CommandName[]
-  ) {
+  ): void {
     this.#interceptorManager.use(async (command: TCommand, next) => {
       if (commandNames.includes(command.commandName)) {
         return interceptor(command, next);
@@ -53,7 +67,7 @@ export class CommandInterceptorManager {
   #applyWhenMatchesOptions<TCommand extends CommandContract<any, any>>(
     interceptor: CommandInterceptor<TCommand>,
     options: Record<string, any>
-  ) {
+  ): void {
     this.#interceptorManager.use(async (command: TCommand, next) => {
       if (command.options) {
         const keys = Object.keys(options);
