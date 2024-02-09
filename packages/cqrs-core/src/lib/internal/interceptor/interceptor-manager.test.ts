@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { InterceptorContract } from './interceptor';
-import { InterceptorManager } from './interceptor-manager';
+import {
+  InterceptorManager,
+  type InterceptorManagerContract,
+} from './interceptor-manager';
 
 const mockInterceptor: InterceptorContract<any> = {
   handle: async (context, next) => {
@@ -13,7 +16,7 @@ const mockInterceptor: InterceptorContract<any> = {
 };
 
 describe('InterceptorManager', () => {
-  let interceptorManager: InterceptorManager<any>;
+  let interceptorManager: InterceptorManagerContract<any>;
 
   beforeEach(() => {
     interceptorManager = new InterceptorManager();

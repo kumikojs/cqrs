@@ -4,7 +4,18 @@ import type { Interceptor, InterceptorContract } from './interceptor';
 
 type Handler<T> = (context: T) => Promise<any>;
 
-export class InterceptorManager<T> {
+export interface InterceptorManagerContract<T> {
+  use<TContext extends T>(
+    interceptor: Interceptor<TContext> | InterceptorContract<TContext>
+  ): void;
+
+  execute<TContext extends T>(
+    context: TContext,
+    handler: Handler<TContext>
+  ): Promise<any>;
+}
+
+export class InterceptorManager<T> implements InterceptorManagerContract<T> {
   #interceptors: InterceptorContract<any>[];
 
   constructor() {

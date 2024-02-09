@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+  InterceptorManager,
+  type InterceptorManagerContract,
+} from '../../internal/interceptor/interceptor-manager';
 import type { CommandContract } from '../command';
 import type { CommandHandlerContract } from '../command-handler';
 import type { CommandInterceptor } from '../command-interceptor';
-
-import { InterceptorManager } from '../../internal/interceptor/interceptor-manager';
 
 export type SelectThenApplySyntax<TCommand extends CommandContract> = {
   apply: (interceptor: CommandInterceptor<TCommand>) => void;
@@ -25,10 +27,10 @@ export interface CommandInterceptorManagerContract {
 }
 
 export class CommandInterceptorManager {
-  #interceptorManager: InterceptorManager<CommandContract>;
+  #interceptorManager: InterceptorManagerContract<CommandContract>;
 
   constructor(
-    interceptorManager: InterceptorManager<CommandContract> = new InterceptorManager()
+    interceptorManager: InterceptorManagerContract<CommandContract> = new InterceptorManager()
   ) {
     this.#interceptorManager = interceptorManager;
   }
