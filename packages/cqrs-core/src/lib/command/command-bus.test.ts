@@ -26,7 +26,7 @@ describe('CommandBus', () => {
       const commandName = 'testCommand';
       const handler = vitest.fn();
 
-      const unregister = commandBus.register(commandName, handler);
+      const unregister = commandBus.bind(commandName).to(handler);
 
       expect(() =>
         commandBus.execute(new TestCommand(commandName))
@@ -46,7 +46,7 @@ describe('CommandBus', () => {
         execute: vitest.fn(),
       };
 
-      const unregister = commandBus.register(commandName, handler);
+      const unregister = commandBus.bind(commandName).to(handler);
 
       expect(() =>
         commandBus.execute(new TestCommand(commandName))
@@ -70,7 +70,7 @@ describe('CommandBus', () => {
 
       const handler = new TestCommandHandler();
 
-      const unregister = commandBus.register(commandName, handler);
+      const unregister = commandBus.bind(commandName).to(handler);
 
       expect(() =>
         commandBus.execute(new TestCommand(commandName))
@@ -88,7 +88,7 @@ describe('CommandBus', () => {
     const commandName = 'testCommand';
     const handler = vitest.fn();
 
-    commandBus.register(commandName, handler);
+    commandBus.bind(commandName).to(handler);
 
     const command = new TestCommand(commandName);
     await commandBus.execute(command);

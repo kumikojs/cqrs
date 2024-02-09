@@ -12,13 +12,18 @@ type CommandHandlerFn<
   TResponse = any
 > = (command: T) => Promise<TResponse>;
 
+type BindToSyntax<TCommand extends CommandContract> = {
+  to: (
+    handler: CommandHandlerContract<TCommand> | CommandHandlerFn<TCommand>
+  ) => VoidFunction;
+};
+
 export interface CommandBusContract<
   BaseCommand extends CommandContract = CommandContract
 > {
-  register<TCommand extends BaseCommand>(
-    commandName: CommandName,
-    handler: CommandHandlerContract<TCommand> | CommandHandlerFn<TCommand>
-  ): VoidFunction;
+  bind<TCommand extends BaseCommand>(
+    commandName: CommandName
+  ): BindToSyntax<TCommand>;
 
   execute<TCommand extends BaseCommand, TResponse = any>(
     command: TCommand
@@ -40,17 +45,22 @@ export class CommandBus implements CommandBusContract {
     this.#commandInterceptorManager = commandInterceptorManager;
   }
 
-  register<TCommand extends CommandContract>(
-    commandName: CommandName,
-    handler: CommandHandlerContract<TCommand> | CommandHandlerFn<TCommand>
-  ): VoidFunction {
-    if (typeof handler === 'function') {
-      handler = {
-        execute: handler,
-      };
-    }
+  bind<TCommand extends CommandContract>(
+    commandName: CommandName
+  ): BindToSyntax<TCommand> {
+    return {
+      to: (
+        handler: CommandHandlerContract<TCommand> | CommandHandlerFn<TCommand>
+      ) => {
+        if (typeof handler === 'function') {
+          handler = {
+            execute: handler,
+          };
+        }
 
-    return this.#commandRegistry.register(commandName, handler);
+        return this.#commandRegistry.register(commandName, handler);
+      },
+    };
   }
 
   async execute<TCommand extends CommandContract, TResponse = any>(
