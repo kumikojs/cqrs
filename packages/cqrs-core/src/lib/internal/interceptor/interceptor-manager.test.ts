@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { InterceptorContract } from '../interceptor';
+import type { InterceptorContract } from './interceptor';
 import { InterceptorManager } from './interceptor-manager';
 
 const mockInterceptor: InterceptorContract<any> = {

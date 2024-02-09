@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type { Interceptor, InterceptorContract } from '../interceptor';
+import type { Interceptor, InterceptorContract } from './interceptor';
 
 type Handler<T> = (context: T) => Promise<any>;
 

@@ -3,7 +3,7 @@ import type { CommandContract } from '../command';
 import type { CommandHandlerContract } from '../command-handler';
 import type { CommandInterceptor } from '../command-interceptor';
 
-import { InterceptorManager } from '../../interceptor/internal/interceptor-manager';
+import { InterceptorManager } from '../../internal/interceptor/interceptor-manager';
 
 export type SelectThenApplySyntax<TCommand extends CommandContract> = {
   apply: (interceptor: CommandInterceptor<TCommand>) => void;
