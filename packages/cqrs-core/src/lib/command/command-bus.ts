@@ -9,6 +9,10 @@ import {
   CommandRegistry,
   type CommandRegistryContract,
 } from './internal/command-registry';
+import {
+  type TaskManagerContract,
+  TaskManager,
+} from '../internal/task/task-manager';
 
 type CommandHandlerFn<
   T extends CommandContract = CommandContract,
@@ -38,16 +42,26 @@ export interface CommandBusContract<
 export class CommandBus implements CommandBusContract {
   #commandRegistry: CommandRegistryContract;
   #commandInterceptorManager: CommandInterceptorManagerContract;
+  #taskManager: TaskManagerContract<
+    CommandContract,
+    CommandHandlerContract['execute']
+  >;
 
   constructor({
     commandRegistry = new CommandRegistry(),
     commandInterceptorManager = new CommandInterceptorManager(),
+    taskManager = new TaskManager(),
   }: {
     commandRegistry?: CommandRegistryContract;
     commandInterceptorManager?: CommandInterceptorManagerContract;
+    taskManager?: TaskManagerContract<
+      CommandContract,
+      CommandHandlerContract['execute']
+    >;
   } = {}) {
     this.#commandRegistry = commandRegistry;
     this.#commandInterceptorManager = commandInterceptorManager;
+    this.#taskManager = taskManager;
   }
 
   bind<TCommand extends CommandContract>(
@@ -73,7 +87,10 @@ export class CommandBus implements CommandBusContract {
   ): Promise<TResponse> {
     const handler = this.#commandRegistry.resolve(command.commandName);
 
-    return this.#commandInterceptorManager.execute(command, handler.execute);
+    // TaskManager is used before CommandInterceptorManager to ensure that the command is executed only once
+    return this.#taskManager.execute(command, () =>
+      this.#commandInterceptorManager.execute(command, handler.execute)
+    );
   }
 
   get interceptors(): Pick<
