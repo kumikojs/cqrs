@@ -4,16 +4,16 @@ import { CommandBus, type CommandBusContract } from './command-bus';
 import type { CommandHandlerContract } from './command-handler';
 import { CommandInterceptorManager } from './internal/command-interceptor-manager';
 
+class TestCommand implements CommandContract {
+  commandName: string;
+
+  constructor(commandName: string) {
+    this.commandName = commandName;
+  }
+}
+
 describe('CommandBus', () => {
   let commandBus: CommandBusContract;
-
-  class TestCommand implements CommandContract {
-    commandName: string;
-
-    constructor(commandName: string) {
-      this.commandName = commandName;
-    }
-  }
 
   beforeEach(() => {
     commandBus = new CommandBus({
@@ -84,7 +84,7 @@ describe('CommandBus', () => {
     });
   });
 
-  test('should execute a command handler', async () => {
+  test('should execute a command without interceptor configured', async () => {
     const commandName = 'testCommand';
     const handler = vitest.fn();
 
@@ -95,5 +95,21 @@ describe('CommandBus', () => {
 
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith(command);
+  });
+
+  test('should apply an interceptor globally and the interceptor should be called for each executed command', async () => {
+    const interceptor = vitest.fn();
+    const command = new TestCommand('testCommand');
+    const command2 = new TestCommand('testCommand2');
+
+    commandBus.bind('testCommand').to(async () => 'test');
+    commandBus.bind('testCommand2').to(async () => 'test');
+    commandBus.interceptors.apply(interceptor);
+
+    await commandBus.execute(command);
+    await commandBus.execute(command2);
+
+    expect(interceptor).toHaveBeenCalledWith(command, expect.any(Function));
+    expect(interceptor).toHaveBeenCalledWith(command2, expect.any(Function));
   });
 });

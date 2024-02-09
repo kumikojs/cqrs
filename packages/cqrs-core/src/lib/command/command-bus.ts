@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CommandContract, CommandName } from './command';
 import type { CommandHandlerContract } from './command-handler';
-import { CommandInterceptorManagerContract } from './internal/command-interceptor-manager';
+import {
+  CommandInterceptorManager,
+  CommandInterceptorManagerContract,
+} from './internal/command-interceptor-manager';
 import {
   CommandRegistry,
   type CommandRegistryContract,
@@ -28,6 +31,8 @@ export interface CommandBusContract<
   execute<TCommand extends BaseCommand, TResponse = any>(
     command: TCommand
   ): Promise<TResponse>;
+
+  interceptors: Pick<CommandInterceptorManagerContract, 'apply' | 'select'>;
 }
 
 export class CommandBus implements CommandBusContract {
@@ -36,11 +41,11 @@ export class CommandBus implements CommandBusContract {
 
   constructor({
     commandRegistry = new CommandRegistry(),
-    commandInterceptorManager,
+    commandInterceptorManager = new CommandInterceptorManager(),
   }: {
     commandRegistry?: CommandRegistryContract;
-    commandInterceptorManager: CommandInterceptorManagerContract;
-  }) {
+    commandInterceptorManager?: CommandInterceptorManagerContract;
+  } = {}) {
     this.#commandRegistry = commandRegistry;
     this.#commandInterceptorManager = commandInterceptorManager;
   }
@@ -69,5 +74,12 @@ export class CommandBus implements CommandBusContract {
     const handler = this.#commandRegistry.resolve(command.commandName);
 
     return this.#commandInterceptorManager.execute(command, handler.execute);
+  }
+
+  get interceptors(): Pick<
+    CommandInterceptorManagerContract,
+    'apply' | 'select'
+  > {
+    return this.#commandInterceptorManager;
   }
 }

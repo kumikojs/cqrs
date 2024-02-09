@@ -16,53 +16,79 @@ describe('CommandInterceptorManager', () => {
     interceptorManager = new CommandInterceptorManager();
   });
 
-  describe('apply', () => {
-    test('should apply an interceptor to all command names', async () => {
-      const interceptor = vitest.fn();
-      const command = new TestCommand('testCommand');
-      const command2 = new TestCommand('testCommand2');
+  test('should apply an interceptor globally', async () => {
+    const interceptor = vitest.fn();
+    const command = new TestCommand('testCommand');
+    const command2 = new TestCommand('testCommand2');
 
-      interceptorManager.apply(interceptor).toAll();
+    interceptorManager.apply(interceptor);
 
-      await interceptorManager.execute(command, async () => 'test');
-      await interceptorManager.execute(command2, async () => 'test');
+    await interceptorManager.execute(command, async () => 'test');
+    await interceptorManager.execute(command2, async () => 'test');
 
-      expect(interceptor).toHaveBeenCalledWith(command, expect.any(Function));
-      expect(interceptor).toHaveBeenCalledWith(command2, expect.any(Function));
-    });
+    expect(interceptor).toHaveBeenCalledWith(command, expect.any(Function));
+    expect(interceptor).toHaveBeenCalledWith(command2, expect.any(Function));
+  });
 
-    test('should apply an interceptor to specific command names', async () => {
-      const interceptor = vitest.fn();
-      const command = new TestCommand('testCommand');
-      const command2 = new TestCommand('testCommand2');
+  test('should apply an interceptor to a specific command', async () => {
+    const interceptor = vitest.fn();
+    const command = new TestCommand('testCommand');
+    const command2 = new TestCommand('testCommand2');
 
-      interceptorManager.apply(interceptor).to('testCommand');
+    interceptorManager
+      .select((command) => command.commandName === 'testCommand')
+      .apply(interceptor);
 
-      await interceptorManager.execute(command, async () => 'test');
-      await interceptorManager.execute(command2, async () => 'test');
+    await interceptorManager.execute(command, async () => 'test');
+    await interceptorManager.execute(command2, async () => 'test');
 
-      expect(interceptor).toHaveBeenCalledWith(command, expect.any(Function));
-      expect(interceptor).not.toHaveBeenCalledWith(
-        command2,
-        expect.any(Function)
-      );
-    });
+    expect(interceptor).toHaveBeenCalledWith(command, expect.any(Function));
+    expect(interceptor).not.toHaveBeenCalledWith(
+      command2,
+      expect.any(Function)
+    );
+  });
 
-    test('should apply an interceptor when command options match', async () => {
-      const interceptor = vitest.fn();
-      const command = new TestCommand('testCommand', { notifiable: true });
-      const command2 = new TestCommand('testCommand', { test: 'test2' });
+  test('should apply an interceptor to a list of commands', async () => {
+    const interceptor = vitest.fn();
+    const command = new TestCommand('testCommand');
+    const command2 = new TestCommand('testCommand2');
+    const command3 = new TestCommand('testCommand3');
 
-      interceptorManager.apply(interceptor).when({ notifiable: true });
+    interceptorManager
+      .select((command) =>
+        ['testCommand', 'testCommand2'].includes(command.commandName)
+      )
+      .apply(interceptor);
 
-      await interceptorManager.execute(command, async () => 'test');
-      await interceptorManager.execute(command2, async () => 'test');
+    await interceptorManager.execute(command, async () => 'test');
+    await interceptorManager.execute(command2, async () => 'test');
+    await interceptorManager.execute(command3, async () => 'test');
 
-      expect(interceptor).toHaveBeenCalledWith(command, expect.any(Function));
-      expect(interceptor).not.toHaveBeenCalledWith(
-        command2,
-        expect.any(Function)
-      );
-    });
+    expect(interceptor).toHaveBeenCalledWith(command, expect.any(Function));
+    expect(interceptor).toHaveBeenCalledWith(command2, expect.any(Function));
+    expect(interceptor).not.toHaveBeenCalledWith(
+      command3,
+      expect.any(Function)
+    );
+  });
+
+  test('should apply an interceptor to a specific command based on options', async () => {
+    const interceptor = vitest.fn();
+    const command = new TestCommand('testCommand', { notifiable: true });
+    const command2 = new TestCommand('testCommand2', { notifiable: false });
+
+    interceptorManager
+      .select((command) => command.options.notifiable)
+      .apply(interceptor);
+
+    await interceptorManager.execute(command, async () => 'test');
+    await interceptorManager.execute(command2, async () => 'test');
+
+    expect(interceptor).toHaveBeenCalledWith(command, expect.any(Function));
+    expect(interceptor).not.toHaveBeenCalledWith(
+      command2,
+      expect.any(Function)
+    );
   });
 });
