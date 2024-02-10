@@ -87,7 +87,13 @@ export class CommandBus implements CommandBusContract {
   ): Promise<TResponse> {
     const handler = this.#commandRegistry.resolve(command.commandName);
 
-    // TaskManager is used before CommandInterceptorManager to ensure that the command is executed only once
+    if (!command.context?.abortController) {
+      command.context = {
+        ...command.context,
+        abortController: new AbortController(),
+      };
+    }
+
     return this.#taskManager.execute(command, () =>
       this.#commandInterceptorManager.execute(command, handler.execute)
     );

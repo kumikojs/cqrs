@@ -157,4 +157,26 @@ describe('CommandBus', () => {
       expect(interceptor).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('aborting the command execution', () => {
+    test('should stop the execution of the command by using the abort controller from command context', async () => {
+      const commandName = 'testCommand';
+      const handler = vitest.fn().mockResolvedValue('result');
+      const interceptor = vitest
+        .fn()
+        .mockImplementation(async (command, next) => {
+          command.abortController.abort();
+          return next?.(command);
+        });
+
+      commandBus.bind(commandName).to(handler);
+      commandBus.interceptors.apply(interceptor);
+
+      const command = new TestCommand(commandName);
+
+      await expect(commandBus.execute(command)).rejects.toThrow();
+      expect(handler).not.toHaveBeenCalled();
+      expect(interceptor).toHaveBeenCalledTimes(1);
+    });
+  });
 });
