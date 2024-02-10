@@ -2,16 +2,16 @@
 
 import type { Interceptor, InterceptorContract } from './interceptor';
 
-type Handler<T> = (context: T) => Promise<any>;
+type Handler<T> = (request: T) => Promise<any>;
 
 export interface InterceptorManagerContract<T> {
-  use<TContext extends T>(
-    interceptor: Interceptor<TContext> | InterceptorContract<TContext>
+  use<TRequest extends T>(
+    interceptor: Interceptor<TRequest> | InterceptorContract<TRequest>
   ): void;
 
-  execute<TContext extends T>(
-    context: TContext,
-    handler: Handler<TContext>
+  execute<TRequest extends T>(
+    request: TRequest,
+    handler: Handler<TRequest>
   ): Promise<any>;
 }
 
@@ -22,8 +22,8 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
     this.#interceptors = [];
   }
 
-  use<TContext extends T>(
-    interceptor: Interceptor<TContext> | InterceptorContract<TContext>
+  use<TRequest extends T>(
+    interceptor: Interceptor<TRequest> | InterceptorContract<TRequest>
   ) {
     if (this.#isInterceptorContract(interceptor)) {
       this.#interceptors.push(interceptor);
@@ -34,22 +34,22 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
     }
   }
 
-  async execute<TContext extends T>(
-    context: TContext,
-    handler: Handler<TContext>
+  async execute<TRequest extends T>(
+    request: TRequest,
+    handler: Handler<TRequest>
   ) {
     const composed = this.#interceptors.reduceRight(
-      (next, interceptor) => async (ctx: TContext) =>
+      (next, interceptor) => async (ctx: TRequest) =>
         interceptor.handle(ctx, next),
-      async (ctx: TContext) => handler(ctx)
+      async (ctx: TRequest) => handler(ctx)
     );
 
-    return await composed(context);
+    return await composed(request);
   }
 
-  #isInterceptorContract<TContext extends T>(
-    interceptor: Interceptor<TContext> | InterceptorContract<TContext>
-  ): interceptor is InterceptorContract<TContext> {
+  #isInterceptorContract<TRequest extends T>(
+    interceptor: Interceptor<TRequest> | InterceptorContract<TRequest>
+  ): interceptor is InterceptorContract<TRequest> {
     return 'handle' in interceptor;
   }
 }

@@ -11,23 +11,23 @@ describe('TaskManager', () => {
 
   describe('execute', () => {
     it('should execute the task', async () => {
-      const context = {};
+      const request = {};
       const task = vitest.fn().mockResolvedValue('result');
 
-      const result = await taskManager.execute(context, task);
+      const result = await taskManager.execute(request, task);
 
       expect(result).toBe('result');
-      expect(task).toHaveBeenCalledWith(context);
+      expect(task).toHaveBeenCalledWith(request);
     });
 
-    it('should execute the task only once for the same context', async () => {
-      const context = { fake: 'test' };
+    it('should execute the task only once for the same request', async () => {
+      const request = { fake: 'test' };
       const task = vitest.fn().mockResolvedValue('result');
 
       await Promise.all([
-        taskManager.execute(context, task),
-        taskManager.execute(context, task),
-        taskManager.execute(context, task),
+        taskManager.execute(request, task),
+        taskManager.execute(request, task),
+        taskManager.execute(request, task),
       ]);
 
       expect(task).toHaveBeenCalledTimes(1);
@@ -45,26 +45,26 @@ describe('TaskManager', () => {
       expect(task).toHaveBeenCalledTimes(3);
     });
 
-    it('should execute the task for the same context after the previous execution is finished', async () => {
-      const context = { fake: 'test' };
+    it('should execute the task for the same request after the previous execution is finished', async () => {
+      const request = { fake: 'test' };
       const task = vitest.fn().mockResolvedValue('result');
 
       await Promise.all([
-        taskManager.execute(context, task),
-        taskManager.execute(context, task),
+        taskManager.execute(request, task),
+        taskManager.execute(request, task),
       ]);
 
       expect(task).toHaveBeenCalledTimes(1);
     });
 
-    it('should execute the task for the same context after the previous execution is rejected', async () => {
-      const context = {};
+    it('should execute the task for the same request after the previous execution is rejected', async () => {
+      const request = {};
       const task = vitest.fn().mockRejectedValue(new Error('error'));
 
-      await taskManager.execute(context, task).catch(() => {
+      await taskManager.execute(request, task).catch(() => {
         //noop
       });
-      await taskManager.execute(context, task).catch(() => {
+      await taskManager.execute(request, task).catch(() => {
         //noop
       });
 

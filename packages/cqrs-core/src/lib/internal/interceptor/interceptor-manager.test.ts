@@ -6,12 +6,12 @@ import {
 } from './interceptor-manager';
 
 const mockInterceptor: InterceptorContract<any> = {
-  handle: async (context, next) => {
+  handle: async (request, next) => {
     if (next) {
-      const modifiedContext = { ...context, modified: true };
+      const modifiedContext = { ...request, modified: true };
       return await next(modifiedContext);
     }
-    return context;
+    return request;
   },
 };
 
@@ -28,8 +28,8 @@ describe('InterceptorManager', () => {
 
     const result = await interceptorManager.execute(
       { initial: true },
-      async (context) => {
-        return context;
+      async (request) => {
+        return request;
       }
     );
 
@@ -39,8 +39,8 @@ describe('InterceptorManager', () => {
   test('should handle case with no interceptors', async () => {
     const result = await interceptorManager.execute(
       { initial: true },
-      async (context) => {
-        return context;
+      async (request) => {
+        return request;
       }
     );
 
@@ -52,10 +52,10 @@ describe('InterceptorManager', () => {
 
     const result = await interceptorManager.execute(
       { initial: true },
-      async (context) => {
+      async (request) => {
         return new Promise((resolve) => {
           setTimeout(() => {
-            resolve(context);
+            resolve(request);
           }, 100);
         });
       }
