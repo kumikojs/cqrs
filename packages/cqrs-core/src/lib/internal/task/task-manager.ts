@@ -3,7 +3,7 @@ export interface TaskManagerContract<TRequest, TTask> {
   execute<TResult>(request: TRequest, task: TTask): Promise<TResult>;
 }
 
-export class TaskManager<
+export abstract class TaskManager<
   TRequest,
   TTask extends (request: TRequest) => Promise<any>
 > implements TaskManagerContract<TRequest, TTask>
@@ -11,7 +11,7 @@ export class TaskManager<
   private pendingTasks: Map<string, Promise<any>> = new Map();
 
   async execute<TResult>(request: TRequest, task: TTask): Promise<TResult> {
-    const taskKey = this.#serialize(request);
+    const taskKey = this.serialize(request);
 
     if (this.pendingTasks.has(taskKey)) {
       return this.pendingTasks.get(taskKey);
@@ -28,7 +28,5 @@ export class TaskManager<
     }
   }
 
-  #serialize(request: TRequest): string {
-    return JSON.stringify(request);
-  }
+  protected abstract serialize(request: TRequest): string;
 }

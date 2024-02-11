@@ -6,7 +6,11 @@ describe('TaskManager', () => {
   let taskManager: TaskManagerContract<any, any>;
 
   beforeEach(() => {
-    taskManager = new TaskManager();
+    taskManager = new (class extends TaskManager<any, any> {
+      protected serialize(request: any) {
+        return JSON.stringify(request);
+      }
+    })();
   });
 
   describe('execute', () => {

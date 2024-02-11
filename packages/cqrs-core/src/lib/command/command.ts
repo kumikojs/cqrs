@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Nullable } from '../internal/types';
+import type { Nullable } from '../internal/types';
 
 export type CommandName = string;
 

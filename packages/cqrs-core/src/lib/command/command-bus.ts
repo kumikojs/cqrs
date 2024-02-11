@@ -1,18 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { TaskManagerContract } from '../internal/task/task-manager';
 import type { CommandContract, CommandName } from './command';
 import type { CommandHandlerContract } from './command-handler';
 import {
   CommandInterceptorManager,
-  CommandInterceptorManagerContract,
+  type CommandInterceptorManagerContract,
 } from './internal/command-interceptor-manager';
 import {
   CommandRegistry,
   type CommandRegistryContract,
 } from './internal/command-registry';
-import {
-  type TaskManagerContract,
-  TaskManager,
-} from '../internal/task/task-manager';
+import { CommandTaskManager } from './internal/command-task-manager';
 
 type CommandHandlerFn<
   T extends CommandContract = CommandContract,
@@ -50,7 +48,7 @@ export class CommandBus implements CommandBusContract {
   constructor({
     commandRegistry = new CommandRegistry(),
     commandInterceptorManager = new CommandInterceptorManager(),
-    taskManager = new TaskManager(),
+    taskManager = new CommandTaskManager(),
   }: {
     commandRegistry?: CommandRegistryContract;
     commandInterceptorManager?: CommandInterceptorManagerContract;
