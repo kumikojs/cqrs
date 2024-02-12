@@ -2,16 +2,10 @@
 import { InMemoryCacheDriver } from './in-memory-cache-driver';
 
 describe('InMemoryCacheDriver', () => {
-  let driver: InMemoryCacheDriver<string, string>;
+  let driver: InMemoryCacheDriver<string>;
 
   beforeEach(() => {
-    driver = InMemoryCacheDriver.getInstance();
-  });
-
-  test('should get the same instance', () => {
-    const instance1 = InMemoryCacheDriver.getInstance();
-    const instance2 = InMemoryCacheDriver.getInstance();
-    expect(instance1).toBe(instance2);
+    driver = new InMemoryCacheDriver();
   });
 
   test('should get undefined for non-existing key', () => {

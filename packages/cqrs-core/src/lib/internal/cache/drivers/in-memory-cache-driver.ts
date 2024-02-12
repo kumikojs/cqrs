@@ -2,30 +2,15 @@
 import { ttlToMilliseconds, type TTL } from '../../../utils/ttl';
 import type { CacheDriverContract } from '../cache-driver';
 
-interface CacheItem<TValue> {
-  value: TValue;
+interface CacheItem {
+  value: any;
   expiration: number;
 }
 
-export class InMemoryCacheDriver<TKey, TValue>
-  implements CacheDriverContract<TKey, TValue>
-{
-  static #instance: InMemoryCacheDriver<any, any>;
-  #cache: Map<TKey, CacheItem<TValue>> = new Map();
+export class InMemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
+  #cache: Map<TKey, CacheItem> = new Map();
 
-  private constructor() {
-    // Singleton
-  }
-
-  static getInstance() {
-    if (!InMemoryCacheDriver.#instance) {
-      InMemoryCacheDriver.#instance = new InMemoryCacheDriver();
-    }
-
-    return InMemoryCacheDriver.#instance;
-  }
-
-  get(key: TKey): TValue | undefined {
+  get<TValue>(key: TKey): TValue | undefined {
     const item = this.#cache.get(key);
 
     if (!item) {
@@ -40,7 +25,7 @@ export class InMemoryCacheDriver<TKey, TValue>
     return item.value;
   }
 
-  set(key: TKey, value: TValue, ttl?: TTL): void {
+  set<TValue>(key: TKey, value: TValue, ttl?: TTL): void {
     const expiration = ttl ? Date.now() + ttlToMilliseconds(ttl) : Infinity;
 
     this.#cache.set(key, { value, expiration });
@@ -50,5 +35,5 @@ export class InMemoryCacheDriver<TKey, TValue>
     this.#cache.delete(key);
   }
 
-  #hasExpired = (item: CacheItem<TValue>) => Date.now() > item.expiration;
+  #hasExpired = (item: CacheItem) => Date.now() > item.expiration;
 }

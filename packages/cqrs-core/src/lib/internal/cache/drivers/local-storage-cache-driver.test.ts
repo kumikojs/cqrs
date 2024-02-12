@@ -2,16 +2,10 @@
 import { LocalStorageCacheDriver } from './local-storage-cache-driver';
 
 describe('LocalStorageCacheDriver', () => {
-  let driver: LocalStorageCacheDriver<string, string>;
+  let driver: LocalStorageCacheDriver<string>;
 
   beforeEach(() => {
-    driver = LocalStorageCacheDriver.getInstance();
-  });
-
-  test('should get the same instance', () => {
-    const instance1 = LocalStorageCacheDriver.getInstance();
-    const instance2 = LocalStorageCacheDriver.getInstance();
-    expect(instance1).toBe(instance2);
+    driver = new LocalStorageCacheDriver();
   });
 
   test('should get undefined for non-existing key', () => {

@@ -2,13 +2,12 @@
 import { ttlToMilliseconds, type TTL } from '../../../utils/ttl';
 import { CacheDriverContract } from '../cache-driver';
 
-export class LocalStorageCacheDriver<TKey extends string, TValue>
-  implements CacheDriverContract<TKey, TValue>
+export class LocalStorageCacheDriver<TKey extends string>
+  implements CacheDriverContract<TKey>
 {
-  static #instance: LocalStorageCacheDriver<string, any>;
   #storage: Storage;
 
-  private constructor() {
+  constructor() {
     if (!window || !window.localStorage) {
       console.error('LocalStorage is not supported in this environment.');
       this.#storage = {
@@ -24,15 +23,7 @@ export class LocalStorageCacheDriver<TKey extends string, TValue>
     }
   }
 
-  static getInstance() {
-    if (!this.#instance) {
-      this.#instance = new LocalStorageCacheDriver();
-    }
-
-    return this.#instance;
-  }
-
-  get(key: TKey): TValue | undefined {
+  get<TValue>(key: TKey): TValue | undefined {
     try {
       const item = this.#storage.getItem(key.toString());
 
@@ -54,7 +45,7 @@ export class LocalStorageCacheDriver<TKey extends string, TValue>
     }
   }
 
-  set(key: TKey, value: TValue, ttl?: TTL): void {
+  set<TValue>(key: TKey, value: TValue, ttl?: TTL): void {
     try {
       const expiration = ttl ? Date.now() + ttlToMilliseconds(ttl) : undefined;
 
