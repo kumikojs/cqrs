@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ttlToMilliseconds, type TTL } from '../../../utils/ttl';
-import { CacheDriverContract } from '../cache-driver';
+import type { CacheDriverContract } from '../cache-driver';
 
 export class LocalStorageCacheDriver<TKey extends string>
   implements CacheDriverContract<TKey>
@@ -45,11 +45,9 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
-  set<TValue>(key: TKey, value: TValue, ttl?: TTL | number): void {
+  set<TValue>(key: TKey, value: TValue, ttl?: TTL): void {
     try {
-      const expiration = ttl
-        ? Date.now() + this.#ttlToMilliseconds(ttl)
-        : Infinity;
+      const expiration = ttl ? Date.now() + ttlToMilliseconds(ttl) : Infinity;
 
       this.#storage.setItem(
         key.toString(),
@@ -69,8 +67,4 @@ export class LocalStorageCacheDriver<TKey extends string>
   }
 
   #hasExpired = (expiration: number) => Date.now() > expiration;
-
-  #ttlToMilliseconds(ttl: number | TTL): number {
-    return typeof ttl === 'number' ? ttl : ttlToMilliseconds(ttl);
-  }
 }

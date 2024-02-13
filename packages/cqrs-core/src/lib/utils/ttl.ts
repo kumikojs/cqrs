@@ -1,15 +1,26 @@
 type Millisecond = `${number}ms`;
 type Second = `${number}s`;
-type SecondAndMillisecond = `${number}s${number}ms`;
 type Minute = `${number}m`;
-type MinuteAndSecond = `${number}m${number}s`;
-type MinuteAndSecondAndMillisecond = `${number}m${number}s${number}ms`;
 type Hour = `${number}h`;
-type HourAndMinute = `${number}h${number}m`;
-type HourAndMinuteAndSecond = `${number}h${number}m${number}s`;
+type SecondAndMillisecond = `${Second}${Millisecond}`;
+type MinuteAndSecond = `${Minute}${Second}`;
+type MinuteAndSecondAndMillisecond = `${Minute}${Second}${Millisecond}`;
+type HourAndMinute = `${Hour}${Minute}`;
+type HourAndMinuteAndSecond = `${Hour}${Minute}${Second}`;
 type HourAndMinuteAndSecondAndMillisecond =
-  `${number}h${number}m${number}s${number}ms`;
+  `${Hour}${Minute}${Second}${Millisecond}`;
 
+/**
+ * Time to live (TTL) for cache items.
+ * @type {TTL} When a number, it represents the time in milliseconds.
+ * @example
+ * ttl: '1s'
+ * ttl: 1000
+ * ttl: '1m'
+ * ttl: 60000
+ * ttl: '1h'
+ * ttl: 3600000
+ */
 export type TTL =
   | Millisecond
   | Second
@@ -20,12 +31,28 @@ export type TTL =
   | MinuteAndSecondAndMillisecond
   | HourAndMinute
   | HourAndMinuteAndSecond
-  | HourAndMinuteAndSecondAndMillisecond;
+  | HourAndMinuteAndSecondAndMillisecond
+  | number;
 
 export const ttlToMilliseconds = (ttl: TTL): number => {
+  if (typeof ttl === 'number') {
+    if (ttl < 0) {
+      console.warn(`TTL must be greater than or equal to 0, defaulting to 0`);
+      return 0;
+    }
+
+    return ttl;
+  }
+
+  if (!/^(\d+(ms|s|m|h))*$/.test(ttl)) {
+    console.warn(`Invalid TTL: ${ttl}, defaulting to 0`);
+    return 0;
+  }
+
   const matches = ttl.match(/(\d+)(ms|s|m|h)/g);
   if (!matches) {
-    throw new Error(`Invalid TTL: ${ttl}`);
+    console.warn(`Invalid TTL: ${ttl}, defaulting to 0`);
+    return 0;
   }
 
   let totalMilliseconds = 0;
@@ -33,9 +60,6 @@ export const ttlToMilliseconds = (ttl: TTL): number => {
   for (const match of matches) {
     const [, valueStr, unit] = match.match(/(\d+)(ms|s|m|h|d)/) || [];
     const value = parseInt(valueStr, 10);
-    if (isNaN(value)) {
-      throw new Error(`Invalid TTL: ${ttl}`);
-    }
 
     switch (unit) {
       case 'ms':

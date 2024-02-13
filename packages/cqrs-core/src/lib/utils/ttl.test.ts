@@ -144,4 +144,14 @@ describe('ttlToMilliseconds', () => {
       100 * 60 * 60 * 1000 + 100 * 60 * 1000 + 100 * 1000 + 100
     );
   });
+
+  test('should check negative values', () => {
+    expect(ttlToMilliseconds('-1ms')).toBe(0);
+    expect(ttlToMilliseconds('-1s')).toBe(0);
+    expect(ttlToMilliseconds('-1m')).toBe(0);
+    expect(ttlToMilliseconds('-1h')).toBe(0);
+
+    expect(ttlToMilliseconds('1s-1ms')).toBe(0);
+    expect(ttlToMilliseconds(-100)).toBe(0);
+  });
 });

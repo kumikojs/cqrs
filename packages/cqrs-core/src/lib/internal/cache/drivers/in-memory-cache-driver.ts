@@ -25,10 +25,8 @@ export class InMemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
     return item.value;
   }
 
-  set<TValue>(key: TKey, value: TValue, ttl?: TTL | number): void {
-    const expiration = ttl
-      ? Date.now() + this.#ttlToMilliseconds(ttl)
-      : Infinity;
+  set<TValue>(key: TKey, value: TValue, ttl?: TTL): void {
+    const expiration = ttl ? Date.now() + ttlToMilliseconds(ttl) : Infinity;
 
     this.#cache.set(key, { value, expiration });
   }
@@ -38,8 +36,4 @@ export class InMemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
   }
 
   #hasExpired = (item: CacheItem) => Date.now() > item.expiration;
-
-  #ttlToMilliseconds(ttl: number | TTL): number {
-    return typeof ttl === 'number' ? ttl : ttlToMilliseconds(ttl);
-  }
 }

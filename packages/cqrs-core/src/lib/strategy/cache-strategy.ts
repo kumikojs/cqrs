@@ -8,15 +8,10 @@ import { Strategy } from './internal/strategy';
 export type CacheOptions = {
   /**
    * The time to live (TTL) for the cache.
-   * @type {number | TTL} When a number, it represents the time in milliseconds.
    * @default '30s'
-   * @example
-   * ttl: '30s'
-   * ttl: 30000
-   * ttl: '1m'
-   * ttl: 60000
+   * @see {@link TTL}
    */
-  ttl?: number | TTL;
+  ttl?: TTL;
 
   /**
    * If true, use localStorage, otherwise use in-memory cache.
@@ -34,9 +29,14 @@ export class CacheStrategy extends Strategy<CacheOptions> {
 
   #cache: CacheDriverContract<string>;
 
-  constructor(options: CacheOptions = CacheStrategy.#defaultOptions) {
-    super(options);
-    this.#cache = options.localStorage
+  constructor(options?: CacheOptions) {
+    super({
+      ttl: options?.ttl ?? CacheStrategy.#defaultOptions.ttl,
+      localStorage:
+        options?.localStorage ?? CacheStrategy.#defaultOptions.localStorage,
+    });
+
+    this.#cache = this.options.localStorage
       ? CacheManager.getInstance().localStorageCache
       : CacheManager.getInstance().inMemoryCache;
   }
@@ -45,7 +45,7 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     request: TRequest,
     task: TTask
   ): Promise<TResult> {
-    const key = JSON.stringify(request);
+    const key = `cache_strategy_id::${JSON.stringify(request)}`;
     const cachedValue = this.#cache.get<TResult>(key);
 
     if (cachedValue !== undefined) {

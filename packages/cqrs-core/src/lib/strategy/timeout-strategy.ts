@@ -3,7 +3,7 @@ import { type TTL, ttlToMilliseconds } from '../utils/ttl';
 import { Strategy } from './internal/strategy';
 
 type TimeoutOptions = {
-  timeout: number | TTL;
+  timeout: TTL;
 };
 
 export class TimeoutStrategy extends Strategy<TimeoutOptions> {
@@ -15,7 +15,7 @@ export class TimeoutStrategy extends Strategy<TimeoutOptions> {
     request: TRequest,
     task: TTask
   ): Promise<TResult> {
-    const timeout = this.#timeoutToMilliseconds(this.options.timeout);
+    const timeout = ttlToMilliseconds(this.options.timeout);
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -27,9 +27,5 @@ export class TimeoutStrategy extends Strategy<TimeoutOptions> {
         .catch(reject)
         .finally(() => clearTimeout(timer));
     });
-  }
-
-  #timeoutToMilliseconds(timeout: number | TTL): number {
-    return typeof timeout === 'number' ? timeout : ttlToMilliseconds(timeout);
   }
 }
