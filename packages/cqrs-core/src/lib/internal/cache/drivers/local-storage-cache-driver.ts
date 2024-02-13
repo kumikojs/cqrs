@@ -45,9 +45,11 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
-  set<TValue>(key: TKey, value: TValue, ttl?: TTL): void {
+  set<TValue>(key: TKey, value: TValue, ttl?: TTL | number): void {
     try {
-      const expiration = ttl ? Date.now() + ttlToMilliseconds(ttl) : undefined;
+      const expiration = ttl
+        ? Date.now() + this.#ttlToMilliseconds(ttl)
+        : Infinity;
 
       this.#storage.setItem(
         key.toString(),
@@ -67,4 +69,8 @@ export class LocalStorageCacheDriver<TKey extends string>
   }
 
   #hasExpired = (expiration: number) => Date.now() > expiration;
+
+  #ttlToMilliseconds(ttl: number | TTL): number {
+    return typeof ttl === 'number' ? ttl : ttlToMilliseconds(ttl);
+  }
 }
