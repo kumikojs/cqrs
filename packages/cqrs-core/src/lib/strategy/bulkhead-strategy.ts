@@ -1,10 +1,19 @@
 import type { PromiseAnyFunction } from '../internal/types';
 import { Strategy } from './internal/strategy';
 
-interface BulkheadOptions {
+export type BulkheadOptions = {
+  /**
+   * The maximum number of concurrent tasks that can be executed.
+   * @default 3
+   */
   maxConcurrent: number;
+
+  /**
+   * The maximum number of tasks that can be queued.
+   * @default 3
+   */
   maxQueue: number;
-}
+};
 
 export class BulkheadStrategy extends Strategy<BulkheadOptions> {
   #active = 0;

@@ -16,7 +16,7 @@ export interface CommandInterceptorManagerContract {
     interceptor: CommandInterceptor<TCommand>
   ): void;
 
-  select<TCommand extends CommandContract<any, any>>(
+  select<TCommand extends CommandContract>(
     selector: (command: TCommand) => boolean
   ): SelectThenApplySyntax<TCommand>;
 
@@ -35,7 +35,7 @@ export class CommandInterceptorManager {
     this.#interceptorManager = interceptorManager;
   }
 
-  select<TCommand extends CommandContract<any, any>>(
+  select<TCommand extends CommandContract>(
     selector: (command: TCommand) => boolean
   ): SelectThenApplySyntax<TCommand> {
     return {

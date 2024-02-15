@@ -11,32 +11,31 @@ export type CacheOptions = {
    * @default '30s'
    * @see {@link TTL}
    */
-  ttl?: TTL;
+  ttl: TTL;
 
   /**
    * If true, use localStorage, otherwise use in-memory cache.
    * @type {boolean}
    * @default false
    */
-  localStorage?: boolean;
+  persist: boolean;
 };
 
 export class CacheStrategy extends Strategy<CacheOptions> {
   static #defaultOptions: CacheOptions = {
     ttl: '30s',
-    localStorage: false,
+    persist: false,
   };
 
   #cache: CacheDriverContract<string>;
 
-  constructor(options?: CacheOptions) {
+  constructor(options?: Partial<CacheOptions>) {
     super({
       ttl: options?.ttl ?? CacheStrategy.#defaultOptions.ttl,
-      localStorage:
-        options?.localStorage ?? CacheStrategy.#defaultOptions.localStorage,
+      persist: options?.persist ?? CacheStrategy.#defaultOptions.persist,
     });
 
-    this.#cache = this.options.localStorage
+    this.#cache = this.options.persist
       ? CacheManager.getInstance().localStorageCache
       : CacheManager.getInstance().inMemoryCache;
   }

@@ -17,7 +17,7 @@ describe('CommandBus', () => {
 
   beforeEach(() => {
     commandBus = new CommandBus({
-      commandInterceptorManager: new CommandInterceptorManager(),
+      interceptorManager: new CommandInterceptorManager(),
     });
   });
 

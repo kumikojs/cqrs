@@ -5,11 +5,16 @@ import type { PromiseAnyFunction } from '../internal/types';
 import type { TTL } from '../utils/ttl';
 import { Strategy } from './internal/strategy';
 
-type ThrottleOptions = {
+export type ThrottleOptions = {
   /**
    * The time to live (TTL) for the cache.
    * @default '5s'
    * @see {@link TTL}
+   * @type {TTL}
+   * @example
+   * '500ms' // 500 milliseconds
+   * '30s' // 30 seconds
+   * '5m' // 5 minutes
    */
   ttl?: TTL;
 

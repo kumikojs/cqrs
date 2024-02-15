@@ -1,7 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { AnyFunction, PromiseAnyFunction } from '../internal/types';
 import { Strategy } from './internal/strategy';
 
-type FallbackOptions = {
+export type FallbackOptions = {
+  /**
+   * The fallback function to be executed when the task fails.
+   */
   fallback: AnyFunction;
 };
 

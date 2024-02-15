@@ -6,13 +6,14 @@ describe('RetryStrategy', () => {
     const task = vitest
       .fn()
       .mockRejectedValueOnce('error')
-      .mockResolvedValueOnce('success');
+      .mockRejectedValueOnce('error') // 1st retry
+      .mockResolvedValueOnce('success'); // 2nd retry
     const strategy = new RetryStrategy({ maxRetries: 2, delay: 0 });
 
     const result = await strategy.execute('request', task);
 
     expect(result).toBe('success');
-    expect(task).toHaveBeenCalledTimes(2);
+    expect(task).toHaveBeenCalledTimes(3);
   });
 
   test('should throw the last error if the task fails all retries', async () => {
@@ -20,7 +21,7 @@ describe('RetryStrategy', () => {
     const strategy = new RetryStrategy({ maxRetries: 3, delay: 0 });
 
     await expect(strategy.execute('request', task)).rejects.toBe('error');
-    expect(task).toHaveBeenCalledTimes(3);
+    expect(task).toHaveBeenCalledTimes(4);
   });
 
   test('should delay for backoff', async () => {

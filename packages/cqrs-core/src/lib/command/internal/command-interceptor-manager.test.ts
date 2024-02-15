@@ -79,7 +79,10 @@ describe('CommandInterceptorManager', () => {
     const command2 = new TestCommand('testCommand2', { notifiable: false });
 
     interceptorManager
-      .select((command) => command.options.notifiable)
+      .select<{
+        commandName: string;
+        options: { notifiable: boolean };
+      }>((command) => command.options.notifiable)
       .apply(interceptor);
 
     await interceptorManager.execute(command, async () => 'test');

@@ -3,7 +3,11 @@
 import type { PromiseAnyFunction } from '../internal/types';
 import { Strategy } from './internal/strategy';
 
-type DeduplicationOptions = {
+export type DeduplicationOptions = {
+  /**
+   * The function to serialize the request.
+   * It should return a string that represents the key used when caching the request.
+   */
   serialize: (request: any) => string;
 };
 

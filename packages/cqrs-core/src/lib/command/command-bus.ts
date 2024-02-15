@@ -46,19 +46,19 @@ export class CommandBus implements CommandBusContract {
   >;
 
   constructor({
-    commandRegistry = new CommandRegistry(),
-    commandInterceptorManager = new CommandInterceptorManager(),
+    registry = new CommandRegistry(),
+    interceptorManager = new CommandInterceptorManager(),
     taskManager = new CommandTaskManager(),
   }: {
-    commandRegistry?: CommandRegistryContract;
-    commandInterceptorManager?: CommandInterceptorManagerContract;
+    registry?: CommandRegistryContract;
+    interceptorManager?: CommandInterceptorManagerContract;
     taskManager?: TaskManagerContract<
       CommandContract,
       CommandHandlerContract['execute']
     >;
   } = {}) {
-    this.#commandRegistry = commandRegistry;
-    this.#commandInterceptorManager = commandInterceptorManager;
+    this.#commandRegistry = registry;
+    this.#commandInterceptorManager = interceptorManager;
     this.#taskManager = taskManager;
   }
 
