@@ -17,9 +17,13 @@ export type TimeoutOptions = {
 };
 
 export class TimeoutStrategy extends Strategy<TimeoutOptions> {
+  static #defaultOptions: TimeoutOptions = {
+    timeout: '30s',
+  };
+
   public constructor(options?: Partial<TimeoutOptions>) {
     super({
-      timeout: '30s',
+      ...TimeoutStrategy.#defaultOptions,
       ...options,
     });
   }

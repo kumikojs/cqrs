@@ -25,10 +25,15 @@ export type RetryOptions = {
 };
 
 export class RetryStrategy extends Strategy<RetryOptions> {
-  public constructor(options?: RetryOptions) {
+  static #defaultOptions: RetryOptions = {
+    maxRetries: 3,
+    delay: '1s',
+  };
+
+  public constructor(options?: Partial<RetryOptions>) {
     super({
-      maxRetries: options?.maxRetries ?? 3,
-      delay: options?.delay ?? '1s',
+      ...RetryStrategy.#defaultOptions,
+      ...options,
     });
   }
 

@@ -31,8 +31,8 @@ export class CacheStrategy extends Strategy<CacheOptions> {
 
   constructor(options?: Partial<CacheOptions>) {
     super({
-      ttl: options?.ttl ?? CacheStrategy.#defaultOptions.ttl,
-      persist: options?.persist ?? CacheStrategy.#defaultOptions.persist,
+      ...CacheStrategy.#defaultOptions,
+      ...options,
     });
 
     this.#cache = this.options.persist

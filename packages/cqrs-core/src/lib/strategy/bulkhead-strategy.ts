@@ -16,11 +16,19 @@ export type BulkheadOptions = {
 };
 
 export class BulkheadStrategy extends Strategy<BulkheadOptions> {
+  static #defaultOptions: BulkheadOptions = {
+    maxConcurrent: 3,
+    maxQueue: 3,
+  };
+
   #active = 0;
   #queue: PromiseAnyFunction[] = [];
 
-  constructor(options?: BulkheadOptions) {
-    super(options ?? { maxConcurrent: 3, maxQueue: 3 });
+  constructor(options?: Partial<BulkheadOptions>) {
+    super({
+      ...BulkheadStrategy.#defaultOptions,
+      ...options,
+    });
   }
 
   public async execute<TRequest, TTask extends PromiseAnyFunction, TResult>(

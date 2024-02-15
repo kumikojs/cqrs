@@ -16,27 +16,28 @@ export type ThrottleOptions = {
    * '30s' // 30 seconds
    * '5m' // 5 minutes
    */
-  ttl?: TTL;
+  ttl: TTL;
 
   /**
    * The maximum number of the same request that can be made within the TTL.
    * @type {number}
    * @default 5
    */
-  limit?: number;
+  limit: number;
 };
 
-export class ThrottleStrategy extends Strategy<Required<ThrottleOptions>> {
+export class ThrottleStrategy extends Strategy<ThrottleOptions> {
   static #options: Required<ThrottleOptions> = {
     ttl: '5s',
     limit: 5,
   };
+
   #cache: CacheDriverContract<string>;
 
-  constructor(options?: ThrottleOptions) {
+  constructor(options?: Partial<ThrottleOptions>) {
     super({
-      ttl: options?.ttl ?? ThrottleStrategy.#options.ttl,
-      limit: options?.limit ?? ThrottleStrategy.#options.limit,
+      ...ThrottleStrategy.#options,
+      ...options,
     });
 
     if (this.options.limit < 1) {
