@@ -29,15 +29,15 @@ export class CacheStrategy extends Strategy<CacheOptions> {
 
   #cache: CacheDriverContract<string>;
 
-  constructor(options?: Partial<CacheOptions>) {
+  constructor(cacheManager: CacheManager, options?: Partial<CacheOptions>) {
     super({
       ...CacheStrategy.#defaultOptions,
       ...options,
     });
 
     this.#cache = this.options.persist
-      ? CacheManager.getInstance().localStorageCache
-      : CacheManager.getInstance().inMemoryCache;
+      ? cacheManager.localStorageCache
+      : cacheManager.inMemoryCache;
   }
 
   public async execute<TRequest, TTask extends PromiseAnyFunction, TResult>(

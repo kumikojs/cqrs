@@ -1,3 +1,4 @@
+import { CacheManager } from '../internal/cache/cache-manager';
 import { BulkheadStrategy } from '../strategy/bulkhead-strategy';
 import {
   StrategyInterceptor,
@@ -13,14 +14,17 @@ const fallbackStrategy = () => import('../strategy/fallback-strategy');
 export class CommandClient {
   #commandBus: CommandBusContract;
   #bulkheadInterceptor: StrategyInterceptorContract;
+  #cacheManager: CacheManager;
 
   constructor({
     commandBus = new CommandBus(),
+    cacheManaher = new CacheManager(),
     bulkheadInterceptor = new StrategyInterceptor(new BulkheadStrategy()),
   } = {}) {
     this.#commandBus = commandBus;
-
+    this.#cacheManager = cacheManaher;
     this.#bulkheadInterceptor = bulkheadInterceptor;
+
     this.#bootstrap();
   }
 
@@ -79,7 +83,10 @@ export class CommandClient {
     this.#commandBus.interceptors
       .select((command) => Boolean(command.options?.throttle))
       .apply(async (command, next) => {
-        const throttle = new ThrottleStrategy(command.options?.throttle);
+        const throttle = new ThrottleStrategy(
+          this.#cacheManager.inMemoryCache,
+          command.options?.throttle
+        );
         return new StrategyInterceptor(throttle).handle(
           command,
           async (request) => next?.(request)

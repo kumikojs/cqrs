@@ -6,7 +6,7 @@ describe('ThrottleStrategy', () => {
   let cache: CacheDriverContract<string>;
 
   beforeEach(() => {
-    cache = CacheManager.getInstance().inMemoryCache;
+    cache = new CacheManager().inMemoryCache;
     vitest.spyOn(cache, 'get').mockReturnValue(undefined);
     vitest.spyOn(cache, 'set');
   });
@@ -16,7 +16,7 @@ describe('ThrottleStrategy', () => {
   });
 
   test('should execute the task when there is no cached value', async () => {
-    const strategy = new ThrottleStrategy({ ttl: '5s', limit: 5 });
+    const strategy = new ThrottleStrategy(cache, { ttl: '5s', limit: 5 });
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 
@@ -28,7 +28,7 @@ describe('ThrottleStrategy', () => {
   });
 
   test('should execute the task when the cached value is below the limit', async () => {
-    const strategy = new ThrottleStrategy({ ttl: '5s', limit: 5 });
+    const strategy = new ThrottleStrategy(cache, { ttl: '5s', limit: 5 });
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 
@@ -42,7 +42,7 @@ describe('ThrottleStrategy', () => {
   });
 
   test('should throw an error when the cached value is equal to the limit', async () => {
-    const strategy = new ThrottleStrategy({ ttl: '5s', limit: 5 });
+    const strategy = new ThrottleStrategy(cache, { ttl: '5s', limit: 5 });
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 
@@ -58,7 +58,7 @@ describe('ThrottleStrategy', () => {
   });
 
   test('should handle requests concurrently without exceeding the limit', async () => {
-    const strategy = new ThrottleStrategy({ ttl: '5s', limit: 2 });
+    const strategy = new ThrottleStrategy(cache, { ttl: '5s', limit: 2 });
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 

@@ -34,7 +34,10 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
 
   #cache: CacheDriverContract<string>;
 
-  constructor(options?: Partial<ThrottleOptions>) {
+  constructor(
+    cache: CacheDriverContract<string>,
+    options?: Partial<ThrottleOptions>
+  ) {
     super({
       ...ThrottleStrategy.#options,
       ...options,
@@ -45,7 +48,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
       this.options.limit = Infinity;
     }
 
-    this.#cache = CacheManager.getInstance().inMemoryCache;
+    this.#cache = cache;
   }
 
   public async execute<TRequest, TTask extends PromiseAnyFunction, TResult>(
