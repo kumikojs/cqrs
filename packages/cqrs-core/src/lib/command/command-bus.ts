@@ -12,6 +12,15 @@ import {
 } from './internal/command-registry';
 import { CommandTaskManager } from './internal/command-task-manager';
 
+/**
+ * Export internal Exception classes
+ * because they are used in the public API
+ */
+export {
+  CommandAlreadyRegisteredException,
+  CommandNotRegisteredException,
+} from './internal/command-registry';
+
 type CommandHandlerFn<
   T extends CommandContract = CommandContract,
   TResponse = any

@@ -15,6 +15,18 @@ export interface CommandRegistryContract<
   clear(): void;
 }
 
+export class CommandAlreadyRegisteredException extends Error {
+  constructor(commandName: string) {
+    super(`Command handler for "${commandName}" is already registered`);
+  }
+}
+
+export class CommandNotRegisteredException extends Error {
+  constructor(commandName: string) {
+    super(`Command handler for "${commandName}" is not registered`);
+  }
+}
+
 export class CommandRegistry implements CommandRegistryContract {
   #handlers: Map<CommandName, CommandHandlerContract>;
 
@@ -27,9 +39,7 @@ export class CommandRegistry implements CommandRegistryContract {
     handler: CommandHandlerContract<TCommand>
   ): VoidFunction {
     if (this.#handlers.has(commandName)) {
-      throw new Error(
-        `Command handler for "${commandName}" is already registered`
-      );
+      throw new CommandAlreadyRegisteredException(commandName);
     }
 
     this.#handlers.set(commandName, handler);
@@ -40,7 +50,7 @@ export class CommandRegistry implements CommandRegistryContract {
   public resolve(commandName: CommandName): CommandHandlerContract {
     const handler = this.#handlers.get(commandName);
     if (!handler) {
-      throw new Error(`Command handler for "${commandName}" is not registered`);
+      throw new CommandNotRegisteredException(commandName);
     }
 
     return handler;

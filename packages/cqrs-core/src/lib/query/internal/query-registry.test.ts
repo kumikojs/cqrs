@@ -1,4 +1,9 @@
-import { QueryRegistry, type QueryRegistryContract } from './query-registry';
+import {
+  QueryAlreadyRegisteredException,
+  QueryNotFoundException,
+  QueryRegistry,
+  type QueryRegistryContract,
+} from './query-registry';
 
 describe('QueryRegistry', () => {
   let registry: QueryRegistryContract;
@@ -21,7 +26,9 @@ describe('QueryRegistry', () => {
       // Assert
       expect(registry.resolve(queryName)).toBe(handler);
       unregister();
-      expect(() => registry.resolve(queryName)).toThrow();
+      expect(() => registry.resolve(queryName)).toThrowError(
+        new QueryNotFoundException(queryName)
+      );
     });
 
     test('should throw an error if query handler is already registered', () => {
@@ -35,7 +42,9 @@ describe('QueryRegistry', () => {
       registry.register(queryName, handler);
 
       // Assert
-      expect(() => registry.register(queryName, handler)).toThrow();
+      expect(() => registry.register(queryName, handler)).toThrowError(
+        new QueryAlreadyRegisteredException(queryName)
+      );
     });
   });
 
@@ -59,7 +68,9 @@ describe('QueryRegistry', () => {
       const queryName = 'queryName';
 
       // Assert
-      expect(() => registry.resolve(queryName)).toThrow();
+      expect(() => registry.resolve(queryName)).toThrowError(
+        new QueryNotFoundException(queryName)
+      );
     });
   });
 

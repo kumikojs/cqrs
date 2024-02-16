@@ -15,6 +15,12 @@ export interface EventRegistryContract<
   clear(): void;
 }
 
+export class EventNotRegisteredException extends Error {
+  constructor(eventName: string) {
+    super(`Event handler for "${eventName}" is not registered`);
+  }
+}
+
 export class EventRegistry implements EventRegistryContract {
   #handlers: Map<EventName, EventHandlerContract[]>;
 
@@ -54,7 +60,7 @@ export class EventRegistry implements EventRegistryContract {
   public resolve(eventName: EventName): EventHandlerContract[] {
     const handler = this.#handlers.get(eventName);
     if (!handler) {
-      throw new Error(`Event handler for "${eventName}" is not registered`);
+      throw new EventNotRegisteredException(eventName);
     }
 
     return handler;

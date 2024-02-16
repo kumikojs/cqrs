@@ -6,6 +6,12 @@ import {
   type EventRegistryContract,
 } from './internal/event-registry';
 
+/**
+ * Export internal Exception classes
+ * because they are used in the public API
+ */
+export { EventNotRegisteredException } from './internal/event-registry';
+
 type EventHandlerFn<
   T extends EventContract = EventContract,
   TResponse = any

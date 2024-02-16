@@ -12,6 +12,15 @@ import {
 } from './internal/query-registry';
 import { QueryTaskManager } from './internal/query-task-manager';
 
+/**
+ * Export internal Exception classes
+ * because they are used in the public API
+ */
+export {
+  QueryAlreadyRegisteredException,
+  QueryNotFoundException,
+} from './internal/query-registry';
+
 type QueryHandlerFn<
   T extends QueryContract = QueryContract,
   TResponse = any

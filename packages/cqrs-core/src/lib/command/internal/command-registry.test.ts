@@ -1,4 +1,6 @@
 import {
+  CommandAlreadyRegisteredException,
+  CommandNotRegisteredException,
   CommandRegistry,
   type CommandRegistryContract,
 } from './command-registry';
@@ -24,7 +26,9 @@ describe('CommandRegistry', () => {
       // Assert
       expect(registry.resolve(commandName)).toBe(handler);
       unregister();
-      expect(() => registry.resolve(commandName)).toThrow();
+      expect(() => registry.resolve(commandName)).toThrowError(
+        new CommandNotRegisteredException(commandName)
+      );
     });
 
     test('should throw an error if command handler is already registered', () => {
@@ -38,7 +42,9 @@ describe('CommandRegistry', () => {
       registry.register(commandName, handler);
 
       // Assert
-      expect(() => registry.register(commandName, handler)).toThrow();
+      expect(() => registry.register(commandName, handler)).toThrowError(
+        new CommandAlreadyRegisteredException(commandName)
+      );
     });
   });
 
@@ -62,7 +68,9 @@ describe('CommandRegistry', () => {
       const commandName = 'commandName';
 
       // Assert
-      expect(() => registry.resolve(commandName)).toThrow();
+      expect(() => registry.resolve(commandName)).toThrowError(
+        new CommandNotRegisteredException(commandName)
+      );
     });
   });
 

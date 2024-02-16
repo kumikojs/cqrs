@@ -1,4 +1,8 @@
-import { EventRegistry, type EventRegistryContract } from './event-registry';
+import {
+  EventNotRegisteredException,
+  EventRegistry,
+  type EventRegistryContract,
+} from './event-registry';
 
 describe('EventRegistry', () => {
   let eventRegistry: EventRegistryContract;
@@ -21,7 +25,9 @@ describe('EventRegistry', () => {
 
       unregister();
 
-      expect(() => eventRegistry.resolve(eventName)).toThrow();
+      expect(() => eventRegistry.resolve(eventName)).toThrowError(
+        new EventNotRegisteredException(eventName)
+      );
     });
 
     test('should register multiple event handlers and unregister the first one', () => {
@@ -61,7 +67,9 @@ describe('EventRegistry', () => {
     test('should throw an error if event handler is not registered', () => {
       const eventName = 'testEvent';
 
-      expect(() => eventRegistry.resolve(eventName)).toThrow();
+      expect(() => eventRegistry.resolve(eventName)).toThrowError(
+        new EventNotRegisteredException(eventName)
+      );
     });
   });
 });

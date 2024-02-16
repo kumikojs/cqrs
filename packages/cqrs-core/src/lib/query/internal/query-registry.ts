@@ -15,6 +15,18 @@ export interface QueryRegistryContract<
   clear(): void;
 }
 
+export class QueryAlreadyRegisteredException extends Error {
+  constructor(queryName: string) {
+    super(`Query handler for "${queryName}" is already registered`);
+  }
+}
+
+export class QueryNotFoundException extends Error {
+  constructor(queryName: string) {
+    super(`Query handler for "${queryName}" is not registered`);
+  }
+}
+
 export class QueryRegistry implements QueryRegistryContract {
   #handlers: Map<QueryName, QueryHandlerContract>;
 
