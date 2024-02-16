@@ -1,4 +1,9 @@
-import { BulkheadStrategy } from '../strategy/bulkhead-strategy';
+import {
+  BulkheadException,
+  BulkheadStrategy,
+} from '../strategy/bulkhead-strategy';
+import { ThrottleException } from '../strategy/throttle-strategy';
+import { TimeoutException } from '../strategy/timeout-strategy';
 import { CommandContract } from './command';
 import { CommandClient } from './command-client';
 
@@ -68,7 +73,7 @@ describe('CommandClient', () => {
 
     const result = commandClient.commandBus.execute(command);
 
-    expect(result).rejects.toThrow('Task timed out after 1ms');
+    expect(result).rejects.toThrowError(new TimeoutException(1));
   });
 
   test('should apply the bulkhead strategy', async () => {
@@ -105,9 +110,7 @@ describe('CommandClient', () => {
       }),
     ]);
 
-    expect(result).rejects.toThrow(
-      'Bulkhead is full with 2 active and 2 queued'
-    );
+    expect(result).rejects.toThrowError(new BulkheadException(2, 2));
   });
 
   test('should apply the throttle strategy', async () => {
@@ -129,7 +132,7 @@ describe('CommandClient', () => {
 
     const result = commandClient.commandBus.execute(command);
 
-    expect(result).rejects.toThrowError('Rate limit exceeded');
+    expect(result).rejects.toThrowError(new ThrottleException(2, '1000ms'));
   });
 
   describe('compose strategies', () => {

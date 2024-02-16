@@ -1,4 +1,4 @@
-import { BulkheadStrategy } from './bulkhead-strategy';
+import { BulkheadException, BulkheadStrategy } from './bulkhead-strategy';
 
 describe('BulkheadStrategy', () => {
   it('should execute a task immediately if the bulkhead is not full', async () => {
@@ -50,9 +50,7 @@ describe('BulkheadStrategy', () => {
     strategy.execute('request', task);
     const result = strategy.execute('request', task);
 
-    await expect(result).rejects.toThrow(
-      'Bulkhead is full with 1 active and 0 queued'
-    );
+    await expect(result).rejects.toThrowError(new BulkheadException(1, 0));
   });
 
   it('should throw an error if the task throws an error', async () => {
@@ -74,8 +72,6 @@ describe('BulkheadStrategy', () => {
       strategy.execute('request3', task),
     ]);
 
-    await expect(result).rejects.toThrow(
-      `Bulkhead is full with 1 active and 1 queued`
-    );
+    await expect(result).rejects.toThrowError(new BulkheadException(1, 1));
   });
 });

@@ -25,6 +25,18 @@ export type ThrottleOptions = {
   limit: number;
 };
 
+export class ThrottleException extends Error {
+  public constructor(limit: number, ttl: TTL) {
+    super(
+      `Rate limit exceeded. Limit: ${limit} requests per ${ttl}${ThrottleException.#suffix(
+        ttl
+      )}`
+    );
+  }
+
+  static #suffix = (ttl: TTL): string => (typeof ttl === 'number' ? 'ms' : '');
+}
+
 export class ThrottleStrategy extends Strategy<ThrottleOptions> {
   static #options: Required<ThrottleOptions> = {
     ttl: '5s',
@@ -63,7 +75,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
     }
 
     if (cachedValue >= this.options.limit) {
-      throw new Error('Rate limit exceeded');
+      throw new ThrottleException(this.options.limit, this.options.ttl);
     }
 
     this.#cache.set(key, cachedValue + 1, this.options.ttl);

@@ -1,4 +1,4 @@
-import { TimeoutStrategy } from './timeout-strategy';
+import { TimeoutException, TimeoutStrategy } from './timeout-strategy';
 
 describe('TimeoutStrategy', () => {
   test('should reject the task after the timeout', async () => {
@@ -8,8 +8,8 @@ describe('TimeoutStrategy', () => {
 
     const strategy = new TimeoutStrategy({ timeout: 50 });
 
-    await expect(strategy.execute({}, task)).rejects.toThrow(
-      'Task timed out after 50ms'
+    await expect(strategy.execute({}, task)).rejects.toThrowError(
+      TimeoutException
     );
   });
 
@@ -25,13 +25,13 @@ describe('TimeoutStrategy', () => {
 
   test('should reject the task if it fails before the timeout', async () => {
     const task = async () => {
-      await new Promise((_, reject) => setTimeout(reject, 150));
+      throw new Error('Task failed');
     };
 
     const strategy = new TimeoutStrategy({ timeout: 100 });
 
-    await expect(strategy.execute({}, task)).rejects.toThrow(
-      'Task timed out after 100ms'
+    await expect(strategy.execute({}, task)).rejects.toThrowError(
+      new Error('Task failed')
     );
   });
 });

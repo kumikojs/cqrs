@@ -15,6 +15,12 @@ export type BulkheadOptions = {
   maxQueue: number;
 };
 
+export class BulkheadException extends Error {
+  public constructor(active: number, queued: number) {
+    super(`Bulkhead is full with ${active} active and ${queued} queued`);
+  }
+}
+
 export class BulkheadStrategy extends Strategy<BulkheadOptions> {
   static #defaultOptions: BulkheadOptions = {
     maxConcurrent: 3,
@@ -36,7 +42,6 @@ export class BulkheadStrategy extends Strategy<BulkheadOptions> {
     task: TTask
   ): Promise<TResult> {
     if (this.#executionSlot() > 0) {
-      this.#active++;
       return this.#executeTask(request, task);
     }
 
@@ -44,11 +49,7 @@ export class BulkheadStrategy extends Strategy<BulkheadOptions> {
       return this.#queueTask(request, task);
     }
 
-    throw new Error(
-      `Bulkhead is full with ${this.#active} active and ${
-        this.#queue.length
-      } queued`
-    );
+    throw new BulkheadException(this.#active, this.#queue.length);
   }
 
   async #executeTask<TRequest, TTask extends PromiseAnyFunction, TResult>(
@@ -56,6 +57,8 @@ export class BulkheadStrategy extends Strategy<BulkheadOptions> {
     task: TTask
   ): Promise<TResult> {
     try {
+      this.#active++;
+
       return await task(request);
     } finally {
       this.#active--;

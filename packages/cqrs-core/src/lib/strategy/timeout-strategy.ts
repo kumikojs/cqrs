@@ -16,6 +16,12 @@ export type TimeoutOptions = {
   timeout: TTL;
 };
 
+export class TimeoutException extends Error {
+  public constructor(timeout: number) {
+    super(`Task timed out after ${timeout}ms`);
+  }
+}
+
 export class TimeoutStrategy extends Strategy<TimeoutOptions> {
   static #defaultOptions: TimeoutOptions = {
     timeout: '30s',
@@ -36,7 +42,7 @@ export class TimeoutStrategy extends Strategy<TimeoutOptions> {
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        reject(new Error(`Task timed out after ${timeout}ms`));
+        reject(new TimeoutException(timeout));
       }, timeout);
 
       task(request)

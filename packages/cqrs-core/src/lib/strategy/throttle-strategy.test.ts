@@ -1,6 +1,6 @@
 import type { CacheDriverContract } from '../internal/cache/cache-driver';
 import { CacheManager } from '../internal/cache/cache-manager';
-import { ThrottleStrategy } from './throttle-strategy';
+import { ThrottleException, ThrottleStrategy } from './throttle-strategy';
 
 describe('ThrottleStrategy', () => {
   let cache: CacheDriverContract<string>;
@@ -48,8 +48,8 @@ describe('ThrottleStrategy', () => {
 
     vitest.spyOn(cache, 'get').mockReturnValue(5);
 
-    await expect(strategy.execute(request, task)).rejects.toThrow(
-      'Rate limit exceeded'
+    await expect(strategy.execute(request, task)).rejects.toThrowError(
+      ThrottleException
     );
 
     expect(cache.get).toHaveBeenCalledWith(expect.any(String));
