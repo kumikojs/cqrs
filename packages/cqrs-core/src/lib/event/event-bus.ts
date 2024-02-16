@@ -1,16 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { TaskManagerContract } from '../internal/task/task-manager';
 import type { EventContract, EventName } from './event';
 import type { EventHandlerContract } from './event-handler';
-import {
-  EventInterceptorManager,
-  type EventInterceptorManagerContract,
-} from './internal/event-interceptor-manager';
 import {
   EventRegistry,
   type EventRegistryContract,
 } from './internal/event-registry';
-import { EventTaskManager } from './internal/event-task-manager';
 
 type EventHandlerFn<
   T extends EventContract = EventContract,
@@ -28,36 +22,18 @@ export interface EventBusContract<
 > {
   bind<TEvent extends BaseEvent>(eventName: EventName): BindToSyntax<TEvent>;
 
-  execute<TEvent extends BaseEvent, TResponse = any>(
-    event: TEvent
-  ): Promise<TResponse>;
-
-  interceptors: Pick<EventInterceptorManagerContract, 'apply' | 'select'>;
+  handle<TEvent extends EventContract>(event: TEvent): Promise<void>;
 }
 
 export class EventBus implements EventBusContract {
   #eventRegistry: EventRegistryContract;
-  #eventInterceptorManager: EventInterceptorManagerContract;
-  #taskManager: TaskManagerContract<
-    EventContract,
-    EventHandlerContract['execute']
-  >;
 
   constructor({
     registry = new EventRegistry(),
-    interceptorManager = new EventInterceptorManager(),
-    taskManager = new EventTaskManager(),
   }: {
     registry?: EventRegistryContract;
-    interceptorManager?: EventInterceptorManagerContract;
-    taskManager?: TaskManagerContract<
-      EventContract,
-      EventHandlerContract['execute']
-    >;
   } = {}) {
     this.#eventRegistry = registry;
-    this.#eventInterceptorManager = interceptorManager;
-    this.#taskManager = taskManager;
   }
 
   bind<TEvent extends EventContract>(
@@ -67,7 +43,7 @@ export class EventBus implements EventBusContract {
       to: (handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>) => {
         if (typeof handler === 'function') {
           handler = {
-            execute: handler,
+            handle: handler,
           };
         }
 
@@ -76,27 +52,11 @@ export class EventBus implements EventBusContract {
     };
   }
 
-  async execute<TEvent extends EventContract, TResponse = any>(
-    event: TEvent
-  ): Promise<TResponse> {
+  async handle<TEvent extends EventContract>(event: TEvent): Promise<void> {
     const handler = this.#eventRegistry.resolve(event.eventName);
 
-    if (!event.context?.abortController) {
-      event.context = {
-        ...event.context,
-        abortController: new AbortController(),
-      };
-    }
-
-    return this.#taskManager.execute(event, () =>
-      this.#eventInterceptorManager.execute(event, handler.execute)
-    );
-  }
-
-  get interceptors(): Pick<
-    EventInterceptorManagerContract,
-    'apply' | 'select'
-  > {
-    return this.#eventInterceptorManager;
+    handler.forEach((h) => {
+      h.handle(event);
+    });
   }
 }

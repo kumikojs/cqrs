@@ -1,70 +1,67 @@
 import { EventRegistry, type EventRegistryContract } from './event-registry';
 
 describe('EventRegistry', () => {
-  let registry: EventRegistryContract;
+  let eventRegistry: EventRegistryContract;
 
   beforeEach(() => {
-    registry = new EventRegistry();
+    eventRegistry = new EventRegistry();
   });
 
   describe('register', () => {
-    test('should register a event handler', () => {
-      // Arrange
-      const eventName = 'eventName';
+    test('should register an event handler and unregister it', () => {
+      const eventName = 'testEvent';
       const handler = {
-        execute: vitest.fn(),
+        handle: vitest.fn(),
       };
 
-      // Act
-      const unregister = registry.register(eventName, handler);
+      const unregister = eventRegistry.register(eventName, handler);
 
-      // Assert
-      expect(registry.resolve(eventName)).toBe(handler);
+      expect(() => eventRegistry.resolve(eventName)).not.toThrow();
+      expect(eventRegistry.resolve(eventName)).toEqual([handler]);
+
       unregister();
-      expect(() => registry.resolve(eventName)).toThrow();
+
+      expect(() => eventRegistry.resolve(eventName)).toThrow();
     });
 
-    test('should throw an error if event handler is already registered', () => {
-      // Arrange
-      const eventName = 'eventName';
+    test('should register multiple event handlers and unregister the first one', () => {
+      const eventName = 'testEvent';
       const handler = {
-        execute: vitest.fn(),
+        handle: vitest.fn(),
+      };
+      const handler2 = {
+        handle: vitest.fn(),
       };
 
-      // Act
-      registry.register(eventName, handler);
+      const unregister = eventRegistry.register(eventName, handler);
+      eventRegistry.register(eventName, handler2);
 
-      // Assert
-      expect(() => registry.register(eventName, handler)).toThrow();
+      expect(() => eventRegistry.resolve(eventName)).not.toThrow();
+      expect(eventRegistry.resolve(eventName)).toEqual([handler, handler2]);
+
+      unregister();
+
+      expect(() => eventRegistry.resolve(eventName)).not.toThrow();
+      expect(eventRegistry.resolve(eventName)).toEqual([handler2]);
     });
   });
 
   describe('resolve', () => {
-    test('should resolve a registered event handler', () => {
-      // Arrange
-      const eventName = 'eventName';
+    test('should resolve an event handler', () => {
+      const eventName = 'testEvent';
       const handler = {
-        execute: vitest.fn(),
+        handle: vitest.fn(),
       };
 
-      // Act
-      registry.register(eventName, handler);
+      eventRegistry.register(eventName, handler);
 
-      // Assert
-      expect(registry.resolve(eventName)).toBe(handler);
+      expect(eventRegistry.resolve(eventName)).toEqual([handler]);
     });
 
     test('should throw an error if event handler is not registered', () => {
-      // Arrange
-      const eventName = 'eventName';
+      const eventName = 'testEvent';
 
-      // Assert
-      expect(() => registry.resolve(eventName)).toThrow();
+      expect(() => eventRegistry.resolve(eventName)).toThrow();
     });
-  });
-
-  afterEach(() => {
-    vitest.clearAllMocks();
-    registry.clear();
   });
 });

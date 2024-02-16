@@ -5,5 +5,5 @@ export interface EventHandlerContract<
   TEvent extends EventContract = EventContract,
   TReturn = any
 > {
-  execute(event: TEvent): Promise<TReturn>;
+  handle(event: TEvent): Promise<TReturn>;
 }
