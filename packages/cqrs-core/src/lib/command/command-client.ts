@@ -1,7 +1,7 @@
 import { CacheManager } from '../internal/cache/cache-manager';
 import { BulkheadStrategy } from '../strategy/bulkhead-strategy';
 import { ThrottleStrategy } from '../strategy/throttle-strategy';
-import { CommandBus, CommandBusContract } from './command-bus';
+import { CommandBus, type CommandBusContract } from './command-bus';
 
 const timeoutStrategy = () => import('../strategy/timeout-strategy');
 const retryStrategy = () => import('../strategy/retry-strategy');
@@ -14,11 +14,11 @@ export class CommandClient {
 
   constructor({
     commandBus = new CommandBus(),
-    cacheManaher = new CacheManager(),
+    cacheManager = new CacheManager(),
     bulkheadStrategy = new BulkheadStrategy(),
   } = {}) {
     this.#commandBus = commandBus;
-    this.#cacheManager = cacheManaher;
+    this.#cacheManager = cacheManager;
     this.#bulkheadStrategy = bulkheadStrategy;
 
     this.#bootstrap();
