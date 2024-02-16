@@ -1,9 +1,5 @@
 import { CacheManager } from '../internal/cache/cache-manager';
 import { BulkheadStrategy } from '../strategy/bulkhead-strategy';
-import {
-  StrategyInterceptor,
-  StrategyInterceptorContract,
-} from '../strategy/internal/strategy-interceptor';
 import { ThrottleStrategy } from '../strategy/throttle-strategy';
 import { CommandBus, CommandBusContract } from './command-bus';
 
@@ -13,17 +9,17 @@ const fallbackStrategy = () => import('../strategy/fallback-strategy');
 
 export class CommandClient {
   #commandBus: CommandBusContract;
-  #bulkheadInterceptor: StrategyInterceptorContract;
+  #bulkheadStrategy: BulkheadStrategy;
   #cacheManager: CacheManager;
 
   constructor({
     commandBus = new CommandBus(),
     cacheManaher = new CacheManager(),
-    bulkheadInterceptor = new StrategyInterceptor(new BulkheadStrategy()),
+    bulkheadStrategy = new BulkheadStrategy(),
   } = {}) {
     this.#commandBus = commandBus;
     this.#cacheManager = cacheManaher;
-    this.#bulkheadInterceptor = bulkheadInterceptor;
+    this.#bulkheadStrategy = bulkheadStrategy;
 
     this.#bootstrap();
   }
@@ -39,10 +35,8 @@ export class CommandClient {
         const strategy = new module.FallbackStrategy({
           fallback: command.options.fallback,
         });
-        return new StrategyInterceptor(strategy).handle(
-          command,
-          async (request) => next?.(request)
-        );
+
+        return strategy.execute(command, async (request) => next?.(request));
       }
 
       return next?.(command);
@@ -53,10 +47,8 @@ export class CommandClient {
       .apply(async (command, next) => {
         const module = await retryStrategy();
         const strategy = new module.RetryStrategy(command.options?.retry);
-        return new StrategyInterceptor(strategy).handle(
-          command,
-          async (request) => next?.(request)
-        );
+
+        return strategy.execute(command, async (request) => next?.(request));
       });
 
     this.#commandBus.interceptors
@@ -66,16 +58,14 @@ export class CommandClient {
         const strategy = new module.TimeoutStrategy({
           timeout: command.options?.timeout,
         });
-        return new StrategyInterceptor(strategy).handle(
-          command,
-          async (request) => next?.(request)
-        );
+
+        return strategy.execute(command, async (request) => next?.(request));
       });
 
     this.#commandBus.interceptors
       .select((command) => Boolean(command.options?.bulkhead))
       .apply(async (command, next) => {
-        return this.#bulkheadInterceptor.handle(command, async (request) =>
+        return this.#bulkheadStrategy.execute(command, async (request) =>
           next?.(request)
         );
       });
@@ -83,14 +73,12 @@ export class CommandClient {
     this.#commandBus.interceptors
       .select((command) => Boolean(command.options?.throttle))
       .apply(async (command, next) => {
-        const throttle = new ThrottleStrategy(
+        const strategy = new ThrottleStrategy(
           this.#cacheManager.inMemoryCache,
           command.options?.throttle
         );
-        return new StrategyInterceptor(throttle).handle(
-          command,
-          async (request) => next?.(request)
-        );
+
+        return strategy.execute(command, async (request) => next?.(request));
       });
   }
 }

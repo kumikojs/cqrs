@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CacheDriverContract } from '../internal/cache/cache-driver';
-import { CacheManager } from '../internal/cache/cache-manager';
 import type { PromiseAnyFunction } from '../internal/types';
 import type { TTL } from '../utils/ttl';
 import { Strategy } from './internal/strategy';

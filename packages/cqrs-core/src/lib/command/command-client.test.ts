@@ -1,5 +1,4 @@
 import { BulkheadStrategy } from '../strategy/bulkhead-strategy';
-import { StrategyInterceptor } from '../strategy/internal/strategy-interceptor';
 import { CommandContract } from './command';
 import { CommandClient } from './command-client';
 
@@ -8,12 +7,10 @@ describe('CommandClient', () => {
 
   beforeEach(() => {
     commandClient = new CommandClient({
-      bulkheadInterceptor: new StrategyInterceptor(
-        new BulkheadStrategy({
-          maxConcurrent: 2,
-          maxQueue: 2,
-        })
-      ),
+      bulkheadStrategy: new BulkheadStrategy({
+        maxConcurrent: 2,
+        maxQueue: 2,
+      }),
     });
   });
 
