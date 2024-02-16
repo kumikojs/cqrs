@@ -19,6 +19,30 @@ describe('QueryClient', () => {
     });
   });
 
+  test('should apply the cache strategy', async () => {
+    const query = {
+      queryName: 'testQuery',
+      options: {
+        cache: {
+          ttl: 1000,
+          persist: false,
+        },
+      },
+    } as QueryContract;
+    let i = 0;
+
+    queryClient.queryBus.bind('testQuery').to(async () => {
+      i++;
+      return i;
+    });
+
+    const result = await queryClient.queryBus.execute(query);
+    const result2 = await queryClient.queryBus.execute(query);
+
+    expect(result).toBe(1);
+    expect(result2).toBe(result);
+  });
+
   test('should apply the fallback strategy', async () => {
     const query = {
       queryName: 'testQuery',
@@ -136,6 +160,32 @@ describe('QueryClient', () => {
   });
 
   describe('compose strategies', () => {
+    test('should apply the cache before the fallback strategy', async () => {
+      const query = {
+        queryName: 'testQuery',
+        options: {
+          cache: { ttl: 1000, persist: false },
+          fallback: () => 'fallback',
+        },
+      } as QueryContract;
+
+      let i = 0;
+
+      queryClient.queryBus.bind('testQuery').to(async () => {
+        if (i++ === 1) {
+          throw new Error('error');
+        }
+
+        return 'testQuery';
+      });
+
+      const result = await queryClient.queryBus.execute(query);
+      const result2 = await queryClient.queryBus.execute(query);
+
+      expect(result).toBe('testQuery');
+      expect(result2).toBe(result);
+    });
+
     test('should apply the retry before the fallback strategy', async () => {
       const query = {
         queryName: 'testQuery',

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Nullable } from '../internal/types';
+import { CacheOptions } from '../strategy/cache-strategy';
 import type { FallbackOptions } from '../strategy/fallback-strategy';
 import type { RetryOptions } from '../strategy/retry-strategy';
 import type { ThrottleOptions } from '../strategy/throttle-strategy';
@@ -14,6 +15,7 @@ type QueryContext = {
 export type QueryOptions<TOptions> = {
   bulkhead?: boolean;
   retry?: RetryOptions;
+  cache?: CacheOptions;
   timeout?: TimeoutOptions['timeout'];
   throttle?: ThrottleOptions;
   fallback?: FallbackOptions['fallback'];
