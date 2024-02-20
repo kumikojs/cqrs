@@ -7,8 +7,9 @@ export abstract class Strategy<TOptions> {
     this.options = options;
   }
 
-  public abstract execute<TRequest, TTask extends PromiseAnyFunction, TResult>(
-    request: TRequest,
-    task: TTask
-  ): Promise<TResult>;
+  public abstract execute<
+    TRequest,
+    TTask extends PromiseAnyFunction,
+    TResult = ReturnType<TTask>
+  >(request: TRequest, task: TTask): Promise<TResult>;
 }

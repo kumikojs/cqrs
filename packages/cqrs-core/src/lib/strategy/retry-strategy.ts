@@ -37,10 +37,11 @@ export class RetryStrategy extends Strategy<RetryOptions> {
     });
   }
 
-  public async execute<TRequest, TTask extends PromiseAnyFunction, TResult>(
-    request: TRequest,
-    task: TTask
-  ): Promise<TResult> {
+  public async execute<
+    TRequest,
+    TTask extends PromiseAnyFunction,
+    TResult = ReturnType<TTask>
+  >(request: TRequest, task: TTask): Promise<TResult> {
     const { maxRetries, delay } = this.options;
 
     let retries = 0;

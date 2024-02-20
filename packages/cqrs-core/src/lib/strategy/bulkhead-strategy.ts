@@ -66,10 +66,11 @@ export class BulkheadStrategy extends Strategy<BulkheadOptions> {
     }
   }
 
-  #queueTask<TRequest, TTask extends PromiseAnyFunction, TResult>(
-    request: TRequest,
-    task: TTask
-  ): Promise<TResult> {
+  #queueTask<
+    TRequest,
+    TTask extends PromiseAnyFunction,
+    TResult = ReturnType<TTask>
+  >(request: TRequest, task: TTask): Promise<TResult> {
     return new Promise((resolve, reject) => {
       this.#queue.push(() => task(request).then(resolve, reject));
       this.#dequeueTask();

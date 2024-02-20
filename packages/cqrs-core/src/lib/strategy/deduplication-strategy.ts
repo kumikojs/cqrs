@@ -18,10 +18,11 @@ export class DeduplicationStrategy extends Strategy<DeduplicationOptions> {
     super(options);
   }
 
-  public async execute<TRequest, TTask extends PromiseAnyFunction, TResult>(
-    request: TRequest,
-    task: TTask
-  ): Promise<TResult> {
+  public async execute<
+    TRequest,
+    TTask extends PromiseAnyFunction,
+    TResult = ReturnType<TTask>
+  >(request: TRequest, task: TTask): Promise<TResult> {
     const taskKey = this.options.serialize(request);
 
     if (this.#pendingTasks.has(taskKey)) {

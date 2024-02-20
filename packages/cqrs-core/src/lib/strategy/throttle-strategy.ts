@@ -62,10 +62,11 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
     this.#cache = cache;
   }
 
-  public async execute<TRequest, TTask extends PromiseAnyFunction, TResult>(
-    request: TRequest,
-    task: TTask
-  ): Promise<TResult> {
+  public async execute<
+    TRequest,
+    TTask extends PromiseAnyFunction,
+    TResult = ReturnType<TTask>
+  >(request: TRequest, task: TTask): Promise<TResult> {
     const key = `throttle_strategy_id::${JSON.stringify(request)}`;
     const cachedValue = this.#cache.get<number>(key);
 

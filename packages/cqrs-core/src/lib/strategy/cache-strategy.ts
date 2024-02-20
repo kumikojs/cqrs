@@ -40,10 +40,11 @@ export class CacheStrategy extends Strategy<CacheOptions> {
       : cacheManager.inMemoryCache;
   }
 
-  public async execute<TRequest, TTask extends PromiseAnyFunction, TResult>(
-    request: TRequest,
-    task: TTask
-  ): Promise<TResult> {
+  public async execute<
+    TRequest,
+    TTask extends PromiseAnyFunction,
+    TResult = ReturnType<TTask>
+  >(request: TRequest, task: TTask): Promise<TResult> {
     const key = `cache_strategy_id::${JSON.stringify(request)}`;
     const cachedValue = this.#cache.get<TResult>(key);
 

@@ -34,4 +34,20 @@ describe('TimeoutStrategy', () => {
       new Error('Task failed')
     );
   });
+
+  test("should not execute the task if it's already timed out", async () => {
+    const handle = vitest.fn();
+    const task = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      handle();
+    };
+
+    const strategy = new TimeoutStrategy({ timeout: 50 });
+
+    await expect(strategy.execute({}, task)).rejects.toThrowError(
+      TimeoutException
+    );
+
+    expect(handle).not.toHaveBeenCalled();
+  });
 });

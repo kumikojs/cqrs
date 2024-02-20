@@ -34,10 +34,11 @@ export class TimeoutStrategy extends Strategy<TimeoutOptions> {
     });
   }
 
-  public async execute<TRequest, TTask extends PromiseAnyFunction, TResult>(
-    request: TRequest,
-    task: TTask
-  ): Promise<TResult> {
+  public async execute<
+    TRequest,
+    TTask extends PromiseAnyFunction,
+    TResult = ReturnType<TTask>
+  >(request: TRequest, task: TTask): Promise<TResult> {
     const timeout = ttlToMilliseconds(this.options.timeout);
 
     return new Promise((resolve, reject) => {
