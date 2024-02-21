@@ -7,3 +7,8 @@ export interface CommandHandlerContract<
 > {
   execute(command: TCommand): Promise<TReturn>;
 }
+
+export type CommandHandlerFn<
+  T extends CommandContract = CommandContract,
+  TResponse = any
+> = (command: T) => Promise<TResponse>;

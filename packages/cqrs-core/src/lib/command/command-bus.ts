@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { TaskManagerContract } from '../internal/task/task-manager';
 import type { CommandContract, CommandName } from './command';
-import type { CommandHandlerContract } from './command-handler';
+import type {
+  CommandHandlerContract,
+  CommandHandlerFn,
+} from './command-handler';
 import {
   CommandInterceptorManager,
   type CommandInterceptorManagerContract,
@@ -20,11 +23,6 @@ export {
   CommandAlreadyRegisteredException,
   CommandNotRegisteredException,
 } from './internal/command-registry';
-
-type CommandHandlerFn<
-  T extends CommandContract = CommandContract,
-  TResponse = any
-> = (command: T) => Promise<TResponse>;
 
 type BindToSyntax<TCommand extends CommandContract> = {
   to: (
