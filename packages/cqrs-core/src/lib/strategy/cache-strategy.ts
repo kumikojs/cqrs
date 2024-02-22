@@ -50,14 +50,14 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     const key = `cache_strategy_key::${
       this.options.serialize?.(request) ?? JSON.stringify(request)
     }`;
-    const cachedValue = this.#cache.get<TResult>(key);
+    const cachedValue = await this.#cache.get<TResult>(key);
 
     if (cachedValue !== undefined) {
       return cachedValue;
     }
 
     const result = await task(request);
-    this.#cache.set(key, result, this.options.ttl);
+    await this.#cache.set(key, result, this.options.ttl);
     return result;
   }
 }

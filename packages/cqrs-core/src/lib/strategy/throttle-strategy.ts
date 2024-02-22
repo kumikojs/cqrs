@@ -72,10 +72,10 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
     const key = `throttle_strategy_id::${
       this.options.serialize?.(request) ?? JSON.stringify(request)
     }`;
-    const cachedValue = this.#cache.get<number>(key);
+    const cachedValue = await this.#cache.get<number>(key);
 
     if (cachedValue === undefined) {
-      this.#cache.set(key, 1, this.options.ttl);
+      await this.#cache.set(key, 1, this.options.ttl);
       return task(request);
     }
 
@@ -83,7 +83,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
       throw new ThrottleException(this.options.limit, this.options.ttl);
     }
 
-    this.#cache.set(key, cachedValue + 1, this.options.ttl);
+    await this.#cache.set(key, cachedValue + 1, this.options.ttl);
     return task(request);
   }
 }

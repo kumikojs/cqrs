@@ -10,7 +10,7 @@ interface CacheItem {
 export class InMemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
   #cache: Map<TKey, CacheItem> = new Map();
 
-  get<TValue>(key: TKey): TValue | undefined {
+  async get<TValue>(key: TKey): Promise<TValue | undefined> {
     const item = this.#cache.get(key);
 
     if (!item) {
@@ -25,7 +25,7 @@ export class InMemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
     return item.value;
   }
 
-  set<TValue>(key: TKey, value: TValue, ttl?: TTL): void {
+  async set<TValue>(key: TKey, value: TValue, ttl?: TTL): Promise<void> {
     const expiration = ttl ? Date.now() + ttlToMilliseconds(ttl) : Infinity;
 
     this.#cache.set(key, { value, expiration });
