@@ -23,6 +23,8 @@ export type ThrottleOptions = {
    * @default 5
    */
   limit: number;
+
+  serialize?: (request: any) => string;
 };
 
 export class ThrottleException extends Error {
@@ -38,7 +40,7 @@ export class ThrottleException extends Error {
 }
 
 export class ThrottleStrategy extends Strategy<ThrottleOptions> {
-  static #options: Required<ThrottleOptions> = {
+  static #options: ThrottleOptions = {
     ttl: '5s',
     limit: 5,
   };
@@ -67,7 +69,9 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
     TTask extends PromiseAnyFunction,
     TResult = ReturnType<TTask>
   >(request: TRequest, task: TTask): Promise<TResult> {
-    const key = `throttle_strategy_id::${JSON.stringify(request)}`;
+    const key = `throttle_strategy_id::${
+      this.options.serialize?.(request) ?? JSON.stringify(request)
+    }`;
     const cachedValue = this.#cache.get<number>(key);
 
     if (cachedValue === undefined) {

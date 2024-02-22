@@ -75,7 +75,14 @@ export class CommandClient {
       .apply(async (command, next) => {
         const strategy = new ThrottleStrategy(
           this.#cacheManager.inMemoryCache,
-          command.options?.throttle
+          {
+            ...command.options?.throttle,
+            serialize: (request) =>
+              JSON.stringify({
+                name: request.queryName,
+                payload: request.payload,
+              }),
+          }
         );
 
         return strategy.execute(command, async (request) => next?.(request));

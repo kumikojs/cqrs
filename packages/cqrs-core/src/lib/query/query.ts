@@ -17,7 +17,7 @@ export type QueryOptions<TOptions> = {
   retry?: RetryOptions;
   cache?: Omit<CacheOptions, 'serialize'>;
   timeout?: TimeoutOptions['timeout'];
-  throttle?: ThrottleOptions;
+  throttle?: Omit<ThrottleOptions, 'serialize'>;
   fallback?: FallbackOptions['fallback'];
 } & Record<string, any> &
   TOptions;

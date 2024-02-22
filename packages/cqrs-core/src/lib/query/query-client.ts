@@ -92,7 +92,14 @@ export class QueryClient {
       .apply(async (query, next) => {
         const strategy = new ThrottleStrategy(
           this.#cacheManager.inMemoryCache,
-          query.options?.throttle
+          {
+            ...query.options?.throttle,
+            serialize: (request) =>
+              JSON.stringify({
+                name: request.queryName,
+                payload: request.payload,
+              }),
+          }
         );
 
         return strategy.execute(query, async (request) => next?.(request));

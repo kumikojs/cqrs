@@ -15,7 +15,7 @@ export type CommandOptions<TOptions> = {
   bulkhead?: boolean;
   retry?: RetryOptions;
   timeout?: TimeoutOptions['timeout'];
-  throttle?: ThrottleOptions;
+  throttle?: Omit<ThrottleOptions, 'serialize'>;
   fallback?: FallbackOptions['fallback'];
 } & Record<string, any> &
   TOptions;
