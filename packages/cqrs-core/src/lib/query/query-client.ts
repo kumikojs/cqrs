@@ -34,10 +34,14 @@ export class QueryClient {
       .select((query) => Boolean(query.options?.cache))
       .apply(async (query, next) => {
         const module = await cacheStrategy();
-        const strategy = new module.CacheStrategy(
-          this.#cacheManager,
-          query.options?.cache
-        );
+        const strategy = new module.CacheStrategy(this.#cacheManager, {
+          ...query.options?.cache,
+          serialize: (request) =>
+            JSON.stringify({
+              name: request.queryName,
+              payload: request.payload,
+            }),
+        });
 
         return strategy.execute(query, async (request) => next?.(request));
       });

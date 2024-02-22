@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CacheDriverContract } from '../internal/cache/cache-driver';
+import type { CacheDriverContract } from '../internal/cache/cache-driver';
 import { CacheManager } from '../internal/cache/cache-manager';
-import { PromiseAnyFunction } from '../internal/types';
+import type { PromiseAnyFunction } from '../internal/types';
 import type { TTL } from '../utils/ttl';
 import { Strategy } from './internal/strategy';
 
@@ -19,6 +19,8 @@ export type CacheOptions = {
    * @default false
    */
   persist: boolean;
+
+  serialize?: (request: any) => string;
 };
 
 export class CacheStrategy extends Strategy<CacheOptions> {
@@ -45,7 +47,9 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     TTask extends PromiseAnyFunction,
     TResult = ReturnType<TTask>
   >(request: TRequest, task: TTask): Promise<TResult> {
-    const key = `cache_strategy_id::${JSON.stringify(request)}`;
+    const key = `cache_strategy_key::${
+      this.options.serialize?.(request) ?? JSON.stringify(request)
+    }`;
     const cachedValue = this.#cache.get<TResult>(key);
 
     if (cachedValue !== undefined) {

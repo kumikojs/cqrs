@@ -15,7 +15,7 @@ type QueryContext = {
 export type QueryOptions<TOptions> = {
   bulkhead?: boolean;
   retry?: RetryOptions;
-  cache?: CacheOptions;
+  cache?: Omit<CacheOptions, 'serialize'>;
   timeout?: TimeoutOptions['timeout'];
   throttle?: ThrottleOptions;
   fallback?: FallbackOptions['fallback'];
