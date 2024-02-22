@@ -7,3 +7,8 @@ export interface QueryHandlerContract<
 > {
   execute(query: TQuery): Promise<TReturn>;
 }
+
+export type QueryHandlerFn<
+  T extends QueryContract = QueryContract,
+  TResponse = any
+> = (query: T) => Promise<TResponse>;

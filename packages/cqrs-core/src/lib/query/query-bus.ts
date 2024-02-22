@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { TaskManagerContract } from '../internal/task/task-manager';
 import type { QueryContract, QueryName } from './query';
-import type { QueryHandlerContract } from './query-handler';
+import type { QueryHandlerContract, QueryHandlerFn } from './query-handler';
 import {
   QueryInterceptorManager,
   type QueryInterceptorManagerContract,
@@ -20,11 +20,6 @@ export {
   QueryAlreadyRegisteredException,
   QueryNotFoundException,
 } from './internal/query-registry';
-
-type QueryHandlerFn<
-  T extends QueryContract = QueryContract,
-  TResponse = any
-> = (query: T) => Promise<TResponse>;
 
 type BindToSyntax<TQuery extends QueryContract> = {
   to: (
