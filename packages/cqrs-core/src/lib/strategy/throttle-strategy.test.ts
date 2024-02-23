@@ -7,7 +7,7 @@ describe('ThrottleStrategy', () => {
 
   beforeEach(() => {
     cache = new CacheManager().inMemoryCache;
-    vitest.spyOn(cache, 'get').mockReturnValue(undefined);
+    vitest.spyOn(cache, 'get').mockResolvedValue(undefined);
     vitest.spyOn(cache, 'set');
   });
 
@@ -16,7 +16,7 @@ describe('ThrottleStrategy', () => {
   });
 
   test('should execute the task when there is no cached value', async () => {
-    const strategy = new ThrottleStrategy(cache, { ttl: '5s', limit: 5 });
+    const strategy = new ThrottleStrategy(cache, { interval: '5s', rate: 5 });
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 
@@ -27,12 +27,12 @@ describe('ThrottleStrategy', () => {
     expect(task).toHaveBeenCalledWith(request);
   });
 
-  test('should execute the task when the cached value is below the limit', async () => {
-    const strategy = new ThrottleStrategy(cache, { ttl: '5s', limit: 5 });
+  test('should execute the task when the cached value is below the rate', async () => {
+    const strategy = new ThrottleStrategy(cache, { interval: '5s', rate: 5 });
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 
-    vitest.spyOn(cache, 'get').mockReturnValue(4);
+    vitest.spyOn(cache, 'get').mockResolvedValue(4);
 
     await strategy.execute(request, task);
 
@@ -41,12 +41,12 @@ describe('ThrottleStrategy', () => {
     expect(task).toHaveBeenCalledWith(request);
   });
 
-  test('should throw an error when the cached value is equal to the limit', async () => {
-    const strategy = new ThrottleStrategy(cache, { ttl: '5s', limit: 5 });
+  test('should throw an error when the cached value is equal to the rate', async () => {
+    const strategy = new ThrottleStrategy(cache, { interval: '5s', rate: 5 });
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 
-    vitest.spyOn(cache, 'get').mockReturnValue(5);
+    vitest.spyOn(cache, 'get').mockResolvedValue(5);
 
     await expect(strategy.execute(request, task)).rejects.toThrowError(
       ThrottleException
@@ -57,8 +57,8 @@ describe('ThrottleStrategy', () => {
     expect(task).not.toHaveBeenCalled();
   });
 
-  test('should handle requests concurrently without exceeding the limit', async () => {
-    const strategy = new ThrottleStrategy(cache, { ttl: '5s', limit: 2 });
+  test('should handle requests concurrently without exceeding the rate', async () => {
+    const strategy = new ThrottleStrategy(cache, { interval: '5s', rate: 2 });
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 

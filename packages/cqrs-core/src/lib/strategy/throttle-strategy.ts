@@ -8,6 +8,7 @@ import { Strategy } from './internal/strategy';
 export type ThrottleOptions = {
   /**
    * The time to live (TTL) for the cache.
+   * When the TTL is a number, it is treated as milliseconds.
    * @default '5s'
    * @see {@link TTL}
    * @type {TTL}
@@ -15,23 +16,24 @@ export type ThrottleOptions = {
    * '500ms' // 500 milliseconds
    * '30s' // 30 seconds
    * '5m' // 5 minutes
+   * 1000 // 1000 milliseconds
    */
-  ttl: TTL;
+  interval: TTL;
 
   /**
    * The maximum number of the same request that can be made within the TTL.
    * @type {number}
    * @default 5
    */
-  limit: number;
+  rate: number;
 
   serialize?: (request: any) => string;
 };
 
 export class ThrottleException extends Error {
-  public constructor(limit: number, ttl: TTL) {
+  public constructor(rate: number, ttl: TTL) {
     super(
-      `Rate limit exceeded. Limit: ${limit} requests per ${ttl}${ThrottleException.#suffix(
+      `Rate rate exceeded. Limit: ${rate} requests per ${ttl}${ThrottleException.#suffix(
         ttl
       )}`
     );
@@ -42,8 +44,8 @@ export class ThrottleException extends Error {
 
 export class ThrottleStrategy extends Strategy<ThrottleOptions> {
   static #options: ThrottleOptions = {
-    ttl: '5s',
-    limit: 5,
+    interval: '5s',
+    rate: 5,
   };
 
   #cache: CacheDriverContract<string>;
@@ -57,9 +59,9 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
       ...options,
     });
 
-    if (this.options.limit < 1) {
-      console.error('Limit must be greater than or equal to 1');
-      this.options.limit = Infinity;
+    if (this.options.rate < 1) {
+      console.error('Rate must be greater than or equal to 1');
+      this.options.rate = Infinity;
     }
 
     this.#cache = cache;
@@ -76,15 +78,15 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
     const cachedValue = await this.#cache.get<number>(key);
 
     if (cachedValue === undefined) {
-      await this.#cache.set(key, 1, this.options.ttl);
+      await this.#cache.set(key, 1, this.options.interval);
       return task(request);
     }
 
-    if (cachedValue >= this.options.limit) {
-      throw new ThrottleException(this.options.limit, this.options.ttl);
+    if (cachedValue >= this.options.rate) {
+      throw new ThrottleException(this.options.rate, this.options.interval);
     }
 
-    await this.#cache.set(key, cachedValue + 1, this.options.ttl);
+    await this.#cache.set(key, cachedValue + 1, this.options.interval);
     return task(request);
   }
 }

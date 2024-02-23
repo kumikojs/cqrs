@@ -8,7 +8,7 @@ describe('RetryStrategy', () => {
       .mockRejectedValueOnce('error')
       .mockRejectedValueOnce('error') // 1st retry
       .mockResolvedValueOnce('success'); // 2nd retry
-    const strategy = new RetryStrategy({ maxRetries: 2, delay: 0 });
+    const strategy = new RetryStrategy({ maxAttempts: 2, delay: 0 });
 
     const result = await strategy.execute('request', task);
 
@@ -18,7 +18,7 @@ describe('RetryStrategy', () => {
 
   test('should throw the last error if the task fails all retries', async () => {
     const task = vitest.fn().mockRejectedValue('error');
-    const strategy = new RetryStrategy({ maxRetries: 3, delay: 0 });
+    const strategy = new RetryStrategy({ maxAttempts: 3, delay: 0 });
 
     await expect(strategy.execute('request', task)).rejects.toBe('error');
     expect(task).toHaveBeenCalledTimes(4);
@@ -30,7 +30,7 @@ describe('RetryStrategy', () => {
       .mockRejectedValueOnce('error')
       .mockRejectedValueOnce('error')
       .mockResolvedValueOnce('success');
-    const strategy = new RetryStrategy({ maxRetries: 3, delay: 100 });
+    const strategy = new RetryStrategy({ maxAttempts: 3, delay: 100 });
 
     const start = Date.now();
     await strategy.execute('request', task);

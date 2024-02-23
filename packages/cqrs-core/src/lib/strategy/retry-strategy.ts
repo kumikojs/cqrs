@@ -6,14 +6,14 @@ import { Strategy } from './internal/strategy';
 
 export type RetryOptions = {
   /**
-   * The maximum number of retries.
+   * The maximum number of attempts to retry the task.
    * @default 3
    * @type {number}
    */
-  maxRetries: number;
+  maxAttempts: number;
 
   /**
-   * The delay between retries.
+   * The delay between attempts.
    * @default '1s'
    * @see {@link TTL}
    * @type {TTL}
@@ -27,7 +27,7 @@ export type RetryOptions = {
 
 export class RetryStrategy extends Strategy<RetryOptions> {
   static #defaultOptions: RetryOptions = {
-    maxRetries: 3,
+    maxAttempts: 3,
     delay: '1s',
   };
 
@@ -43,27 +43,30 @@ export class RetryStrategy extends Strategy<RetryOptions> {
     TTask extends PromiseAnyFunction,
     TResult = ReturnType<TTask>
   >(request: TRequest, task: TTask): Promise<TResult> {
-    const { maxRetries, delay } = this.options;
+    const { maxAttempts, delay } = this.options;
 
-    let retries = 0;
+    let attempts = 0;
     let lastError: any;
 
-    while (retries <= maxRetries) {
+    while (attempts <= maxAttempts) {
       try {
         const result = await task(request);
         return result;
       } catch (error) {
-        retries++;
+        attempts++;
         lastError = error;
-        await this.delayForBackoff(retries, ttlToMilliseconds(delay));
+        await this.delayForBackoff(attempts, ttlToMilliseconds(delay));
       }
     }
 
     throw lastError;
   }
 
-  private async delayForBackoff(retries: number, delay: number): Promise<void> {
-    const backoffDelay = delay * retries;
+  private async delayForBackoff(
+    attempts: number,
+    delay: number
+  ): Promise<void> {
+    const backoffDelay = delay * attempts;
     await new Promise((resolve) => setTimeout(resolve, backoffDelay));
   }
 }
