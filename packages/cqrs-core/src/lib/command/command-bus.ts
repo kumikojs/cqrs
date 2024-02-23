@@ -36,7 +36,7 @@ export interface CommandBusContract<
     commandName: TCommand['commandName']
   ): BindToSyntax<TCommand>;
 
-  execute<TCommand extends BaseCommand, TResponse>(
+  execute<TCommand extends BaseCommand, TResponse = void>(
     command: TCommand
   ): Promise<TResponse>;
 
@@ -86,7 +86,7 @@ export class CommandBus implements CommandBusContract {
     };
   }
 
-  async execute<TCommand extends CommandContract, TResponse>(
+  async execute<TCommand extends CommandContract, TResponse = void>(
     command: TCommand
   ): Promise<TResponse> {
     const handler = this.#commandRegistry.resolve(command.commandName);
