@@ -33,7 +33,7 @@ export interface QueryBusContract<
     queryName: TQuery['queryName']
   ): BindToSyntax<TQuery>;
 
-  execute<TQuery extends BaseQuery, TResponse>(
+  execute<TQuery extends BaseQuery, TResponse = unknown>(
     query: TQuery
   ): Promise<TResponse>;
 
@@ -81,7 +81,7 @@ export class QueryBus implements QueryBusContract {
     };
   }
 
-  async execute<TQuery extends QueryContract, TResponse>(
+  async execute<TQuery extends QueryContract, TResponse = unknown>(
     query: TQuery
   ): Promise<TResponse> {
     const handler = this.#queryRegistry.resolve(query.queryName);
