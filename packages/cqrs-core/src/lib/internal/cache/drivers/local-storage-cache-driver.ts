@@ -1,4 +1,4 @@
-import { ttlToMilliseconds, type TTL } from '../../../utils/ttl';
+import { ttlToMilliseconds, type TTL } from '../../ttl/ttl';
 import type { CacheDriverContract } from '../cache-driver';
 
 export class LocalStorageCacheDriver<TKey extends string>
