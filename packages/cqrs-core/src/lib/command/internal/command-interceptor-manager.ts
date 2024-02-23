@@ -25,7 +25,9 @@ export interface CommandInterceptorManagerContract {
   ): Promise<TResponse>;
 }
 
-export class CommandInterceptorManager {
+export class CommandInterceptorManager
+  implements CommandInterceptorManagerContract
+{
   #interceptorManager: InterceptorManagerContract<CommandContract>;
 
   constructor(
