@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { PromiseAnyFunction } from '../internal/types';
+
 import { Strategy } from './internal/strategy';
 
 export type DeduplicationOptions = {

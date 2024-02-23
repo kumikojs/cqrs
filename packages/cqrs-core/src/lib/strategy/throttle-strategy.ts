@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CacheDriverContract } from '../internal/cache/cache-driver';
 import type { PromiseAnyFunction } from '../internal/types';
-import type { TTL } from '../utils/ttl';
+import type { TTL } from '../internal/ttl/ttl';
+
 import { Strategy } from './internal/strategy';
 
 export type ThrottleOptions = {

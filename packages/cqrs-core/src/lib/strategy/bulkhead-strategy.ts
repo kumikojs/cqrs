@@ -1,4 +1,5 @@
 import type { PromiseAnyFunction } from '../internal/types';
+
 import { Strategy } from './internal/strategy';
 
 export type BulkheadOptions = {

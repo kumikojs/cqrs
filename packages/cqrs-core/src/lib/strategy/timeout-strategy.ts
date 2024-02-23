@@ -1,5 +1,5 @@
 import type { PromiseAnyFunction } from '../internal/types';
-import { type TTL, ttlToMilliseconds } from '../utils/ttl';
+import { type TTL, ttlToMilliseconds } from '../internal/ttl/ttl';
 import { Strategy } from './internal/strategy';
 
 export type TimeoutOptions = {
