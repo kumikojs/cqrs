@@ -63,6 +63,9 @@ export class QueryBus implements QueryBusContract {
     this.#queryRegistry = registry;
     this.#queryInterceptorManager = interceptorManager;
     this.#taskManager = taskManager;
+
+    this.bind = this.bind.bind(this);
+    this.execute = this.execute.bind(this);
   }
 
   bind<TQuery extends QueryContract>(

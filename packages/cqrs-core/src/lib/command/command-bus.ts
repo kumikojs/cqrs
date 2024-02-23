@@ -66,6 +66,9 @@ export class CommandBus implements CommandBusContract {
     this.#commandRegistry = registry;
     this.#commandInterceptorManager = interceptorManager;
     this.#taskManager = taskManager;
+
+    this.bind = this.bind.bind(this);
+    this.execute = this.execute.bind(this);
   }
 
   bind<TCommand extends CommandContract>(
