@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   InterceptorManager,
   type InterceptorManagerContract,
@@ -20,10 +19,10 @@ export interface CommandInterceptorManagerContract {
     selector: (command: TCommand) => boolean
   ): SelectThenApplySyntax<TCommand>;
 
-  execute<TCommand extends CommandContract>(
+  execute<TCommand extends CommandContract, TResponse>(
     command: TCommand,
     handler: CommandHandlerContract<TCommand>['execute']
-  ): Promise<any>;
+  ): Promise<TResponse>;
 }
 
 export class CommandInterceptorManager {
@@ -57,10 +56,10 @@ export class CommandInterceptorManager {
     this.#interceptorManager.use(interceptor);
   }
 
-  async execute<TCommand extends CommandContract>(
+  async execute<TCommand extends CommandContract, TResponse>(
     command: TCommand,
     handler: CommandHandlerContract<TCommand>['execute']
-  ): Promise<any> {
+  ): Promise<TResponse> {
     return this.#interceptorManager.execute(command, handler);
   }
 }

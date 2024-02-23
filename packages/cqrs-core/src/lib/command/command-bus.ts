@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { TaskManagerContract } from '../internal/task/task-manager';
-import type { CommandContract, CommandName } from './command';
+import type { CommandContract } from './command';
 import type {
   CommandHandlerContract,
   CommandHandlerFn,
@@ -34,10 +33,10 @@ export interface CommandBusContract<
   BaseCommand extends CommandContract = CommandContract
 > {
   bind<TCommand extends BaseCommand>(
-    commandName: CommandName
+    commandName: TCommand['commandName']
   ): BindToSyntax<TCommand>;
 
-  execute<TCommand extends BaseCommand, TResponse = any>(
+  execute<TCommand extends BaseCommand, TResponse>(
     command: TCommand
   ): Promise<TResponse>;
 
@@ -70,7 +69,7 @@ export class CommandBus implements CommandBusContract {
   }
 
   bind<TCommand extends CommandContract>(
-    commandName: CommandName
+    commandName: TCommand['commandName']
   ): BindToSyntax<TCommand> {
     return {
       to: (
@@ -87,7 +86,7 @@ export class CommandBus implements CommandBusContract {
     };
   }
 
-  async execute<TCommand extends CommandContract, TResponse = any>(
+  async execute<TCommand extends CommandContract, TResponse>(
     command: TCommand
   ): Promise<TResponse> {
     const handler = this.#commandRegistry.resolve(command.commandName);

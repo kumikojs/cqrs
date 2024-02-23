@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Nullable } from '../internal/types';
 import type { FallbackOptions } from '../strategy/fallback-strategy';
 import type { RetryOptions } from '../strategy/retry-strategy';
@@ -9,7 +8,7 @@ export type CommandName = string;
 
 type CommandContext = {
   abortController?: AbortController;
-} & Record<string, any>;
+} & Record<string, unknown>;
 
 export type CommandOptions<TOptions> = {
   bulkhead?: boolean;
@@ -17,12 +16,12 @@ export type CommandOptions<TOptions> = {
   timeout?: TimeoutOptions['timeout'];
   throttle?: Omit<ThrottleOptions, 'serialize'>;
   fallback?: FallbackOptions['fallback'];
-} & Record<string, any> &
+} & Record<string, unknown> &
   TOptions;
 
-export interface CommandContract<TPayload = any, TOptions = unknown> {
+export interface CommandContract<TPayload = unknown, TOptions = unknown> {
   commandName: CommandName;
   payload?: Nullable<TPayload>;
-  options?: CommandOptions<TOptions>; // options are used for command metadata and can be used to select the interceptor
-  context?: CommandContext; // context is used to pass additional data to the command handler
+  options?: CommandOptions<TOptions>;
+  context?: CommandContext;
 }

@@ -8,7 +8,7 @@ export class CommandSubject<TResult> {
 
   async execute<TRequest extends CommandContract>(
     command: TRequest,
-    handlerFn: CommandHandlerFn
+    handlerFn: CommandHandlerFn<TRequest, TResult>
   ): Promise<TResult> {
     return this.#operationLifecycle.execute<TRequest, TResult>(
       command,
