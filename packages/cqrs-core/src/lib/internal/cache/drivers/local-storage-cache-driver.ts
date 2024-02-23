@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ttlToMilliseconds, type TTL } from '../../../utils/ttl';
 import type { CacheDriverContract } from '../cache-driver';
 

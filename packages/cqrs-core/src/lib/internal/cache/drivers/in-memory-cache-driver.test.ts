@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { InMemoryCacheDriver } from './in-memory-cache-driver';
 
 describe('InMemoryCacheDriver', () => {

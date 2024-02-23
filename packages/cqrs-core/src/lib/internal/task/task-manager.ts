@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { DeduplicationStrategy } from '../../strategy/deduplication-strategy';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface TaskManagerContract<TRequest, TTask> {
   execute<TResult>(request: TRequest, task: TTask): Promise<TResult>;
 }

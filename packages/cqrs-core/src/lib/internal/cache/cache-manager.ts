@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { InMemoryCacheDriver } from './drivers/in-memory-cache-driver';
 import { LocalStorageCacheDriver } from './drivers/local-storage-cache-driver';
 

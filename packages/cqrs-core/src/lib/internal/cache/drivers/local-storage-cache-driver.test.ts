@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { LocalStorageCacheDriver } from './local-storage-cache-driver';
 
 describe('LocalStorageCacheDriver', () => {
