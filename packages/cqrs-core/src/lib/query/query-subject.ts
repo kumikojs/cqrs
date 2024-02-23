@@ -8,7 +8,7 @@ export class QuerySubject<TResult> {
 
   async execute<TRequest extends QueryContract>(
     query: TRequest,
-    handlerFn: QueryHandlerFn
+    handlerFn: QueryHandlerFn<TRequest, TResult>
   ): Promise<TResult> {
     return this.#operationLifecycle.execute<TRequest, TResult>(
       query,

@@ -1,14 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { QueryContract } from './query';
 
 export interface QueryHandlerContract<
   TQuery extends QueryContract = QueryContract,
-  TReturn = any
+  TResponse = unknown
 > {
-  execute(query: TQuery): Promise<TReturn>;
+  execute(query: TQuery): Promise<TResponse>;
 }
 
 export type QueryHandlerFn<
   T extends QueryContract = QueryContract,
-  TResponse = any
+  TResponse = unknown
 > = (query: T) => Promise<TResponse>;

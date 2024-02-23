@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   InterceptorManager,
   type InterceptorManagerContract,
@@ -20,10 +19,10 @@ export interface QueryInterceptorManagerContract {
     selector: (query: TQuery) => boolean
   ): SelectThenApplySyntax<TQuery>;
 
-  execute<TQuery extends QueryContract>(
+  execute<TQuery extends QueryContract, TResponse>(
     query: TQuery,
-    handler: QueryHandlerContract<TQuery>['execute']
-  ): Promise<any>;
+    handler: QueryHandlerContract<TQuery, TResponse>['execute']
+  ): Promise<TResponse>;
 }
 
 export class QueryInterceptorManager {
@@ -57,10 +56,10 @@ export class QueryInterceptorManager {
     this.#interceptorManager.use(interceptor);
   }
 
-  async execute<TQuery extends QueryContract>(
+  async execute<TQuery extends QueryContract, TResponse>(
     query: TQuery,
-    handler: QueryHandlerContract<TQuery>['execute']
-  ): Promise<any> {
+    handler: QueryHandlerContract<TQuery, TResponse>['execute']
+  ): Promise<TResponse> {
     return this.#interceptorManager.execute(query, handler);
   }
 }

@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { TaskManagerContract } from '../internal/task/task-manager';
-import type { QueryContract, QueryName } from './query';
-import type { QueryHandlerContract, QueryHandlerFn } from './query-handler';
 import {
   QueryInterceptorManager,
   type QueryInterceptorManagerContract,
@@ -11,6 +8,8 @@ import {
   type QueryRegistryContract,
 } from './internal/query-registry';
 import { QueryTaskManager } from './internal/query-task-manager';
+import type { QueryContract } from './query';
+import type { QueryHandlerContract, QueryHandlerFn } from './query-handler';
 
 /**
  * Export internal Exception classes
@@ -30,9 +29,11 @@ type BindToSyntax<TQuery extends QueryContract> = {
 export interface QueryBusContract<
   BaseQuery extends QueryContract = QueryContract
 > {
-  bind<TQuery extends BaseQuery>(queryName: QueryName): BindToSyntax<TQuery>;
+  bind<TQuery extends BaseQuery>(
+    queryName: TQuery['queryName']
+  ): BindToSyntax<TQuery>;
 
-  execute<TQuery extends BaseQuery, TResponse = any>(
+  execute<TQuery extends BaseQuery, TResponse>(
     query: TQuery
   ): Promise<TResponse>;
 
@@ -65,7 +66,7 @@ export class QueryBus implements QueryBusContract {
   }
 
   bind<TQuery extends QueryContract>(
-    queryName: QueryName
+    queryName: TQuery['queryName']
   ): BindToSyntax<TQuery> {
     return {
       to: (handler: QueryHandlerContract<TQuery> | QueryHandlerFn<TQuery>) => {
@@ -80,7 +81,7 @@ export class QueryBus implements QueryBusContract {
     };
   }
 
-  async execute<TQuery extends QueryContract, TResponse = any>(
+  async execute<TQuery extends QueryContract, TResponse>(
     query: TQuery
   ): Promise<TResponse> {
     const handler = this.#queryRegistry.resolve(query.queryName);
