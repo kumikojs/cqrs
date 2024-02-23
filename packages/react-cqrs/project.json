@@ -1,0 +1,30 @@
+{
+  "name": "react-cqrs",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/react-cqrs/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/react-cqrs",
+        "main": "packages/react-cqrs/src/index.ts",
+        "tsConfig": "packages/react-cqrs/tsconfig.lib.json",
+        "assets": ["packages/react-cqrs/*.md"]
+      }
+    },
+    "publish": {
+      "command": "node tools/scripts/publish.mjs react-cqrs {args.ver} {args.tag}",
+      "dependsOn": ["build"]
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../../coverage/packages/react-cqrs"
+      }
+    }
+  },
+  "tags": []
+}

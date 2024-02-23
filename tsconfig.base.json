@@ -15,7 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@stoik/cqrs-core": ["packages/cqrs-core/src/index.ts"]
+      "@stoik/cqrs-core": ["packages/cqrs-core/src/index.ts"],
+      "@stoik/react-cqrs": ["packages/react-cqrs/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
