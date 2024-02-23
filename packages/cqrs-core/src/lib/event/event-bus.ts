@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { EventContract, EventName } from './event';
 import type { EventHandlerContract } from './event-handler';
 import {
@@ -14,7 +13,7 @@ export { EventNotRegisteredException } from './internal/event-registry';
 
 type EventHandlerFn<
   T extends EventContract = EventContract,
-  TResponse = any
+  TResponse = unknown
 > = (event: T) => Promise<TResponse>;
 
 type BindToSyntax<TEvent extends EventContract> = {

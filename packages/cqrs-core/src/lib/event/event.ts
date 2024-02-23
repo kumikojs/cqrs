@@ -1,13 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Nullable } from '../internal/types';
 
 export type EventName = string;
 
-type EventContext = Record<string, any>;
+type EventContext = Record<string, unknown>;
 
-export type EventOptions = Record<string, any>;
+export type EventOptions = Record<string, unknown>;
 
-export interface EventContract<TPayload = any> {
+export interface EventContract<TPayload = unknown> {
   eventName: EventName;
   payload?: Nullable<TPayload>;
   options?: EventOptions;
