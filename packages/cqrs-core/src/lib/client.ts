@@ -1,19 +1,28 @@
-import { CommandBus, type CommandBusContract } from './command/command-bus';
+import { CommandClient } from './command/command-client';
+import { QueryClient } from './query/query-client';
 
 export class Client {
-  #commandBus: CommandBusContract;
+  #commandClient: CommandClient;
+  #queryClient: QueryClient;
 
-  constructor({
-    commandBus = new CommandBus(),
-  }: { commandBus?: CommandBusContract } = {}) {
-    this.#commandBus = commandBus;
+  constructor() {
+    this.#commandClient = new CommandClient();
+    this.#queryClient = new QueryClient();
   }
 
   get command() {
     return {
-      bind: this.#commandBus.bind,
-      dispatch: this.#commandBus.execute,
-      interception: this.#commandBus.interceptors,
+      bind: this.#commandClient.commandBus.bind,
+      dispatch: this.#commandClient.commandBus.execute,
+      interception: this.#commandClient.commandBus.interceptors,
+    };
+  }
+
+  get query() {
+    return {
+      bind: this.#queryClient.queryBus.bind,
+      dispatch: this.#queryClient.queryBus.execute,
+      interception: this.#queryClient.queryBus.interceptors,
     };
   }
 }

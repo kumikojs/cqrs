@@ -4,8 +4,6 @@ import type { RetryOptions } from '../strategy/retry-strategy';
 import type { ThrottleOptions } from '../strategy/throttle-strategy';
 import type { TimeoutOptions } from '../strategy/timeout-strategy';
 
-export type CommandName = string;
-
 type CommandContext = {
   abortController?: AbortController;
 } & Record<string, unknown>;
@@ -20,7 +18,7 @@ export type CommandOptions<TOptions> = {
   TOptions;
 
 export interface CommandContract<TPayload = unknown, TOptions = unknown> {
-  commandName: CommandName;
+  commandName: string;
   payload?: Nullable<TPayload>;
   options?: CommandOptions<TOptions>;
   context?: CommandContext;
