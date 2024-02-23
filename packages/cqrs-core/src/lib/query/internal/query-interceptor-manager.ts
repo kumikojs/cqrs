@@ -25,7 +25,9 @@ export interface QueryInterceptorManagerContract {
   ): Promise<TResponse>;
 }
 
-export class QueryInterceptorManager {
+export class QueryInterceptorManager
+  implements QueryInterceptorManagerContract
+{
   #interceptorManager: InterceptorManagerContract<QueryContract>;
 
   constructor(
