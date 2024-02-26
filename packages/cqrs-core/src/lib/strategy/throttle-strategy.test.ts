@@ -7,7 +7,7 @@ describe('ThrottleStrategy', () => {
 
   beforeEach(() => {
     cache = new CacheManager().inMemoryCache;
-    vitest.spyOn(cache, 'get').mockResolvedValue(undefined);
+    vitest.spyOn(cache, 'get').mockReturnValue(undefined);
     vitest.spyOn(cache, 'set');
   });
 
@@ -32,7 +32,7 @@ describe('ThrottleStrategy', () => {
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 
-    vitest.spyOn(cache, 'get').mockResolvedValue(4);
+    vitest.spyOn(cache, 'get').mockReturnValue(4);
 
     await strategy.execute(request, task);
 
@@ -46,7 +46,7 @@ describe('ThrottleStrategy', () => {
     const request = {};
     const task = vitest.fn().mockResolvedValue('result');
 
-    vitest.spyOn(cache, 'get').mockResolvedValue(5);
+    vitest.spyOn(cache, 'get').mockReturnValue(5);
 
     await expect(strategy.execute(request, task)).rejects.toThrowError(
       ThrottleException

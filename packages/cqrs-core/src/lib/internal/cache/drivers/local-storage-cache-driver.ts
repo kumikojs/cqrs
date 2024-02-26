@@ -22,7 +22,7 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
-  async get<TValue>(key: TKey): Promise<TValue | undefined> {
+  get<TValue>(key: TKey): TValue | undefined {
     try {
       const item = this.#storage.getItem(key.toString());
 
@@ -44,7 +44,7 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
-  async set<TValue>(key: TKey, value: TValue, ttl?: TTL): Promise<void> {
+  set<TValue>(key: TKey, value: TValue, ttl?: TTL): void {
     try {
       const expiration = ttl ? Date.now() + ttlToMilliseconds(ttl) : Infinity;
 

@@ -1,7 +1,7 @@
 import type { TTL } from '../ttl/ttl';
 
 export interface CacheDriverContract<TKey> {
-  get<TValue>(key: TKey): Promise<TValue | undefined>;
-  set<TValue>(key: TKey, value: TValue, ttl?: TTL | number): Promise<void>;
+  get<TValue>(key: TKey): TValue | undefined;
+  set<TValue>(key: TKey, value: TValue, ttl?: TTL | number): void;
   delete(key: TKey): void;
 }
