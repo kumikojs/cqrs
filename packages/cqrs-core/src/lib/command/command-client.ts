@@ -1,19 +1,20 @@
 import { CacheManager } from '../internal/cache/cache-manager';
 import { BulkheadStrategy } from '../strategy/bulkhead-strategy';
 import { ThrottleStrategy } from '../strategy/throttle-strategy';
+import type { CommandContract } from './command';
 import { CommandBus, type CommandBusContract } from './command-bus';
 
 const timeoutStrategy = () => import('../strategy/timeout-strategy');
 const retryStrategy = () => import('../strategy/retry-strategy');
 const fallbackStrategy = () => import('../strategy/fallback-strategy');
 
-export class CommandClient {
-  #commandBus: CommandBusContract;
+export class CommandClient<TOptions = unknown> {
+  #commandBus: CommandBusContract<CommandContract<string, unknown, TOptions>>;
   #bulkheadStrategy: BulkheadStrategy;
   #cacheManager: CacheManager;
 
   constructor({
-    commandBus = new CommandBus(),
+    commandBus = new CommandBus<CommandContract<string, unknown, TOptions>>(),
     cacheManager = new CacheManager(),
     bulkheadStrategy = new BulkheadStrategy(),
   } = {}) {
@@ -84,7 +85,6 @@ export class CommandClient {
               }),
           }
         );
-
         return strategy.execute(command, async (request) => next?.(request));
       });
   }

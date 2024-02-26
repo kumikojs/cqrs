@@ -32,7 +32,7 @@ type BindToSyntax<TCommand extends CommandContract> = {
 export interface CommandBusContract<
   BaseCommand extends CommandContract = CommandContract
 > {
-  bind<TCommand extends BaseCommand>(
+  bind<TCommand extends CommandContract>(
     commandName: TCommand['commandName']
   ): BindToSyntax<TCommand>;
 
@@ -40,12 +40,17 @@ export interface CommandBusContract<
     command: TCommand
   ): Promise<TResponse>;
 
-  interceptors: Pick<CommandInterceptorManagerContract, 'apply' | 'select'>;
+  interceptors: Pick<
+    CommandInterceptorManagerContract<BaseCommand>,
+    'apply' | 'select'
+  >;
 }
 
-export class CommandBus implements CommandBusContract {
+export class CommandBus<BaseCommand extends CommandContract>
+  implements CommandBusContract<BaseCommand>
+{
   #commandRegistry: CommandRegistryContract;
-  #commandInterceptorManager: CommandInterceptorManagerContract;
+  #commandInterceptorManager: CommandInterceptorManagerContract<BaseCommand>;
   #taskManager: TaskManagerContract<
     CommandContract,
     CommandHandlerContract['execute']
@@ -57,7 +62,7 @@ export class CommandBus implements CommandBusContract {
     taskManager = new CommandTaskManager(),
   }: {
     registry?: CommandRegistryContract;
-    interceptorManager?: CommandInterceptorManagerContract;
+    interceptorManager?: CommandInterceptorManagerContract<BaseCommand>;
     taskManager?: TaskManagerContract<
       CommandContract,
       CommandHandlerContract['execute']
@@ -89,15 +94,14 @@ export class CommandBus implements CommandBusContract {
     };
   }
 
-  async execute<TCommand extends CommandContract, TResponse = void>(
+  async execute<TCommand extends BaseCommand, TResponse = void>(
     command: TCommand
   ): Promise<TResponse> {
     const handler = this.#commandRegistry.resolve(command.commandName);
 
-    if (!command.context?.abortController) {
+    if (!command.context?.signal) {
       command.context = {
-        ...command.context,
-        abortController: new AbortController(),
+        signal: new AbortController().signal,
       };
     }
 
@@ -107,7 +111,7 @@ export class CommandBus implements CommandBusContract {
   }
 
   get interceptors(): Pick<
-    CommandInterceptorManagerContract,
+    CommandInterceptorManagerContract<BaseCommand>,
     'apply' | 'select'
   > {
     return this.#commandInterceptorManager;

@@ -1,3 +1,4 @@
+import { CommandContract } from '../command';
 import { CommandTaskManager } from './command-task-manager';
 
 describe('CommandTaskManager', () => {
@@ -18,7 +19,7 @@ describe('CommandTaskManager', () => {
         context: {
           fake: 'test',
         },
-      };
+      } as CommandContract;
 
       expect(taskManager['serialize'](command)).toBe(
         JSON.stringify({

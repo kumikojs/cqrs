@@ -2,13 +2,6 @@ import type { CommandContract } from '../command';
 
 import { CommandInterceptorManager } from './command-interceptor-manager';
 
-class TestCommand implements CommandContract {
-  constructor(
-    public commandName: string,
-    public options: Record<string, unknown> = {}
-  ) {}
-}
-
 describe('CommandInterceptorManager', () => {
   let interceptorManager: CommandInterceptorManager;
 
@@ -18,8 +11,8 @@ describe('CommandInterceptorManager', () => {
 
   test('should apply an interceptor globally', async () => {
     const interceptor = vitest.fn();
-    const command = new TestCommand('testCommand');
-    const command2 = new TestCommand('testCommand2');
+    const command = { commandName: 'testCommand' } as CommandContract;
+    const command2 = { commandName: 'testCommand2' } as CommandContract;
 
     interceptorManager.apply(interceptor);
 
@@ -32,8 +25,8 @@ describe('CommandInterceptorManager', () => {
 
   test('should apply an interceptor to a specific command', async () => {
     const interceptor = vitest.fn();
-    const command = new TestCommand('testCommand');
-    const command2 = new TestCommand('testCommand2');
+    const command = { commandName: 'testCommand' } as CommandContract;
+    const command2 = { commandName: 'testCommand2' } as CommandContract;
 
     interceptorManager
       .select((command) => command.commandName === 'testCommand')
@@ -51,9 +44,9 @@ describe('CommandInterceptorManager', () => {
 
   test('should apply an interceptor to a list of commands', async () => {
     const interceptor = vitest.fn();
-    const command = new TestCommand('testCommand');
-    const command2 = new TestCommand('testCommand2');
-    const command3 = new TestCommand('testCommand3');
+    const command = { commandName: 'testCommand' } as CommandContract;
+    const command2 = { commandName: 'testCommand2' } as CommandContract;
+    const command3 = { commandName: 'testCommand3' } as CommandContract;
 
     interceptorManager
       .select((command) =>
@@ -75,14 +68,17 @@ describe('CommandInterceptorManager', () => {
 
   test('should apply an interceptor to a specific command based on options', async () => {
     const interceptor = vitest.fn();
-    const command = new TestCommand('testCommand', { notifiable: true });
-    const command2 = new TestCommand('testCommand2', { notifiable: false });
+    const command = {
+      commandName: 'testCommand',
+      options: { notifiable: true },
+    } as CommandContract;
+    const command2 = {
+      commandName: 'testCommand2',
+      options: { notifiable: false },
+    } as CommandContract;
 
     interceptorManager
-      .select<{
-        commandName: string;
-        options: { notifiable: boolean };
-      }>((command) => command.options.notifiable)
+      .select((command) => Boolean(command.options?.['notifiable']))
       .apply(interceptor);
 
     await interceptorManager.execute(command, async () => 'test');

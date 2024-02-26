@@ -10,38 +10,39 @@ export type SelectThenApplySyntax<TCommand extends CommandContract> = {
   apply: (interceptor: CommandInterceptor<TCommand>) => void;
 };
 
-export interface CommandInterceptorManagerContract {
-  apply<TCommand extends CommandContract>(
-    interceptor: CommandInterceptor<TCommand>
-  ): void;
+export interface CommandInterceptorManagerContract<
+  BaseCommand extends CommandContract = CommandContract
+> {
+  apply(interceptor: CommandInterceptor<BaseCommand>): void;
 
-  select<TCommand extends CommandContract>(
-    selector: (command: TCommand) => boolean
-  ): SelectThenApplySyntax<TCommand>;
+  select(
+    selector: <TCommand extends BaseCommand>(command: TCommand) => boolean
+  ): SelectThenApplySyntax<BaseCommand>;
 
-  execute<TCommand extends CommandContract, TResponse>(
-    command: TCommand,
-    handler: CommandHandlerContract<TCommand>['execute']
+  execute<TResponse>(
+    command: BaseCommand,
+    handler: CommandHandlerContract<BaseCommand>['execute']
   ): Promise<TResponse>;
 }
 
-export class CommandInterceptorManager
-  implements CommandInterceptorManagerContract
+export class CommandInterceptorManager<
+  BaseCommand extends CommandContract = CommandContract
+> implements CommandInterceptorManagerContract<BaseCommand>
 {
-  #interceptorManager: InterceptorManagerContract<CommandContract>;
+  #interceptorManager: InterceptorManagerContract<BaseCommand>;
 
   constructor(
-    interceptorManager: InterceptorManagerContract<CommandContract> = new InterceptorManager()
+    interceptorManager: InterceptorManagerContract<BaseCommand> = new InterceptorManager()
   ) {
     this.#interceptorManager = interceptorManager;
   }
 
-  select<TCommand extends CommandContract>(
-    selector: (command: TCommand) => boolean
-  ): SelectThenApplySyntax<TCommand> {
+  select(
+    selector: (command: BaseCommand) => boolean
+  ): SelectThenApplySyntax<BaseCommand> {
     return {
-      apply: (interceptor: CommandInterceptor<TCommand>) => {
-        this.#interceptorManager.use<TCommand>(async (command, next) => {
+      apply: (interceptor: CommandInterceptor<BaseCommand>) => {
+        this.#interceptorManager.use<BaseCommand>(async (command, next) => {
           if (selector(command)) {
             return interceptor(command, next);
           }
@@ -52,15 +53,13 @@ export class CommandInterceptorManager
     };
   }
 
-  apply<TCommand extends CommandContract>(
-    interceptor: CommandInterceptor<TCommand>
-  ): void {
+  apply(interceptor: CommandInterceptor<BaseCommand>): void {
     this.#interceptorManager.use(interceptor);
   }
 
-  async execute<TCommand extends CommandContract, TResponse>(
-    command: TCommand,
-    handler: CommandHandlerContract<TCommand>['execute']
+  async execute<TResponse>(
+    command: BaseCommand,
+    handler: CommandHandlerContract<BaseCommand>['execute']
   ): Promise<TResponse> {
     return this.#interceptorManager.execute(command, handler);
   }

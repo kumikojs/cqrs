@@ -36,15 +36,6 @@ describe('CommandClient', () => {
   });
 
   test('should apply the retry strategy', async () => {
-    const command = {
-      commandName: 'testCommand',
-      options: {
-        retry: {
-          maxRetries: 1,
-          delay: 1000,
-        },
-      },
-    } as CommandContract;
     let i = 0;
 
     commandClient.commandBus.bind('testCommand').to(async () => {
@@ -56,7 +47,15 @@ describe('CommandClient', () => {
       return 'retryCommand';
     });
 
-    const result = await commandClient.commandBus.execute(command);
+    const result = await commandClient.commandBus.execute({
+      commandName: 'testCommand',
+      options: {
+        retry: {
+          maxAttempts: 1,
+          delay: 1000,
+        },
+      },
+    });
     expect(result).toBe('retryCommand');
   });
 
@@ -116,7 +115,7 @@ describe('CommandClient', () => {
   test('should apply the throttle strategy', async () => {
     const command = {
       commandName: 'testCommand',
-      options: { throttle: { limit: 2, ttl: '1000ms' } },
+      options: { throttle: { rate: 2, interval: '1000ms' } },
     } as CommandContract;
 
     commandClient.commandBus.bind('testCommand').to(async () => {
@@ -140,7 +139,7 @@ describe('CommandClient', () => {
       const command = {
         commandName: 'testCommand',
         options: {
-          retry: { maxRetries: 2, delay: 100 },
+          retry: { maxAttempts: 2, delay: 100 },
           fallback: () => 'fallback',
         },
       } as CommandContract;
@@ -168,7 +167,7 @@ describe('CommandClient', () => {
         commandName: 'testCommand',
         options: {
           timeout: '1ms',
-          retry: { maxRetries: 2, delay: 100 },
+          retry: { maxAttempts: 2, delay: 100 },
         },
       } as CommandContract;
       let i = 0;
@@ -197,7 +196,7 @@ describe('CommandClient', () => {
         commandName: 'testCommand',
         options: {
           timeout: '1ms',
-          retry: { maxRetries: 2, delay: 100 },
+          retry: { maxAttempts: 2, delay: 100 },
           fallback: () => 'fallback',
         },
       } as CommandContract;
