@@ -10,23 +10,23 @@ export type SelectThenApplySyntax<TQuery extends QueryContract> = {
   apply: (interceptor: QueryInterceptor<TQuery>) => void;
 };
 
-export interface QueryInterceptorManagerContract {
-  apply<TQuery extends QueryContract>(
-    interceptor: QueryInterceptor<TQuery>
-  ): void;
+export interface QueryInterceptorManagerContract<
+  BaseQuery extends QueryContract
+> {
+  apply<TQuery extends BaseQuery>(interceptor: QueryInterceptor<TQuery>): void;
 
-  select<TQuery extends QueryContract>(
+  select<TQuery extends BaseQuery>(
     selector: (query: TQuery) => boolean
   ): SelectThenApplySyntax<TQuery>;
 
-  execute<TQuery extends QueryContract, TResponse>(
+  execute<TQuery extends BaseQuery, TResponse>(
     query: TQuery,
     handler: QueryHandlerContract<TQuery, TResponse>['execute']
   ): Promise<TResponse>;
 }
 
-export class QueryInterceptorManager
-  implements QueryInterceptorManagerContract
+export class QueryInterceptorManager<BaseQuery extends QueryContract>
+  implements QueryInterceptorManagerContract<BaseQuery>
 {
   #interceptorManager: InterceptorManagerContract<QueryContract>;
 
@@ -36,7 +36,7 @@ export class QueryInterceptorManager
     this.#interceptorManager = interceptorManager;
   }
 
-  select<TQuery extends QueryContract>(
+  select<TQuery extends BaseQuery>(
     selector: (query: TQuery) => boolean
   ): SelectThenApplySyntax<TQuery> {
     return {
@@ -52,13 +52,11 @@ export class QueryInterceptorManager
     };
   }
 
-  apply<TQuery extends QueryContract>(
-    interceptor: QueryInterceptor<TQuery>
-  ): void {
+  apply<TQuery extends BaseQuery>(interceptor: QueryInterceptor<TQuery>): void {
     this.#interceptorManager.use(interceptor);
   }
 
-  async execute<TQuery extends QueryContract, TResponse>(
+  async execute<TQuery extends BaseQuery, TResponse>(
     query: TQuery,
     handler: QueryHandlerContract<TQuery, TResponse>['execute']
   ): Promise<TResponse> {

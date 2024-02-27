@@ -1,6 +1,7 @@
 import { CacheManager } from '../internal/cache/cache-manager';
 import { BulkheadStrategy } from '../strategy/bulkhead-strategy';
 import { ThrottleStrategy } from '../strategy/throttle-strategy';
+import { QueryContract } from './query';
 import { QueryBus, type QueryBusContract } from './query-bus';
 
 const timeoutStrategy = () => import('../strategy/timeout-strategy');
@@ -8,13 +9,13 @@ const retryStrategy = () => import('../strategy/retry-strategy');
 const fallbackStrategy = () => import('../strategy/fallback-strategy');
 const cacheStrategy = () => import('../strategy/cache-strategy');
 
-export class QueryClient {
-  #queryBus: QueryBusContract;
+export class QueryClient<TOptions = unknown> {
+  #queryBus: QueryBusContract<QueryContract<string, unknown, TOptions>>;
   #bulkheadStrategy: BulkheadStrategy;
   #cacheManager: CacheManager;
 
   constructor({
-    queryBus = new QueryBus(),
+    queryBus = new QueryBus<QueryContract<string, unknown, TOptions>>(),
     cacheManager = new CacheManager(),
     bulkheadStrategy = new BulkheadStrategy(),
   } = {}) {

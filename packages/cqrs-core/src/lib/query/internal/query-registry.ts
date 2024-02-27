@@ -1,5 +1,5 @@
 import type { VoidFunction } from '../../internal/types';
-import type { QueryContract, QueryName } from '../query';
+import type { QueryContract } from '../query';
 import type { QueryHandlerContract } from '../query-handler';
 
 export interface QueryRegistryContract<
@@ -28,14 +28,14 @@ export class QueryNotFoundException extends Error {
 }
 
 export class QueryRegistry implements QueryRegistryContract {
-  #handlers: Map<QueryName, QueryHandlerContract>;
+  #handlers: Map<QueryContract['queryName'], QueryHandlerContract>;
 
   constructor() {
     this.#handlers = new Map();
   }
 
   public register<TQuery extends QueryContract>(
-    queryName: QueryName,
+    queryName: QueryContract['queryName'],
     handler: QueryHandlerContract<TQuery>
   ): VoidFunction {
     if (this.#handlers.has(queryName)) {
@@ -47,7 +47,7 @@ export class QueryRegistry implements QueryRegistryContract {
     return () => this.#handlers.delete(queryName);
   }
 
-  public resolve(queryName: QueryName): QueryHandlerContract {
+  public resolve(queryName: QueryContract['queryName']): QueryHandlerContract {
     const handler = this.#handlers.get(queryName);
     if (!handler) {
       throw new Error(`Query handler for "${queryName}" is not registered`);

@@ -37,12 +37,17 @@ export interface QueryBusContract<
     query: TQuery
   ): Promise<TResponse>;
 
-  interceptors: Pick<QueryInterceptorManagerContract, 'apply' | 'select'>;
+  interceptors: Pick<
+    QueryInterceptorManagerContract<BaseQuery>,
+    'apply' | 'select'
+  >;
 }
 
-export class QueryBus implements QueryBusContract {
+export class QueryBus<BaseQuery extends QueryContract>
+  implements QueryBusContract<BaseQuery>
+{
   #queryRegistry: QueryRegistryContract;
-  #queryInterceptorManager: QueryInterceptorManagerContract;
+  #queryInterceptorManager: QueryInterceptorManagerContract<BaseQuery>;
   #taskManager: TaskManagerContract<
     QueryContract,
     QueryHandlerContract['execute']
@@ -54,7 +59,7 @@ export class QueryBus implements QueryBusContract {
     taskManager = new QueryTaskManager(),
   }: {
     registry?: QueryRegistryContract;
-    interceptorManager?: QueryInterceptorManagerContract;
+    interceptorManager?: QueryInterceptorManagerContract<BaseQuery>;
     taskManager?: TaskManagerContract<
       QueryContract,
       QueryHandlerContract['execute']
@@ -84,15 +89,15 @@ export class QueryBus implements QueryBusContract {
     };
   }
 
-  async execute<TQuery extends QueryContract, TResponse = unknown>(
+  async execute<TQuery extends BaseQuery, TResponse = unknown>(
     query: TQuery
   ): Promise<TResponse> {
     const handler = this.#queryRegistry.resolve(query.queryName);
 
-    if (!query.context?.abortController) {
+    if (!query.context?.signal) {
       query.context = {
         ...query.context,
-        abortController: new AbortController(),
+        signal: new AbortController().signal,
       };
     }
 
@@ -102,7 +107,7 @@ export class QueryBus implements QueryBusContract {
   }
 
   get interceptors(): Pick<
-    QueryInterceptorManagerContract,
+    QueryInterceptorManagerContract<BaseQuery>,
     'apply' | 'select'
   > {
     return this.#queryInterceptorManager;

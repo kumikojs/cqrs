@@ -64,7 +64,7 @@ describe('QueryClient', () => {
       queryName: 'testQuery',
       options: {
         retry: {
-          maxRetries: 1,
+          maxAttempts: 1,
           delay: 1000,
         },
       },
@@ -140,7 +140,7 @@ describe('QueryClient', () => {
   test('should apply the throttle strategy', async () => {
     const query = {
       queryName: 'testQuery',
-      options: { throttle: { limit: 2, ttl: '1000ms' } },
+      options: { throttle: { rate: 2, interval: '1000ms' } },
     } as QueryContract;
 
     queryClient.queryBus.bind('testQuery').to(async () => {
@@ -190,7 +190,7 @@ describe('QueryClient', () => {
       const query = {
         queryName: 'testQuery',
         options: {
-          retry: { maxRetries: 2, delay: 100 },
+          retry: { maxAttempts: 2, delay: 100 },
           fallback: () => 'fallback',
         },
       } as QueryContract;
@@ -218,7 +218,7 @@ describe('QueryClient', () => {
         queryName: 'testQuery',
         options: {
           timeout: '1ms',
-          retry: { maxRetries: 2, delay: 100 },
+          retry: { maxAttempts: 2, delay: 100 },
         },
       } as QueryContract;
       let i = 0;
@@ -247,7 +247,7 @@ describe('QueryClient', () => {
         queryName: 'testQuery',
         options: {
           timeout: '1ms',
-          retry: { maxRetries: 2, delay: 100 },
+          retry: { maxAttempts: 2, delay: 100 },
           fallback: () => 'fallback',
         },
       } as QueryContract;
