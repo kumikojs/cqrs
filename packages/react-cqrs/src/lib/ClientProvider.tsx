@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { ClientContract } from '@stoik/cqrs-core';
+import type { ClientContract } from '@stoik/cqrs-core';
 
 export const ClientContext = React.createContext<ClientContract | undefined>(
   undefined

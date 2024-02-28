@@ -1,9 +1,9 @@
 import {
-  ClientContract,
-  QueryContract,
-  QueryHandlerContract,
-  QueryHandlerFn,
   QuerySubject,
+  type ClientContract,
+  type QueryContract,
+  type QueryHandlerContract,
+  type QueryHandlerFn,
 } from '@stoik/cqrs-core';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { useClient } from './ClientProvider';

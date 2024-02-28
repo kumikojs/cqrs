@@ -1,7 +1,7 @@
 import {
-  ClientContract,
-  CommandContract,
   CommandSubject,
+  type ClientContract,
+  type CommandContract,
 } from '@stoik/cqrs-core';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { useClient } from './ClientProvider';
