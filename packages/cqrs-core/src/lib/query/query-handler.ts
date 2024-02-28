@@ -6,7 +6,6 @@ export interface QueryHandlerContract<
 > {
   execute(query: TQuery): Promise<TResponse>;
 }
-
 export type QueryHandlerFn<
   T extends QueryContract = QueryContract,
   TResponse = unknown

@@ -1,6 +1,6 @@
 import {
   QueryAlreadyRegisteredException,
-  QueryNotFoundException,
+  QueryNotRegisteredException,
   QueryRegistry,
   type QueryRegistryContract,
 } from './query-registry';
@@ -27,7 +27,7 @@ describe('QueryRegistry', () => {
       expect(registry.resolve(queryName)).toBe(handler);
       unregister();
       expect(() => registry.resolve(queryName)).toThrowError(
-        new QueryNotFoundException(queryName)
+        new QueryNotRegisteredException(queryName)
       );
     });
 
@@ -69,7 +69,7 @@ describe('QueryRegistry', () => {
 
       // Assert
       expect(() => registry.resolve(queryName)).toThrowError(
-        new QueryNotFoundException(queryName)
+        new QueryNotRegisteredException(queryName)
       );
     });
   });

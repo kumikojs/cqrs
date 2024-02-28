@@ -1,15 +1,9 @@
-import type { TaskManagerContract } from '../internal/task/task-manager';
-import {
-  QueryInterceptorManager,
-  type QueryInterceptorManagerContract,
-} from './internal/query-interceptor-manager';
 import {
   QueryRegistry,
   type QueryRegistryContract,
 } from './internal/query-registry';
-import { QueryTaskManager } from './internal/query-task-manager';
 import type { QueryContract } from './query';
-import type { QueryHandlerContract, QueryHandlerFn } from './query-handler';
+import type { QueryHandlerContract } from './query-handler';
 
 /**
  * Export internal Exception classes
@@ -17,99 +11,60 @@ import type { QueryHandlerContract, QueryHandlerFn } from './query-handler';
  */
 export {
   QueryAlreadyRegisteredException,
-  QueryNotFoundException,
+  QueryNotRegisteredException,
 } from './internal/query-registry';
-
-type BindToSyntax<TQuery extends QueryContract> = {
-  to: (
-    handler: QueryHandlerContract<TQuery> | QueryHandlerFn<TQuery>
-  ) => VoidFunction;
-};
 
 export interface QueryBusContract<
   BaseQuery extends QueryContract = QueryContract
 > {
-  bind<TQuery extends BaseQuery>(
-    queryName: TQuery['queryName']
-  ): BindToSyntax<TQuery>;
+  register<TQuery extends BaseQuery>(
+    queryName: TQuery['queryName'],
+    handler:
+      | QueryHandlerContract<TQuery>
+      | QueryHandlerContract<TQuery>['execute']
+  ): VoidFunction;
 
   execute<TQuery extends BaseQuery, TResponse = unknown>(
     query: TQuery
   ): Promise<TResponse>;
-
-  interceptors: Pick<
-    QueryInterceptorManagerContract<BaseQuery>,
-    'apply' | 'select'
-  >;
 }
 
 export class QueryBus<BaseQuery extends QueryContract>
   implements QueryBusContract<BaseQuery>
 {
   #queryRegistry: QueryRegistryContract;
-  #queryInterceptorManager: QueryInterceptorManagerContract<BaseQuery>;
-  #taskManager: TaskManagerContract<
-    QueryContract,
-    QueryHandlerContract['execute']
-  >;
 
   constructor({
     registry = new QueryRegistry(),
-    interceptorManager = new QueryInterceptorManager(),
-    taskManager = new QueryTaskManager(),
   }: {
     registry?: QueryRegistryContract;
-    interceptorManager?: QueryInterceptorManagerContract<BaseQuery>;
-    taskManager?: TaskManagerContract<
-      QueryContract,
-      QueryHandlerContract['execute']
-    >;
   } = {}) {
     this.#queryRegistry = registry;
-    this.#queryInterceptorManager = interceptorManager;
-    this.#taskManager = taskManager;
 
-    this.bind = this.bind.bind(this);
+    this.register = this.register.bind(this);
     this.execute = this.execute.bind(this);
   }
 
-  bind<TQuery extends QueryContract>(
-    queryName: TQuery['queryName']
-  ): BindToSyntax<TQuery> {
-    return {
-      to: (handler: QueryHandlerContract<TQuery> | QueryHandlerFn<TQuery>) => {
-        if (typeof handler === 'function') {
-          handler = {
-            execute: handler,
-          };
-        }
+  register<TQuery extends BaseQuery>(
+    queryName: TQuery['queryName'],
+    handler:
+      | QueryHandlerContract<TQuery>
+      | QueryHandlerContract<TQuery>['execute']
+  ): VoidFunction {
+    if (typeof handler === 'function') {
+      handler = {
+        execute: handler,
+      };
+    }
 
-        return this.#queryRegistry.register(queryName, handler);
-      },
-    };
+    return this.#queryRegistry.register(queryName, handler);
   }
 
   async execute<TQuery extends BaseQuery, TResponse = unknown>(
     query: TQuery
   ): Promise<TResponse> {
-    const handler = this.#queryRegistry.resolve(query.queryName);
-
-    if (!query.context?.signal) {
-      query.context = {
-        ...query.context,
-        signal: new AbortController().signal,
-      };
-    }
-
-    return this.#taskManager.execute(query, () =>
-      this.#queryInterceptorManager.execute(query, handler.execute)
-    );
-  }
-
-  get interceptors(): Pick<
-    QueryInterceptorManagerContract<BaseQuery>,
-    'apply' | 'select'
-  > {
-    return this.#queryInterceptorManager;
+    return this.#queryRegistry
+      .resolve<TQuery, TResponse>(query.queryName)
+      .execute(query);
   }
 }

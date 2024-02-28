@@ -7,12 +7,17 @@ type Handler<T> = (request: T) => Promise<any>;
 export interface InterceptorManagerContract<T> {
   use<TRequest extends T>(
     interceptor: Interceptor<TRequest> | InterceptorContract<TRequest>
-  ): void;
+  ): this;
 
-  execute<TRequest extends T>(
+  tap<TRequest extends T>(
+    selector: (request: TRequest) => boolean,
+    interceptor: Interceptor<TRequest>
+  ): this;
+
+  execute<TRequest extends T, TResponse>(
     request: TRequest,
     handler: Handler<TRequest>
-  ): Promise<any>;
+  ): Promise<TResponse>;
 }
 
 export class InterceptorManager<T> implements InterceptorManagerContract<T> {
@@ -32,12 +37,29 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
         handle: interceptor,
       });
     }
+
+    return this;
   }
 
-  async execute<TRequest extends T>(
+  tap<TRequest extends T>(
+    selector: (query: TRequest) => boolean,
+    interceptor: Interceptor<TRequest>
+  ): this {
+    this.use<TRequest>(async (query, next) => {
+      if (selector(query)) {
+        return interceptor(query, next);
+      }
+
+      return next?.(query);
+    });
+
+    return this;
+  }
+
+  async execute<TRequest extends T, TResponse>(
     request: TRequest,
     handler: Handler<TRequest>
-  ) {
+  ): Promise<TResponse> {
     const composed = this.#interceptors.reduceRight(
       (next, interceptor) => async (ctx: TRequest) =>
         interceptor.handle(ctx, next),

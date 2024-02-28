@@ -1,109 +1,72 @@
-import { CacheManager } from '../internal/cache/cache-manager';
-import { BulkheadStrategy } from '../strategy/bulkhead-strategy';
-import { ThrottleStrategy } from '../strategy/throttle-strategy';
-import { QueryContract } from './query';
-import { QueryBus, type QueryBusContract } from './query-bus';
+import { QueryInterceptorManager } from './internal/query-interceptor-manager';
+import { QueryTaskManager } from './internal/query-task-manager';
+import { QueryBus } from './query-bus';
 
-const timeoutStrategy = () => import('../strategy/timeout-strategy');
-const retryStrategy = () => import('../strategy/retry-strategy');
-const fallbackStrategy = () => import('../strategy/fallback-strategy');
-const cacheStrategy = () => import('../strategy/cache-strategy');
+import type { InterceptorManagerContract } from '../internal/interceptor/interceptor-manager';
+import type { TaskManagerContract } from '../internal/task/task-manager';
+import type { QueryContract } from './query';
+import type { QueryBusContract } from './query-bus';
+import type { QueryHandlerContract, QueryHandlerFn } from './query-handler';
 
-export class QueryClient<TOptions = unknown> {
-  #queryBus: QueryBusContract<QueryContract<string, unknown, TOptions>>;
-  #bulkheadStrategy: BulkheadStrategy;
-  #cacheManager: CacheManager;
+export interface QueryClientContract<
+  TOptions = unknown,
+  BaseQuery extends QueryContract = QueryContract<string, unknown, TOptions>
+> {
+  bus: QueryBusContract<BaseQuery>;
+  interceptors: InterceptorManagerContract<BaseQuery>;
+  execute<TQuery extends BaseQuery, TResponse>(
+    query: TQuery,
+    handler?: QueryHandlerFn<TQuery, TResponse>
+  ): Promise<TResponse>;
+}
+
+export class QueryClient<
+  TOptions = unknown,
+  BaseQuery extends QueryContract = QueryContract<string, unknown, TOptions>
+> {
+  #queryBus: QueryBusContract<BaseQuery>;
+  #queryInterceptorManager: InterceptorManagerContract<BaseQuery>;
+  #taskManager: TaskManagerContract<
+    QueryContract,
+    QueryHandlerContract['execute']
+  >;
 
   constructor({
-    queryBus = new QueryBus<QueryContract<string, unknown, TOptions>>(),
-    cacheManager = new CacheManager(),
-    bulkheadStrategy = new BulkheadStrategy(),
+    queryBus = new QueryBus<BaseQuery>(),
+    taskManager = new QueryTaskManager(),
+    interceptorManager = new QueryInterceptorManager<BaseQuery>(),
   } = {}) {
     this.#queryBus = queryBus;
-    this.#cacheManager = cacheManager;
-    this.#bulkheadStrategy = bulkheadStrategy;
+    this.#queryInterceptorManager = interceptorManager;
+    this.#taskManager = taskManager;
 
-    this.#bootstrap();
+    this.execute = this.execute.bind(this);
   }
 
-  get queryBus() {
+  get bus() {
     return this.#queryBus;
   }
 
-  #bootstrap() {
-    this.#queryBus.interceptors
-      .select((query) => Boolean(query.options?.cache))
-      .apply(async (query, next) => {
-        const module = await cacheStrategy();
-        const strategy = new module.CacheStrategy(this.#cacheManager, {
-          ...query.options?.cache,
-          serialize: (request) =>
-            JSON.stringify({
-              name: request.queryName,
-              payload: request.payload,
-            }),
-        });
+  get interceptors() {
+    return this.#queryInterceptorManager;
+  }
 
-        return strategy.execute(query, async (request) => next?.(request));
-      });
+  execute<TQuery extends BaseQuery, TResponse>(
+    query: TQuery,
+    handler?: QueryHandlerFn<TQuery, TResponse>
+  ): Promise<TResponse> {
+    if (!query.context?.signal) {
+      query.context = {
+        ...query.context,
+        signal: new AbortController().signal,
+      };
+    }
 
-    this.#queryBus.interceptors.apply(async (query, next) => {
-      if (query?.options?.fallback) {
-        const module = await fallbackStrategy();
-        const strategy = new module.FallbackStrategy({
-          fallback: query.options.fallback,
-        });
-
-        return strategy.execute(query, async (request) => next?.(request));
-      }
-
-      return next?.(query);
-    });
-
-    this.#queryBus.interceptors
-      .select((query) => Boolean(query.options?.retry))
-      .apply(async (query, next) => {
-        const module = await retryStrategy();
-        const strategy = new module.RetryStrategy(query.options?.retry);
-
-        return strategy.execute(query, async (request) => next?.(request));
-      });
-
-    this.#queryBus.interceptors
-      .select((query) => Boolean(query.options?.timeout))
-      .apply(async (query, next) => {
-        const module = await timeoutStrategy();
-        const strategy = new module.TimeoutStrategy({
-          timeout: query.options?.timeout,
-        });
-
-        return strategy.execute(query, async (request) => next?.(request));
-      });
-
-    this.#queryBus.interceptors
-      .select((query) => Boolean(query.options?.bulkhead))
-      .apply(async (query, next) => {
-        return this.#bulkheadStrategy.execute(query, async (request) =>
-          next?.(request)
-        );
-      });
-
-    this.#queryBus.interceptors
-      .select((query) => Boolean(query.options?.throttle))
-      .apply(async (query, next) => {
-        const strategy = new ThrottleStrategy(
-          this.#cacheManager.inMemoryCache,
-          {
-            ...query.options?.throttle,
-            serialize: (request) =>
-              JSON.stringify({
-                name: request.queryName,
-                payload: request.payload,
-              }),
-          }
-        );
-
-        return strategy.execute(query, async (request) => next?.(request));
-      });
+    return this.#taskManager.execute(query, () =>
+      this.#queryInterceptorManager.execute<TQuery, TResponse>(
+        query,
+        handler ? handler : this.#queryBus.execute
+      )
+    );
   }
 }

@@ -1,86 +1,589 @@
-import type { QueryContract } from '../query';
-
+import {
+  BulkheadException,
+  BulkheadStrategy,
+} from '../../strategy/bulkhead-strategy';
+import { ThrottleException } from '../../strategy/throttle-strategy';
+import { TimeoutException } from '../../strategy/timeout-strategy';
 import { QueryInterceptorManager } from './query-interceptor-manager';
 
-class TestQuery implements QueryContract {
-  constructor(
-    public queryName: string,
-    public options: Record<string, unknown> = {}
-  ) {}
-}
+import type { QueryContract } from '../query';
 
 describe('QueryInterceptorManager', () => {
-  let interceptorManager: QueryInterceptorManager;
+  let queryInterceptorManager: QueryInterceptorManager<QueryContract>;
 
   beforeEach(() => {
-    interceptorManager = new QueryInterceptorManager();
+    queryInterceptorManager = new QueryInterceptorManager({
+      strategies: {
+        bulkhead: {
+          strategy: new BulkheadStrategy({
+            maxConcurrent: 1,
+            maxQueue: 2,
+          }),
+        },
+      },
+    });
   });
 
-  test('should apply an interceptor globally', async () => {
-    const interceptor = vitest.fn();
-    const query = new TestQuery('testQuery');
-    const query2 = new TestQuery('testQuery2');
+  test('should successfully execute the query', async () => {
+    const query = {
+      queryName: 'testQuery',
+    } as QueryContract;
 
-    interceptorManager.apply(interceptor);
+    const result = await queryInterceptorManager.execute(query, async () => {
+      return 'test';
+    });
 
-    await interceptorManager.execute(query, async () => 'test');
-    await interceptorManager.execute(query2, async () => 'test');
-
-    expect(interceptor).toHaveBeenCalledWith(query, expect.any(Function));
-    expect(interceptor).toHaveBeenCalledWith(query2, expect.any(Function));
+    expect(result).toBe('test');
   });
 
-  test('should apply an interceptor to a specific query', async () => {
-    const interceptor = vitest.fn();
-    const query = new TestQuery('testQuery');
-    const query2 = new TestQuery('testQuery2');
+  describe('unit tests', () => {
+    test('should apply the cache strategy', async () => {
+      const query = {
+        queryName: 'testQuery',
+        options: {
+          cache: {
+            ttl: 1000,
+            persist: false,
+          },
+        },
+      } as QueryContract;
+      let i = 0;
 
-    interceptorManager
-      .select((query) => query.queryName === 'testQuery')
-      .apply(interceptor);
+      const result = await queryInterceptorManager.execute(query, async () => {
+        i++;
+        return i;
+      });
+      const result2 = await queryInterceptorManager.execute(query, async () => {
+        return i;
+      });
 
-    await interceptorManager.execute(query, async () => 'test');
-    await interceptorManager.execute(query2, async () => 'test');
+      expect(result).toBe(1);
+      expect(result2).toBe(result);
+    });
 
-    expect(interceptor).toHaveBeenCalledWith(query, expect.any(Function));
-    expect(interceptor).not.toHaveBeenCalledWith(query2, expect.any(Function));
+    test('should apply the fallback strategy', async () => {
+      const query = {
+        queryName: 'testQuery',
+        payload: 'testPayload',
+        options: { fallback: () => 'fallback' },
+      } as QueryContract;
+
+      const result = await queryInterceptorManager.execute(query, async () => {
+        throw new Error('error');
+      });
+
+      expect(result).toBe('fallback');
+    });
+
+    test('should apply the retry strategy', async () => {
+      const query = {
+        queryName: 'testQuery',
+        options: {
+          retry: {
+            maxAttempts: 1,
+            delay: 1000,
+          },
+        },
+      } as QueryContract;
+      let i = 0;
+
+      const result = await queryInterceptorManager.execute(query, async () => {
+        if (i === 0) {
+          i++;
+          throw new Error('error');
+        }
+
+        return i;
+      });
+
+      expect(result).toBe(1);
+    });
+
+    test('should apply the timeout strategy', async () => {
+      const query = {
+        queryName: 'testQuery',
+        options: {
+          timeout: 1000,
+        },
+      } as QueryContract;
+
+      expect(
+        queryInterceptorManager.execute(query, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        })
+      ).rejects.toThrow(TimeoutException);
+    });
+
+    test('should apply the bulkhead strategy', async () => {
+      const query = {
+        queryName: 'testQuery',
+        options: {
+          bulkhead: true,
+        },
+      } as QueryContract;
+      let i = 0;
+
+      const result = queryInterceptorManager.execute(query, async () => {
+        return ++i;
+      });
+
+      const result2 = queryInterceptorManager.execute(query, async () => {
+        return ++i;
+      });
+
+      const result3 = queryInterceptorManager.execute(query, async () => {
+        return ++i;
+      });
+
+      const result4 = queryInterceptorManager.execute(query, async () => {
+        return ++i;
+      });
+
+      expect(result).resolves.toBe(1);
+      expect(result2).resolves.toBe(2);
+      expect(result3).resolves.toBe(3);
+      expect(result4).rejects.toThrowError(BulkheadException);
+    });
+
+    test('should apply the throttle strategy', async () => {
+      const query = {
+        queryName: 'testQuery',
+        options: {
+          throttle: {
+            rate: 2,
+            interval: 1000,
+          },
+        },
+      } as QueryContract;
+      let i = 0;
+
+      const result = queryInterceptorManager.execute(query, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return ++i;
+      });
+
+      const result2 = queryInterceptorManager.execute(query, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return ++i;
+      });
+
+      const result3 = queryInterceptorManager.execute(query, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return ++i;
+      });
+
+      expect(result).resolves.toBe(1);
+      expect(result2).resolves.toBe(2);
+      expect(result3).rejects.toThrowError(ThrottleException);
+    });
   });
 
-  test('should apply an interceptor to a list of querys', async () => {
-    const interceptor = vitest.fn();
-    const query = new TestQuery('testQuery');
-    const query2 = new TestQuery('testQuery2');
-    const query3 = new TestQuery('testQuery3');
+  describe('integration tests', () => {
+    describe('caching strategy is the first strategy', () => {
+      test('should apply the cache before the fallback strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            cache: { ttl: 1000, persist: false },
+            fallback: () => 'fallback',
+          },
+        } as QueryContract;
+        let i = 0;
 
-    interceptorManager
-      .select((query) => ['testQuery', 'testQuery2'].includes(query.queryName))
-      .apply(interceptor);
+        const result = await queryInterceptorManager.execute(
+          query,
+          async () => {
+            if (i++ === 1) {
+              throw new Error('error');
+            }
 
-    await interceptorManager.execute(query, async () => 'test');
-    await interceptorManager.execute(query2, async () => 'test');
-    await interceptorManager.execute(query3, async () => 'test');
+            return i;
+          }
+        );
+        const result2 = await queryInterceptorManager.execute(
+          query,
+          async () => {
+            return i;
+          }
+        );
 
-    expect(interceptor).toHaveBeenCalledWith(query, expect.any(Function));
-    expect(interceptor).toHaveBeenCalledWith(query2, expect.any(Function));
-    expect(interceptor).not.toHaveBeenCalledWith(query3, expect.any(Function));
-  });
+        expect(result).toBe(1);
+        expect(result2).toBe(result);
+      });
 
-  test('should apply an interceptor to a specific query based on options', async () => {
-    const interceptor = vitest.fn();
-    const query = new TestQuery('testQuery', { notifiable: true });
-    const query2 = new TestQuery('testQuery2', { notifiable: false });
+      test('should apply the cache before the retry strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            cache: { ttl: 1000, persist: false },
+            retry: { maxAttempts: 1, delay: 1000 },
+          },
+        } as QueryContract;
+        let i = 0;
 
-    interceptorManager
-      .select<{
-        queryName: string;
-        options: { notifiable: boolean };
-      }>((query) => query.options.notifiable)
-      .apply(interceptor);
+        const result = await queryInterceptorManager.execute(
+          query,
+          async () => {
+            if (i === 0) {
+              i++;
+              throw new Error('error');
+            }
 
-    await interceptorManager.execute(query, async () => 'test');
-    await interceptorManager.execute(query2, async () => 'test');
+            return i;
+          }
+        );
 
-    expect(interceptor).toHaveBeenCalledWith(query, expect.any(Function));
-    expect(interceptor).not.toHaveBeenCalledWith(query2, expect.any(Function));
+        const result2 = await queryInterceptorManager.execute(
+          query,
+          async () => {
+            return i;
+          }
+        );
+
+        expect(result).toBe(1);
+        expect(result2).toBe(result);
+      });
+
+      test('should apply the cache before the timeout strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            cache: { ttl: 1000, persist: false },
+            timeout: 1000,
+          },
+        } as QueryContract;
+
+        const result = await queryInterceptorManager.execute(
+          query,
+          async () => {
+            return 'first';
+          }
+        );
+
+        const result2 = await queryInterceptorManager.execute(
+          query,
+          async () => {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            return 'second';
+          }
+        );
+
+        expect(result).toBe('first');
+        expect(result2).toBe(result);
+      });
+
+      test('should apply the cache before the bulkhead strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            cache: { ttl: 1000, persist: false },
+            bulkhead: true,
+          },
+        } as QueryContract;
+        let i = 0;
+
+        const result = queryInterceptorManager.execute(query, async () => {
+          return ++i;
+        });
+
+        const result2 = queryInterceptorManager.execute(query, async () => {
+          return ++i;
+        });
+
+        const result3 = queryInterceptorManager.execute(query, async () => {
+          return ++i;
+        });
+
+        const result4 = queryInterceptorManager.execute(query, async () => {
+          return ++i;
+        });
+
+        expect(result).resolves.toBe(1);
+        expect(result2).resolves.toBe(2);
+        expect(result3).resolves.toBe(3);
+        expect(result4).rejects.toThrowError(BulkheadException);
+      });
+
+      test('should apply the cache before the throttle strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            cache: { ttl: 1000, persist: false },
+            throttle: { rate: 2, interval: 1000 },
+          },
+        } as QueryContract;
+        let i = 0;
+
+        const result = queryInterceptorManager.execute(query, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return ++i;
+        });
+
+        const result2 = queryInterceptorManager.execute(query, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return ++i;
+        });
+
+        const result3 = queryInterceptorManager.execute(query, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return ++i;
+        });
+
+        expect(result).resolves.toBe(1);
+        expect(result2).resolves.toBe(2);
+        expect(result3).rejects.toThrowError(ThrottleException);
+      });
+    });
+
+    describe('fallback strategy is the second strategy', () => {
+      test('should apply the fallback before the retry strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            fallback: () => 'fallback',
+            retry: { maxAttempts: 1, delay: 1000 },
+          },
+        } as QueryContract;
+
+        const result = await queryInterceptorManager.execute(
+          query,
+          async () => {
+            throw new Error('error');
+          }
+        );
+
+        expect(result).toBe('fallback');
+      });
+
+      test('should apply the fallback before the timeout strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            fallback: () => 'fallback',
+            timeout: 1000,
+          },
+        } as QueryContract;
+
+        expect(
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          })
+        ).resolves.toBe('fallback');
+      });
+
+      test('should apply the fallback before the bulkhead strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            fallback: () => 'fallback',
+            bulkhead: true,
+          },
+        } as QueryContract;
+
+        const result = Promise.all([
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return 'success';
+          }),
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return 'success';
+          }),
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return 'success';
+          }),
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }),
+        ]);
+
+        expect(result).resolves.toStrictEqual([
+          'success',
+          'success',
+          'success',
+          'fallback',
+        ]);
+      });
+
+      test('should apply the fallback before the throttle strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            fallback: () => 'fallback',
+            throttle: { rate: 2, interval: 1000 },
+          },
+        } as QueryContract;
+
+        const result = Promise.all([
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return 'success';
+          }),
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return 'success';
+          }),
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return 'success';
+          }),
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }),
+        ]);
+
+        expect(result).resolves.toStrictEqual([
+          'success',
+          'success',
+          'fallback',
+          'fallback',
+        ]);
+      });
+    });
+
+    describe('retry strategy is the third strategy', () => {
+      test('should apply the retry before the timeout strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            retry: { maxAttempts: 1, delay: 1000 },
+            timeout: 1000,
+          },
+        } as QueryContract;
+        let i = 0;
+
+        const result = await queryInterceptorManager.execute(
+          query,
+          async () => {
+            if (i === 0) {
+              i++;
+              throw new Error('error');
+            }
+
+            return i;
+          }
+        );
+
+        expect(result).toBe(1);
+      });
+
+      test('should apply the retry before the bulkhead strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            retry: { maxAttempts: 1, delay: 1000 },
+            bulkhead: true,
+          },
+        } as QueryContract;
+        let i = 0;
+
+        const result = queryInterceptorManager.execute(query, async () => {
+          if (i === 0) {
+            i++;
+            throw new Error('error');
+          }
+
+          return i;
+        });
+
+        expect(result).resolves.toBe(1);
+      });
+
+      test('should apply the retry before the throttle strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            retry: { maxAttempts: 1, delay: 1000 },
+            throttle: { rate: 2, interval: 1000 },
+          },
+        } as QueryContract;
+        let i = 0;
+
+        const result = queryInterceptorManager.execute(query, async () => {
+          if (i === 0) {
+            i++;
+            throw new Error('error');
+          }
+
+          return i;
+        });
+
+        expect(result).resolves.toBe(1);
+      });
+    });
+
+    describe('timeout strategy is the fourth strategy', () => {
+      test('should apply the timeout before the bulkhead strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            timeout: 1000,
+            bulkhead: true,
+          },
+        } as QueryContract;
+
+        expect(
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          })
+        ).rejects.toThrow(TimeoutException);
+      });
+
+      test('should apply the timeout before the throttle strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            timeout: 1000,
+            throttle: { rate: 2, interval: 1000 },
+          },
+        } as QueryContract;
+
+        expect(
+          queryInterceptorManager.execute(query, async () => {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          })
+        ).rejects.toThrow(TimeoutException);
+      });
+    });
+
+    describe('bulkhead strategy is the fifth strategy', () => {
+      test('should apply the bulkhead before the throttle strategy', async () => {
+        const query = {
+          queryName: 'testQuery',
+          options: {
+            throttle: { rate: 4, interval: 1000 },
+            bulkhead: true,
+          },
+        } as QueryContract;
+        let i = 0;
+
+        const result = queryInterceptorManager.execute(query, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return ++i;
+        });
+
+        const result2 = queryInterceptorManager.execute(query, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return ++i;
+        });
+
+        const result3 = queryInterceptorManager.execute(query, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return ++i;
+        });
+
+        const result4 = queryInterceptorManager.execute(query, async () => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return ++i;
+        });
+
+        expect(result).resolves.toBe(1);
+        expect(result2).resolves.toBe(2);
+        expect(result3).resolves.toBe(3);
+        expect(result4).rejects.toThrowError(BulkheadException);
+      });
+    });
   });
 });

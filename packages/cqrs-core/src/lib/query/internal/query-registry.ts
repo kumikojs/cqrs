@@ -1,16 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { VoidFunction } from '../../internal/types';
 import type { QueryContract } from '../query';
 import type { QueryHandlerContract } from '../query-handler';
 
-export interface QueryRegistryContract<
-  BaseQuery extends QueryContract = QueryContract
-> {
-  register<TQuery extends BaseQuery>(
+export interface QueryRegistryContract {
+  register<TQuery extends QueryContract>(
     queryName: string,
     handler: QueryHandlerContract<TQuery>
   ): VoidFunction;
 
-  resolve(queryName: string): QueryHandlerContract<BaseQuery>;
+  resolve<TQuery extends QueryContract, TResponse>(
+    queryName: string
+  ): QueryHandlerContract<TQuery, TResponse>;
 
   clear(): void;
 }
@@ -21,14 +22,17 @@ export class QueryAlreadyRegisteredException extends Error {
   }
 }
 
-export class QueryNotFoundException extends Error {
+export class QueryNotRegisteredException extends Error {
   constructor(queryName: string) {
     super(`Query handler for "${queryName}" is not registered`);
   }
 }
 
 export class QueryRegistry implements QueryRegistryContract {
-  #handlers: Map<QueryContract['queryName'], QueryHandlerContract>;
+  #handlers: Map<
+    QueryContract['queryName'],
+    QueryHandlerContract<QueryContract, any>
+  >;
 
   constructor() {
     this.#handlers = new Map();
@@ -39,7 +43,7 @@ export class QueryRegistry implements QueryRegistryContract {
     handler: QueryHandlerContract<TQuery>
   ): VoidFunction {
     if (this.#handlers.has(queryName)) {
-      throw new Error(`Query handler for "${queryName}" is already registered`);
+      throw new QueryAlreadyRegisteredException(queryName);
     }
 
     this.#handlers.set(queryName, handler);
@@ -47,10 +51,12 @@ export class QueryRegistry implements QueryRegistryContract {
     return () => this.#handlers.delete(queryName);
   }
 
-  public resolve(queryName: QueryContract['queryName']): QueryHandlerContract {
+  public resolve<TQuery extends QueryContract, TResponse>(
+    queryName: QueryContract['queryName']
+  ): QueryHandlerContract<TQuery, TResponse> {
     const handler = this.#handlers.get(queryName);
     if (!handler) {
-      throw new Error(`Query handler for "${queryName}" is not registered`);
+      throw new QueryNotRegisteredException(queryName);
     }
 
     return handler;
