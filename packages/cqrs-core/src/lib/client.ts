@@ -1,4 +1,5 @@
 import { CommandClient } from './command/command-client';
+import { CommandInterceptorManager } from './command/internal/command-interceptor-manager';
 import { QueryInterceptorManager } from './query/internal/query-interceptor-manager';
 import { QueryClient, QueryClientContract } from './query/query-client';
 import {
@@ -11,14 +12,14 @@ export type ClientOptions = {
 };
 
 export interface ClientContract<TOptions = unknown> {
-  /* command: {
+  command: {
     register: CommandClient<TOptions>['bus']['register'];
     dispatch: CommandClient<TOptions>['execute'];
     interceptors: {
       use: CommandClient<TOptions>['interceptors']['use'];
       tap: CommandClient<TOptions>['interceptors']['tap'];
     };
-  }; */
+  };
 
   query: {
     register: QueryClient<TOptions>['bus']['register'];
@@ -37,25 +38,39 @@ export class Client<TOptions = unknown> implements ClientContract<TOptions> {
   constructor(options: ClientOptions = {}) {
     const bulkhead = new BulkheadStrategy(options.bulkhead);
 
-    this.#commandClient = new CommandClient();
+    this.#commandClient = new CommandClient({
+      interceptorManager: new CommandInterceptorManager({
+        strategies: {
+          bulkhead: {
+            strategy: bulkhead,
+            enabled: options.bulkhead?.enabled,
+          },
+        },
+      }),
+    });
+
     this.#queryClient = new QueryClient({
       interceptorManager: new QueryInterceptorManager({
         strategies: {
           bulkhead: {
             strategy: bulkhead,
+            enabled: options.bulkhead?.enabled,
           },
         },
       }),
     });
   }
 
-  /*   get command() {
+  get command() {
     return {
-      bind: this.#commandClient.commandBus.bind,
-      dispatch: this.#commandClient.commandBus.execute,
-      intercept: this.#commandClient.commandBus.interceptors,
+      register: this.#commandClient.bus.register,
+      dispatch: this.#commandClient.execute,
+      interceptors: {
+        use: this.#commandClient.interceptors.use,
+        tap: this.#commandClient.interceptors.tap,
+      },
     };
-  } */
+  }
 
   get query() {
     return {

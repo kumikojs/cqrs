@@ -1,223 +1,77 @@
-import {
-  BulkheadException,
-  BulkheadStrategy,
-} from '../strategy/bulkhead-strategy';
-import { ThrottleException } from '../strategy/throttle-strategy';
-import { TimeoutException } from '../strategy/timeout-strategy';
-import { CommandContract } from './command';
 import { CommandClient } from './command-client';
 
+import type { CommandContract } from './command';
+
 describe('CommandClient', () => {
-  let commandClient: CommandClient;
-
-  beforeEach(() => {
-    commandClient = new CommandClient({
-      bulkheadStrategy: new BulkheadStrategy({
-        maxConcurrent: 2,
-        maxQueue: 2,
-      }),
-    });
-  });
-
-  test('should apply the fallback strategy', async () => {
+  test('should execute a command', async () => {
     const command = {
-      commandName: 'testCommand',
-      payload: 'testPayload',
-      options: { fallback: () => 'fallback' },
+      commandName: 'test',
+      payload: {},
     } as CommandContract;
+    const client = new CommandClient();
 
-    commandClient.commandBus.bind('testCommand').to(async () => {
-      throw new Error('error');
-    });
+    client.bus.register('test', () => Promise.resolve('test'));
 
-    const result = await commandClient.commandBus.execute(command);
+    const result = await client.execute(command);
 
-    expect(result).toBe('fallback');
+    expect(result).toBe('test');
   });
 
-  test('should apply the retry strategy', async () => {
-    let i = 0;
+  test('should execute a command with a custom handler', async () => {
+    const client = new CommandClient();
 
-    commandClient.commandBus.bind('testCommand').to(async () => {
-      if (i === 0) {
-        i++;
-        throw new Error('error');
-      }
+    const result = await client.execute(
+      {
+        commandName: 'test',
+      },
+      () => Promise.resolve('test')
+    );
 
-      return 'retryCommand';
-    });
+    expect(result).toBe('test');
+  });
 
-    const result = await commandClient.commandBus.execute({
-      commandName: 'testCommand',
-      options: {
-        retry: {
-          maxAttempts: 1,
-          delay: 1000,
+  test('should abort execution if signal is aborted', async () => {
+    const client = new CommandClient();
+
+    const controller = new AbortController();
+
+    const result = client.execute(
+      {
+        commandName: 'test',
+        context: {
+          signal: controller.signal,
         },
       },
-    });
-    expect(result).toBe('retryCommand');
+      async ({ context }) => {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        if (context?.signal?.aborted) {
+          throw new Error('aborted');
+        }
+
+        return 'test';
+      }
+    );
+
+    controller.abort();
+
+    await expect(result).rejects.toThrow('aborted');
   });
 
-  test('should apply the timeout strategy', async () => {
-    const command = {
-      commandName: 'testCommand',
-      options: { timeout: '1ms' },
-    } as CommandContract;
+  test('should execute the same command only once', async () => {
+    const client = new CommandClient();
 
-    commandClient.commandBus.bind('testCommand').to(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      return 'testCommand';
-    });
+    const commandName = 'testCommand';
+    const handler = vitest.fn().mockResolvedValue('result');
 
-    const result = commandClient.commandBus.execute(command);
+    client.bus.register(commandName, handler);
 
-    expect(result).rejects.toThrowError(new TimeoutException(1));
-  });
-
-  test('should apply the bulkhead strategy', async () => {
-    const options = { bulkhead: true } as CommandContract['options'];
-
-    const handler = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      return 'testCommand';
-    };
-
-    commandClient.commandBus.bind('testCommand').to(handler);
-    commandClient.commandBus.bind('testCommand2').to(handler);
-    commandClient.commandBus.bind('testCommand3').to(handler);
-    commandClient.commandBus.bind('testCommand4').to(handler);
-    commandClient.commandBus.bind('testCommand5').to(handler);
-
-    const result = Promise.all([
-      commandClient.commandBus.execute({ commandName: 'testCommand', options }),
-      commandClient.commandBus.execute({
-        commandName: 'testCommand2',
-        options,
-      }),
-      commandClient.commandBus.execute({
-        commandName: 'testCommand3',
-        options,
-      }),
-      commandClient.commandBus.execute({
-        commandName: 'testCommand4',
-        options,
-      }),
-      commandClient.commandBus.execute({
-        commandName: 'testCommand5',
-        options,
-      }),
+    await Promise.all([
+      client.execute({ commandName }),
+      client.execute({ commandName }),
+      client.execute({ commandName }),
     ]);
 
-    expect(result).rejects.toThrowError(new BulkheadException(2, 2));
-  });
-
-  test('should apply the throttle strategy', async () => {
-    const command = {
-      commandName: 'testCommand',
-      options: { throttle: { rate: 2, interval: '1000ms' } },
-    } as CommandContract;
-
-    commandClient.commandBus.bind('testCommand').to(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      return 'testCommand';
-    });
-
-    commandClient.commandBus.execute(command);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    commandClient.commandBus.execute(command);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    const result = commandClient.commandBus.execute(command);
-
-    expect(result).rejects.toThrowError(new ThrottleException(2, '1000ms'));
-  });
-
-  describe('compose strategies', () => {
-    test('should apply the retry before the fallback strategy', async () => {
-      const command = {
-        commandName: 'testCommand',
-        options: {
-          retry: { maxAttempts: 2, delay: 100 },
-          fallback: () => 'fallback',
-        },
-      } as CommandContract;
-      let i = 0;
-      const watcher = vitest.fn();
-      const handler = async () => {
-        if (i <= 2) {
-          i++;
-          watcher();
-          throw new Error('error');
-        }
-
-        return 'retryCommand';
-      };
-
-      commandClient.commandBus.bind(command.commandName).to(handler);
-
-      const result = await commandClient.commandBus.execute(command);
-      expect(result).toBe('fallback');
-      expect(watcher).toHaveBeenCalledTimes(3);
-    });
-
-    test('should apply the timeout before the retry strategy', async () => {
-      const command = {
-        commandName: 'testCommand',
-        options: {
-          timeout: '1ms',
-          retry: { maxAttempts: 2, delay: 100 },
-        },
-      } as CommandContract;
-      let i = 0;
-      const watcher = vitest.fn();
-
-      const handler = async () => {
-        if (i < 2) {
-          i++;
-          watcher();
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          return 'testCommand';
-        }
-
-        return 'retryCommand';
-      };
-
-      commandClient.commandBus.bind(command.commandName).to(handler);
-
-      const result = await commandClient.commandBus.execute(command);
-      expect(result).toBe('retryCommand');
-      expect(watcher).toHaveBeenCalledTimes(2);
-    });
-
-    test('should apply timeout->retry->fallback strategy', async () => {
-      const command = {
-        commandName: 'testCommand',
-        options: {
-          timeout: '1ms',
-          retry: { maxAttempts: 2, delay: 100 },
-          fallback: () => 'fallback',
-        },
-      } as CommandContract;
-      let i = 0;
-      const watcher = vitest.fn();
-      const handler = async () => {
-        if (i <= 2) {
-          i++;
-          watcher();
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          throw new Error('error');
-        }
-
-        return 'retryCommand';
-      };
-
-      commandClient.commandBus.bind(command.commandName).to(handler);
-
-      const result = await commandClient.commandBus.execute(command);
-      expect(result).toBe('fallback');
-      expect(watcher).toHaveBeenCalledTimes(3);
-    });
+    expect(handler).toHaveBeenCalledTimes(1);
   });
 });

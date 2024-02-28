@@ -1,16 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { VoidFunction } from '../../internal/types';
-import type { CommandContract, CommandName } from '../command';
+import type { CommandContract } from '../command';
 import type { CommandHandlerContract } from '../command-handler';
 
-export interface CommandRegistryContract<
-  BaseCommand extends CommandContract = CommandContract
-> {
-  register<TCommand extends BaseCommand>(
+export interface CommandRegistryContract {
+  register<TCommand extends CommandContract>(
     commandName: string,
     handler: CommandHandlerContract<TCommand>
   ): VoidFunction;
 
-  resolve(commandName: string): CommandHandlerContract<BaseCommand>;
+  resolve<TCommand extends CommandContract, TResponse>(
+    commandName: string
+  ): CommandHandlerContract<TCommand, TResponse>;
 
   clear(): void;
 }
@@ -28,14 +29,17 @@ export class CommandNotRegisteredException extends Error {
 }
 
 export class CommandRegistry implements CommandRegistryContract {
-  #handlers: Map<CommandName, CommandHandlerContract>;
+  #handlers: Map<
+    CommandContract['commandName'],
+    CommandHandlerContract<CommandContract, any>
+  >;
 
   constructor() {
     this.#handlers = new Map();
   }
 
   public register<TCommand extends CommandContract>(
-    commandName: CommandName,
+    commandName: CommandContract['commandName'],
     handler: CommandHandlerContract<TCommand>
   ): VoidFunction {
     if (this.#handlers.has(commandName)) {
@@ -47,7 +51,9 @@ export class CommandRegistry implements CommandRegistryContract {
     return () => this.#handlers.delete(commandName);
   }
 
-  public resolve(commandName: CommandName): CommandHandlerContract {
+  public resolve<TCommand extends CommandContract, TResponse>(
+    commandName: CommandContract['commandName']
+  ): CommandHandlerContract<TCommand, TResponse> {
     const handler = this.#handlers.get(commandName);
     if (!handler) {
       throw new CommandNotRegisteredException(commandName);

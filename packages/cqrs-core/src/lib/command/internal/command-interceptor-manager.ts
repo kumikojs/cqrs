@@ -1,66 +1,125 @@
+import { CacheManager } from '../../internal/cache/cache-manager';
+import { InterceptorManager } from '../../internal/interceptor/interceptor-manager';
 import {
-  InterceptorManager,
-  type InterceptorManagerContract,
-} from '../../internal/interceptor/interceptor-manager';
-import type { CommandContract } from '../command';
-import type { CommandHandlerContract } from '../command-handler';
-import type { CommandInterceptor } from '../command-interceptor';
+  BulkheadStrategy,
+  type BulkheadOptions,
+} from '../../strategy/bulkhead-strategy';
+import { FallbackStrategy } from '../../strategy/fallback-strategy';
+import { Strategy } from '../../strategy/internal/strategy';
+import { RetryStrategy } from '../../strategy/retry-strategy';
+import { ThrottleStrategy } from '../../strategy/throttle-strategy';
+import { TimeoutStrategy } from '../../strategy/timeout-strategy';
 
-export type SelectThenApplySyntax<TCommand extends CommandContract> = {
-  apply: (interceptor: CommandInterceptor<TCommand>) => void;
+import type { CommandContract } from '../command';
+
+type CommandInterceptorProps = {
+  cache: CacheManager;
+  strategies: {
+    bulkhead: { strategy?: Strategy<BulkheadOptions>; enabled?: boolean };
+  };
 };
 
-export interface CommandInterceptorManagerContract<
-  BaseCommand extends CommandContract = CommandContract
-> {
-  apply(interceptor: CommandInterceptor<BaseCommand>): void;
-
-  select(
-    selector: <TCommand extends BaseCommand>(command: TCommand) => boolean
-  ): SelectThenApplySyntax<BaseCommand>;
-
-  execute<TResponse>(
-    command: BaseCommand,
-    handler: CommandHandlerContract<BaseCommand>['execute']
-  ): Promise<TResponse>;
-}
-
 export class CommandInterceptorManager<
-  BaseCommand extends CommandContract = CommandContract
-> implements CommandInterceptorManagerContract<BaseCommand>
-{
-  #interceptorManager: InterceptorManagerContract<BaseCommand>;
+  BaseCommand extends CommandContract
+> extends InterceptorManager<BaseCommand> {
+  #props: CommandInterceptorProps;
 
-  constructor(
-    interceptorManager: InterceptorManagerContract<BaseCommand> = new InterceptorManager()
-  ) {
-    this.#interceptorManager = interceptorManager;
-  }
+  constructor({ cache, strategies }: Partial<CommandInterceptorProps> = {}) {
+    super();
 
-  select(
-    selector: (command: BaseCommand) => boolean
-  ): SelectThenApplySyntax<BaseCommand> {
-    return {
-      apply: (interceptor: CommandInterceptor<BaseCommand>) => {
-        this.#interceptorManager.use<BaseCommand>(async (command, next) => {
-          if (selector(command)) {
-            return interceptor(command, next);
-          }
-
-          return next?.(command);
-        });
+    this.#props = {
+      cache: cache || new CacheManager(),
+      strategies: {
+        bulkhead: {
+          strategy: strategies?.bulkhead?.strategy ?? new BulkheadStrategy(),
+          enabled: strategies?.bulkhead?.enabled ?? true,
+        },
       },
     };
+    this.#setup();
+
+    this.use = this.use.bind(this);
+    this.tap = this.tap.bind(this);
+    this.execute = this.execute.bind(this);
   }
 
-  apply(interceptor: CommandInterceptor<BaseCommand>): void {
-    this.#interceptorManager.use(interceptor);
+  #setup() {
+    this.#setupFallbackInterceptor();
+    this.#setupRetryInterceptor();
+    this.#setupTimeoutInterceptor();
+
+    if (this.#props.strategies.bulkhead.enabled) {
+      this.#setupBulkheadInterceptor();
+    }
+
+    this.#setupThrottleInterceptor();
   }
 
-  async execute<TResponse>(
-    command: BaseCommand,
-    handler: CommandHandlerContract<BaseCommand>['execute']
-  ): Promise<TResponse> {
-    return this.#interceptorManager.execute(command, handler);
+  #setupFallbackInterceptor() {
+    this.use(async (command, next) => {
+      if (command?.options?.fallback) {
+        const strategy = new FallbackStrategy({
+          fallback: command.options.fallback,
+        });
+
+        return strategy.execute(command, async (request) => next?.(request));
+      }
+
+      return next?.(command);
+    });
+  }
+
+  #setupRetryInterceptor() {
+    this.tap(
+      (command) => Boolean(command.options?.retry),
+      async (command, next) => {
+        const strategy = new RetryStrategy(command.options?.retry);
+
+        return strategy.execute(command, async (request) => next?.(request));
+      }
+    );
+  }
+
+  #setupTimeoutInterceptor() {
+    this.tap(
+      (command) => Boolean(command.options?.timeout),
+      async (command, next) => {
+        const strategy = new TimeoutStrategy({
+          timeout: command.options?.timeout,
+        });
+
+        return strategy.execute(command, async (request) => next?.(request));
+      }
+    );
+  }
+
+  #setupBulkheadInterceptor() {
+    this.tap(
+      (command) => Boolean(command.options?.bulkhead),
+      async (command, next) => {
+        return this.#props.strategies.bulkhead.strategy?.execute(
+          command,
+          async (request) => next?.(request)
+        );
+      }
+    );
+  }
+
+  #setupThrottleInterceptor() {
+    this.tap(
+      (command) => Boolean(command.options?.throttle),
+      async (command, next) => {
+        const strategy = new ThrottleStrategy(this.#props.cache.inMemoryCache, {
+          ...command.options?.throttle,
+          serialize: (request) =>
+            JSON.stringify({
+              name: request.commandName,
+              payload: request.payload,
+            }),
+        });
+
+        return strategy.execute(command, async (request) => next?.(request));
+      }
+    );
   }
 }

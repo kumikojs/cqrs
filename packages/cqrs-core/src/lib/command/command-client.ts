@@ -1,91 +1,83 @@
-import { CacheManager } from '../internal/cache/cache-manager';
-import { BulkheadStrategy } from '../strategy/bulkhead-strategy';
-import { ThrottleStrategy } from '../strategy/throttle-strategy';
+import { CommandInterceptorManager } from './internal/command-interceptor-manager';
+import { CommandTaskManager } from './internal/command-task-manager';
+import { CommandBus } from './command-bus';
+
+import type { InterceptorManagerContract } from '../internal/interceptor/interceptor-manager';
+import type { TaskManagerContract } from '../internal/task/task-manager';
 import type { CommandContract } from './command';
-import { CommandBus, type CommandBusContract } from './command-bus';
+import type { CommandBusContract } from './command-bus';
+import type {
+  CommandHandlerContract,
+  CommandHandlerFn,
+} from './command-handler';
 
-const timeoutStrategy = () => import('../strategy/timeout-strategy');
-const retryStrategy = () => import('../strategy/retry-strategy');
-const fallbackStrategy = () => import('../strategy/fallback-strategy');
+export interface CommandClientContract<
+  TOptions = unknown,
+  BaseCommand extends CommandContract = CommandContract<
+    string,
+    unknown,
+    TOptions
+  >
+> {
+  bus: CommandBusContract<BaseCommand>;
+  interceptors: InterceptorManagerContract<BaseCommand>;
+  execute<TCommand extends BaseCommand, TResponse>(
+    command: TCommand,
+    handler?: CommandHandlerFn<TCommand, TResponse>
+  ): Promise<TResponse>;
+}
 
-export class CommandClient<TOptions = unknown> {
-  #commandBus: CommandBusContract<CommandContract<string, unknown, TOptions>>;
-  #bulkheadStrategy: BulkheadStrategy;
-  #cacheManager: CacheManager;
+export class CommandClient<
+  TOptions = unknown,
+  BaseCommand extends CommandContract = CommandContract<
+    string,
+    unknown,
+    TOptions
+  >
+> {
+  #commandBus: CommandBusContract<BaseCommand>;
+  #commandInterceptorManager: InterceptorManagerContract<BaseCommand>;
+  #taskManager: TaskManagerContract<
+    CommandContract,
+    CommandHandlerContract['execute']
+  >;
 
   constructor({
-    commandBus = new CommandBus<CommandContract<string, unknown, TOptions>>(),
-    cacheManager = new CacheManager(),
-    bulkheadStrategy = new BulkheadStrategy(),
+    commandBus = new CommandBus<BaseCommand>(),
+    taskManager = new CommandTaskManager(),
+    interceptorManager = new CommandInterceptorManager<BaseCommand>(),
   } = {}) {
     this.#commandBus = commandBus;
-    this.#cacheManager = cacheManager;
-    this.#bulkheadStrategy = bulkheadStrategy;
+    this.#commandInterceptorManager = interceptorManager;
+    this.#taskManager = taskManager;
 
-    this.#bootstrap();
+    this.execute = this.execute.bind(this);
   }
 
-  get commandBus() {
+  get bus() {
     return this.#commandBus;
   }
 
-  #bootstrap() {
-    this.#commandBus.interceptors.apply(async (command, next) => {
-      if (command?.options?.fallback) {
-        const module = await fallbackStrategy();
-        const strategy = new module.FallbackStrategy({
-          fallback: command.options.fallback,
-        });
+  get interceptors() {
+    return this.#commandInterceptorManager;
+  }
 
-        return strategy.execute(command, async (request) => next?.(request));
-      }
+  execute<TCommand extends BaseCommand, TResponse>(
+    command: TCommand,
+    handler?: CommandHandlerFn<TCommand, TResponse>
+  ): Promise<TResponse> {
+    if (!command.context?.signal) {
+      command.context = {
+        ...command.context,
+        signal: new AbortController().signal,
+      };
+    }
 
-      return next?.(command);
-    });
-
-    this.#commandBus.interceptors
-      .select((command) => Boolean(command.options?.retry))
-      .apply(async (command, next) => {
-        const module = await retryStrategy();
-        const strategy = new module.RetryStrategy(command.options?.retry);
-
-        return strategy.execute(command, async (request) => next?.(request));
-      });
-
-    this.#commandBus.interceptors
-      .select((command) => Boolean(command.options?.timeout))
-      .apply(async (command, next) => {
-        const module = await timeoutStrategy();
-        const strategy = new module.TimeoutStrategy({
-          timeout: command.options?.timeout,
-        });
-
-        return strategy.execute(command, async (request) => next?.(request));
-      });
-
-    this.#commandBus.interceptors
-      .select((command) => Boolean(command.options?.bulkhead))
-      .apply(async (command, next) => {
-        return this.#bulkheadStrategy.execute(command, async (request) =>
-          next?.(request)
-        );
-      });
-
-    this.#commandBus.interceptors
-      .select((command) => Boolean(command.options?.throttle))
-      .apply(async (command, next) => {
-        const strategy = new ThrottleStrategy(
-          this.#cacheManager.inMemoryCache,
-          {
-            ...command.options?.throttle,
-            serialize: (request) =>
-              JSON.stringify({
-                name: request.queryName,
-                payload: request.payload,
-              }),
-          }
-        );
-        return strategy.execute(command, async (request) => next?.(request));
-      });
+    return this.#taskManager.execute(command, () =>
+      this.#commandInterceptorManager.execute<TCommand, TResponse>(
+        command,
+        handler ? handler : this.#commandBus.execute
+      )
+    );
   }
 }

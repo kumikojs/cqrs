@@ -1,4 +1,3 @@
-import type { Nullable } from '../internal/types';
 import type { FallbackOptions } from '../strategy/fallback-strategy';
 import type { RetryOptions } from '../strategy/retry-strategy';
 import type { ThrottleOptions } from '../strategy/throttle-strategy';
@@ -22,7 +21,7 @@ export interface CommandContract<
   TOptions = unknown
 > {
   commandName: TName;
-  payload?: Nullable<TPayload>;
+  payload?: TPayload;
   options?: TOptions & CommandOptions & Record<string, unknown>;
   context?: CommandContext;
 }

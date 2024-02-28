@@ -14,6 +14,8 @@ export type BulkheadOptions = {
    * @default 3
    */
   maxQueue: number;
+
+  enabled?: boolean;
 };
 
 export class BulkheadException extends Error {
