@@ -1,9 +1,15 @@
-import { CommandContract, CommandSubject } from '@stoik/cqrs-core';
+import {
+  ClientContract,
+  CommandContract,
+  CommandSubject,
+} from '@stoik/cqrs-core';
 import { useCallback, useState, useSyncExternalStore } from 'react';
 import { useClient } from './ClientProvider';
 
-export function useCommand<TResponse = void>(command: CommandContract) {
-  const client = useClient();
+function useBaseCommand<TResponse = void>(
+  client: ClientContract,
+  command: CommandContract
+) {
   const [subject] = useState(() => new CommandSubject<TResponse>());
 
   const result = useSyncExternalStore(
@@ -13,7 +19,7 @@ export function useCommand<TResponse = void>(command: CommandContract) {
   );
 
   const execute = useCallback(
-    (payload: Pick<CommandContract, 'payload'>) => {
+    (payload?: Pick<CommandContract, 'payload'>) => {
       subject.execute(
         {
           ...command,
@@ -26,4 +32,16 @@ export function useCommand<TResponse = void>(command: CommandContract) {
   );
 
   return [result, execute] as const;
+}
+
+export function useCommand<TRequest extends CommandContract, TResponse = void>(
+  commandName: TRequest['commandName'],
+  options?: Pick<TRequest, 'options' | 'context'>
+) {
+  const client = useClient();
+
+  return useBaseCommand<TResponse>(client, {
+    commandName,
+    ...options,
+  });
 }
