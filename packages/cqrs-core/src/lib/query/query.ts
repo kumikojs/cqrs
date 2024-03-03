@@ -9,7 +9,6 @@ type QueryContext = {
 };
 
 export type QueryOptions = {
-  bulkhead?: boolean;
   retry?: RetryOptions;
   cache?: Omit<CacheOptions, 'serialize'>;
   timeout?: TimeoutOptions['timeout'];
@@ -18,7 +17,7 @@ export type QueryOptions = {
 };
 
 export interface QueryContract<
-  TName = string,
+  TName extends string = string,
   TPayload = unknown,
   TOptions = unknown
 > {

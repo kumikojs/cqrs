@@ -3,12 +3,7 @@ import type { RetryOptions } from '../strategy/retry-strategy';
 import type { ThrottleOptions } from '../strategy/throttle-strategy';
 import type { TimeoutOptions } from '../strategy/timeout-strategy';
 
-export type CommandContext = {
-  signal?: AbortSignal;
-};
-
 export type CommandOptions = {
-  bulkhead?: boolean;
   retry?: RetryOptions;
   timeout?: TimeoutOptions['timeout'];
   throttle?: Omit<ThrottleOptions, 'serialize'>;
@@ -16,12 +11,11 @@ export type CommandOptions = {
 };
 
 export interface CommandContract<
-  TName = string,
+  TName extends string = string,
   TPayload = unknown,
   TOptions = unknown
 > {
   commandName: TName;
   payload?: TPayload;
   options?: TOptions & CommandOptions & Record<string, unknown>;
-  context?: CommandContext;
 }

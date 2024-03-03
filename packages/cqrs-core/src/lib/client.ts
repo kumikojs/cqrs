@@ -1,15 +1,39 @@
 import { CommandClient } from './command/command-client';
 import { CommandInterceptorManager } from './command/internal/command-interceptor-manager';
+import { EventBus } from './event/event-bus';
 import { QueryInterceptorManager } from './query/internal/query-interceptor-manager';
-import { QueryClient, QueryClientContract } from './query/query-client';
-import {
-  BulkheadOptions,
-  BulkheadStrategy,
-} from './strategy/bulkhead-strategy';
+import { QueryClient } from './query/query-client';
 
-export type ClientOptions = {
-  bulkhead?: BulkheadOptions;
-};
+import type { EventBusContract } from './event/event-bus';
+import type { QueryClientContract } from './query/query-client';
+import type { CacheOptions } from './strategy/cache-strategy';
+import type { RetryOptions } from './strategy/retry-strategy';
+import type { ThrottleOptions } from './strategy/throttle-strategy';
+import type { TimeoutOptions } from './strategy/timeout-strategy';
+
+export type ClientOptions = Readonly<{
+  strategies?: {
+    timeout?: {
+      enabled?: boolean;
+      options?: TimeoutOptions;
+    };
+    fallback?: {
+      enabled?: boolean;
+    };
+    retry?: {
+      enabled?: boolean;
+      options?: RetryOptions;
+    };
+    cache?: {
+      enabled?: boolean;
+      options?: CacheOptions;
+    };
+    throttle?: {
+      enabled?: boolean;
+      options?: ThrottleOptions;
+    };
+  };
+}>;
 
 export interface ClientContract<TOptions = unknown> {
   command: {
@@ -29,22 +53,23 @@ export interface ClientContract<TOptions = unknown> {
       tap: QueryClient<TOptions>['interceptors']['tap'];
     };
   };
+
+  eventBus: EventBusContract;
 }
 
 export class Client<TOptions = unknown> implements ClientContract<TOptions> {
   #commandClient: CommandClient<TOptions>;
   #queryClient: QueryClientContract<TOptions>;
+  #eventBus: EventBusContract;
 
   constructor(options: ClientOptions = {}) {
-    const bulkhead = new BulkheadStrategy(options.bulkhead);
-
     this.#commandClient = new CommandClient({
       interceptorManager: new CommandInterceptorManager({
         strategies: {
-          bulkhead: {
-            strategy: bulkhead,
-            enabled: options.bulkhead?.enabled,
-          },
+          fallback: options?.strategies?.fallback,
+          retry: options?.strategies?.retry,
+          timeout: options?.strategies?.timeout,
+          throttle: options?.strategies?.throttle,
         },
       }),
     });
@@ -52,13 +77,16 @@ export class Client<TOptions = unknown> implements ClientContract<TOptions> {
     this.#queryClient = new QueryClient({
       interceptorManager: new QueryInterceptorManager({
         strategies: {
-          bulkhead: {
-            strategy: bulkhead,
-            enabled: options.bulkhead?.enabled,
-          },
+          cache: options?.strategies?.cache,
+          fallback: options?.strategies?.fallback,
+          retry: options?.strategies?.retry,
+          timeout: options?.strategies?.timeout,
+          throttle: options?.strategies?.throttle,
         },
       }),
     });
+
+    this.#eventBus = new EventBus();
   }
 
   get command() {
@@ -81,5 +109,9 @@ export class Client<TOptions = unknown> implements ClientContract<TOptions> {
         tap: this.#queryClient.interceptors.tap,
       },
     };
+  }
+
+  get eventBus() {
+    return this.#eventBus;
   }
 }

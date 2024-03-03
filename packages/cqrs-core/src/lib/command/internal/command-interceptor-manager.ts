@@ -1,28 +1,40 @@
 import { CacheManager } from '../../internal/cache/cache-manager';
 import { InterceptorManager } from '../../internal/interceptor/interceptor-manager';
-import {
-  BulkheadStrategy,
-  type BulkheadOptions,
-} from '../../strategy/bulkhead-strategy';
 import { FallbackStrategy } from '../../strategy/fallback-strategy';
-import { Strategy } from '../../strategy/internal/strategy';
 import { RetryStrategy } from '../../strategy/retry-strategy';
 import { ThrottleStrategy } from '../../strategy/throttle-strategy';
 import { TimeoutStrategy } from '../../strategy/timeout-strategy';
 
+import type { RetryOptions } from '../../strategy/retry-strategy';
+import type { ThrottleOptions } from '../../strategy/throttle-strategy';
+import type { TimeoutOptions } from '../../strategy/timeout-strategy';
 import type { CommandContract } from '../command';
 
-type CommandInterceptorProps = {
+type CommandInterceptorProps = Readonly<{
   cache: CacheManager;
-  strategies: {
-    bulkhead: { strategy?: Strategy<BulkheadOptions>; enabled?: boolean };
+  strategies?: {
+    fallback?: {
+      enabled?: boolean;
+    };
+    retry?: {
+      enabled?: boolean;
+      options?: RetryOptions;
+    };
+    timeout?: {
+      enabled?: boolean;
+      options?: TimeoutOptions;
+    };
+    throttle?: {
+      enabled?: boolean;
+      options?: ThrottleOptions;
+    };
   };
-};
+}>;
 
 export class CommandInterceptorManager<
   BaseCommand extends CommandContract
 > extends InterceptorManager<BaseCommand> {
-  #props: CommandInterceptorProps;
+  #props: Required<CommandInterceptorProps>;
 
   constructor({ cache, strategies }: Partial<CommandInterceptorProps> = {}) {
     super();
@@ -30,9 +42,20 @@ export class CommandInterceptorManager<
     this.#props = {
       cache: cache || new CacheManager(),
       strategies: {
-        bulkhead: {
-          strategy: strategies?.bulkhead?.strategy ?? new BulkheadStrategy(),
-          enabled: strategies?.bulkhead?.enabled ?? true,
+        fallback: {
+          enabled: strategies?.fallback?.enabled ?? true,
+        },
+        retry: {
+          enabled: strategies?.retry?.enabled ?? true,
+          options: strategies?.retry?.options,
+        },
+        timeout: {
+          enabled: strategies?.timeout?.enabled ?? true,
+          options: strategies?.timeout?.options,
+        },
+        throttle: {
+          enabled: strategies?.throttle?.enabled ?? true,
+          options: strategies?.throttle?.options,
         },
       },
     };
@@ -44,15 +67,21 @@ export class CommandInterceptorManager<
   }
 
   #setup() {
-    this.#setupFallbackInterceptor();
-    this.#setupRetryInterceptor();
-    this.#setupTimeoutInterceptor();
-
-    if (this.#props.strategies.bulkhead.enabled) {
-      this.#setupBulkheadInterceptor();
+    if (this.#props?.strategies?.fallback?.enabled) {
+      this.#setupFallbackInterceptor();
     }
 
-    this.#setupThrottleInterceptor();
+    if (this.#props?.strategies?.retry?.enabled) {
+      this.#setupRetryInterceptor();
+    }
+
+    if (this.#props?.strategies?.timeout?.enabled) {
+      this.#setupTimeoutInterceptor();
+    }
+
+    if (this.#props?.strategies?.throttle?.enabled) {
+      this.#setupThrottleInterceptor();
+    }
   }
 
   #setupFallbackInterceptor() {
@@ -73,7 +102,9 @@ export class CommandInterceptorManager<
     this.tap(
       (command) => Boolean(command.options?.retry),
       async (command, next) => {
-        const strategy = new RetryStrategy(command.options?.retry);
+        const strategy = new RetryStrategy(
+          command.options?.retry ?? this.#props?.strategies?.retry?.options
+        );
 
         return strategy.execute(command, async (request) => next?.(request));
       }
@@ -85,22 +116,12 @@ export class CommandInterceptorManager<
       (command) => Boolean(command.options?.timeout),
       async (command, next) => {
         const strategy = new TimeoutStrategy({
-          timeout: command.options?.timeout,
+          timeout:
+            command.options?.timeout ??
+            this.#props?.strategies?.timeout?.options?.timeout,
         });
 
         return strategy.execute(command, async (request) => next?.(request));
-      }
-    );
-  }
-
-  #setupBulkheadInterceptor() {
-    this.tap(
-      (command) => Boolean(command.options?.bulkhead),
-      async (command, next) => {
-        return this.#props.strategies.bulkhead.strategy?.execute(
-          command,
-          async (request) => next?.(request)
-        );
       }
     );
   }
@@ -110,7 +131,12 @@ export class CommandInterceptorManager<
       (command) => Boolean(command.options?.throttle),
       async (command, next) => {
         const strategy = new ThrottleStrategy(this.#props.cache.inMemoryCache, {
-          ...command.options?.throttle,
+          interval:
+            command.options?.throttle?.interval ??
+            this.#props?.strategies?.throttle?.options?.interval,
+          rate:
+            command.options?.throttle?.rate ??
+            this.#props?.strategies?.throttle?.options?.rate,
           serialize: (request) =>
             JSON.stringify({
               name: request.commandName,

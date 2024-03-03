@@ -62,17 +62,10 @@ export class CommandClient<
     return this.#commandInterceptorManager;
   }
 
-  execute<TCommand extends BaseCommand, TResponse>(
+  execute<TCommand extends BaseCommand, TResponse = void>(
     command: TCommand,
     handler?: CommandHandlerFn<TCommand, TResponse>
   ): Promise<TResponse> {
-    if (!command.context?.signal) {
-      command.context = {
-        ...command.context,
-        signal: new AbortController().signal,
-      };
-    }
-
     return this.#taskManager.execute(command, () =>
       this.#commandInterceptorManager.execute<TCommand, TResponse>(
         command,

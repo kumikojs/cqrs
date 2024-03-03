@@ -1,7 +1,3 @@
-import {
-  BulkheadException,
-  BulkheadStrategy,
-} from '../../strategy/bulkhead-strategy';
 import { ThrottleException } from '../../strategy/throttle-strategy';
 import { TimeoutException } from '../../strategy/timeout-strategy';
 import { CommandInterceptorManager } from './command-interceptor-manager';
@@ -12,16 +8,7 @@ describe('CommandInterceptorManager', () => {
   let commandInterceptorManager: CommandInterceptorManager<CommandContract>;
 
   beforeEach(() => {
-    commandInterceptorManager = new CommandInterceptorManager({
-      strategies: {
-        bulkhead: {
-          strategy: new BulkheadStrategy({
-            maxConcurrent: 1,
-            maxQueue: 2,
-          }),
-        },
-      },
-    });
+    commandInterceptorManager = new CommandInterceptorManager();
   });
 
   test('should successfully execute the command', async () => {
@@ -99,37 +86,6 @@ describe('CommandInterceptorManager', () => {
       ).rejects.toThrow(TimeoutException);
     });
 
-    test('should apply the bulkhead strategy', async () => {
-      const command = {
-        commandName: 'testCommand',
-        options: {
-          bulkhead: true,
-        },
-      } as CommandContract;
-      let i = 0;
-
-      const result = commandInterceptorManager.execute(command, async () => {
-        return ++i;
-      });
-
-      const result2 = commandInterceptorManager.execute(command, async () => {
-        return ++i;
-      });
-
-      const result3 = commandInterceptorManager.execute(command, async () => {
-        return ++i;
-      });
-
-      const result4 = commandInterceptorManager.execute(command, async () => {
-        return ++i;
-      });
-
-      expect(result).resolves.toBe(1);
-      expect(result2).resolves.toBe(2);
-      expect(result3).resolves.toBe(3);
-      expect(result4).rejects.toThrowError(BulkheadException);
-    });
-
     test('should apply the throttle strategy', async () => {
       const command = {
         commandName: 'testCommand',
@@ -200,41 +156,6 @@ describe('CommandInterceptorManager', () => {
         ).resolves.toBe('fallback');
       });
 
-      test('should apply the fallback before the bulkhead strategy', async () => {
-        const command = {
-          commandName: 'testCommand',
-          options: {
-            fallback: () => 'fallback',
-            bulkhead: true,
-          },
-        } as CommandContract;
-
-        const result = Promise.all([
-          commandInterceptorManager.execute(command, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            return 'success';
-          }),
-          commandInterceptorManager.execute(command, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            return 'success';
-          }),
-          commandInterceptorManager.execute(command, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            return 'success';
-          }),
-          commandInterceptorManager.execute(command, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }),
-        ]);
-
-        expect(result).resolves.toStrictEqual([
-          'success',
-          'success',
-          'success',
-          'fallback',
-        ]);
-      });
-
       test('should apply the fallback before the throttle strategy', async () => {
         const command = {
           commandName: 'testCommand',
@@ -297,28 +218,6 @@ describe('CommandInterceptorManager', () => {
         expect(result).toBe(1);
       });
 
-      test('should apply the retry before the bulkhead strategy', async () => {
-        const command = {
-          commandName: 'testCommand',
-          options: {
-            retry: { maxAttempts: 1, delay: 1000 },
-            bulkhead: true,
-          },
-        } as CommandContract;
-        let i = 0;
-
-        const result = commandInterceptorManager.execute(command, async () => {
-          if (i === 0) {
-            i++;
-            throw new Error('error');
-          }
-
-          return i;
-        });
-
-        expect(result).resolves.toBe(1);
-      });
-
       test('should apply the retry before the throttle strategy', async () => {
         const command = {
           commandName: 'testCommand',
@@ -343,22 +242,6 @@ describe('CommandInterceptorManager', () => {
     });
 
     describe('timeout strategy is the third strategy', () => {
-      test('should apply the timeout before the bulkhead strategy', async () => {
-        const command = {
-          commandName: 'testCommand',
-          options: {
-            timeout: 1000,
-            bulkhead: true,
-          },
-        } as CommandContract;
-
-        expect(
-          commandInterceptorManager.execute(command, async () => {
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-          })
-        ).rejects.toThrow(TimeoutException);
-      });
-
       test('should apply the timeout before the throttle strategy', async () => {
         const command = {
           commandName: 'testCommand',
@@ -373,44 +256,6 @@ describe('CommandInterceptorManager', () => {
             await new Promise((resolve) => setTimeout(resolve, 2000));
           })
         ).rejects.toThrow(TimeoutException);
-      });
-    });
-
-    describe('bulkhead strategy is the fourth strategy', () => {
-      test('should apply the bulkhead before the throttle strategy', async () => {
-        const command = {
-          commandName: 'testCommand',
-          options: {
-            throttle: { rate: 4, interval: 1000 },
-            bulkhead: true,
-          },
-        } as CommandContract;
-        let i = 0;
-
-        const result = commandInterceptorManager.execute(command, async () => {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          return ++i;
-        });
-
-        const result2 = commandInterceptorManager.execute(command, async () => {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          return ++i;
-        });
-
-        const result3 = commandInterceptorManager.execute(command, async () => {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          return ++i;
-        });
-
-        const result4 = commandInterceptorManager.execute(command, async () => {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          return ++i;
-        });
-
-        expect(result).resolves.toBe(1);
-        expect(result2).resolves.toBe(2);
-        expect(result3).resolves.toBe(3);
-        expect(result4).rejects.toThrowError(BulkheadException);
       });
     });
   });

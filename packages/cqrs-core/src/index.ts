@@ -16,7 +16,6 @@ export * from './lib/query/query-subject';
 
 export * from './lib/saga/saga';
 
-export * from './lib/strategy/bulkhead-strategy';
 export * from './lib/strategy/cache-strategy';
 export * from './lib/strategy/deduplication-strategy';
 export * from './lib/strategy/retry-strategy';
