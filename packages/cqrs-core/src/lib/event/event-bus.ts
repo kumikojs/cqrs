@@ -16,18 +16,19 @@ type EventHandlerFn<
   TResponse = unknown
 > = (event: T) => Promise<TResponse>;
 
-type BindToSyntax<TEvent extends EventContract> = {
-  to: (
-    handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
-  ) => VoidFunction;
+type Subscription = {
+  off: VoidFunction;
 };
 
 export interface EventBusContract<
   BaseEvent extends EventContract = EventContract
 > {
-  bind<TEvent extends BaseEvent>(eventName: EventName): BindToSyntax<TEvent>;
+  on<TEvent extends BaseEvent>(
+    eventName: EventName,
+    handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
+  ): Subscription;
 
-  handle<TEvent extends EventContract>(event: TEvent): Promise<void>;
+  emit<TEvent extends EventContract>(event: TEvent): Promise<void>;
 }
 
 export class EventBus implements EventBusContract {
@@ -41,23 +42,20 @@ export class EventBus implements EventBusContract {
     this.#eventRegistry = registry;
   }
 
-  bind<TEvent extends EventContract>(
-    eventName: EventName
-  ): BindToSyntax<TEvent> {
-    return {
-      to: (handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>) => {
-        if (typeof handler === 'function') {
-          handler = {
-            handle: handler,
-          };
-        }
+  on<TEvent extends EventContract>(
+    eventName: EventName,
+    handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
+  ) {
+    if (typeof handler === 'function') {
+      handler = {
+        handle: handler,
+      };
+    }
 
-        return this.#eventRegistry.register(eventName, handler);
-      },
-    };
+    return { off: this.#eventRegistry.register(eventName, handler) };
   }
 
-  async handle<TEvent extends EventContract>(event: TEvent): Promise<void> {
+  async emit<TEvent extends EventContract>(event: TEvent): Promise<void> {
     const handler = this.#eventRegistry.resolve(event.eventName);
 
     handler.forEach((h) => {

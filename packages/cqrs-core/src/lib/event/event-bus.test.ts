@@ -28,10 +28,10 @@ describe('EventBus', () => {
         handle: vitest.fn(),
       };
 
-      eventBus.bind(eventName).to(handler);
-      eventBus.bind(eventName).to(handler2);
+      eventBus.on(eventName, handler);
+      eventBus.on(eventName, handler2);
 
-      eventBus.handle(new TestEvent(eventName));
+      eventBus.emit(new TestEvent(eventName));
 
       expect(handler.handle).toHaveBeenCalledTimes(1);
       expect(handler2.handle).toHaveBeenCalledTimes(1);
@@ -41,14 +41,14 @@ describe('EventBus', () => {
       const eventName = 'testEvent';
       const handler = vitest.fn();
 
-      const unregister = eventBus.bind(eventName).to(handler);
+      const subscription = eventBus.on(eventName, handler);
 
-      expect(() => eventBus.handle(new TestEvent(eventName))).not.toThrow();
+      expect(() => eventBus.emit(new TestEvent(eventName))).not.toThrow();
       expect(handler).toHaveBeenCalledTimes(1);
 
-      unregister();
+      subscription.off();
 
-      expect(() => eventBus.handle(new TestEvent(eventName))).rejects.toThrow();
+      expect(() => eventBus.emit(new TestEvent(eventName))).rejects.toThrow();
     });
 
     test('should register a event handler as an object and unregister it', () => {
@@ -57,14 +57,14 @@ describe('EventBus', () => {
         handle: vitest.fn(),
       };
 
-      const unregister = eventBus.bind(eventName).to(handler);
+      const subscription = eventBus.on(eventName, handler);
 
-      expect(() => eventBus.handle(new TestEvent(eventName))).not.toThrow();
+      expect(() => eventBus.emit(new TestEvent(eventName))).not.toThrow();
       expect(handler.handle).toHaveBeenCalledTimes(1);
 
-      unregister();
+      subscription.off();
 
-      expect(() => eventBus.handle(new TestEvent(eventName))).rejects.toThrow();
+      expect(() => eventBus.emit(new TestEvent(eventName))).rejects.toThrow();
     });
 
     test('should register a event handler as a class and unregister it', () => {
@@ -77,13 +77,13 @@ describe('EventBus', () => {
 
       const handler = new TestEventHandler();
 
-      const unregister = eventBus.bind(eventName).to(handler);
+      const subscription = eventBus.on(eventName, handler);
 
-      expect(() => eventBus.handle(new TestEvent(eventName))).not.toThrow();
+      expect(() => eventBus.emit(new TestEvent(eventName))).not.toThrow();
 
-      unregister();
+      subscription.off();
 
-      expect(() => eventBus.handle(new TestEvent(eventName))).rejects.toThrow();
+      expect(() => eventBus.emit(new TestEvent(eventName))).rejects.toThrow();
     });
   });
 
@@ -94,12 +94,12 @@ describe('EventBus', () => {
         handle: vitest.fn(),
       };
 
-      eventBus.bind(eventName).to(handler);
-      eventBus.bind(eventName).to(handler);
-      eventBus.bind(eventName).to(handler);
-      eventBus.bind(eventName).to(handler);
+      eventBus.on(eventName, handler);
+      eventBus.on(eventName, handler);
+      eventBus.on(eventName, handler);
+      eventBus.on(eventName, handler);
 
-      eventBus.handle(new TestEvent(eventName));
+      eventBus.emit(new TestEvent(eventName));
 
       expect(handler.handle).toHaveBeenCalledTimes(4);
     });
@@ -113,10 +113,10 @@ describe('EventBus', () => {
         handle: vitest.fn(),
       };
 
-      eventBus.bind(eventName).to(handler);
-      eventBus.bind(eventName).to(handler2);
+      eventBus.on(eventName, handler);
+      eventBus.on(eventName, handler2);
 
-      eventBus.handle(new TestEvent(eventName));
+      eventBus.emit(new TestEvent(eventName));
 
       expect(handler.handle).toHaveBeenCalledTimes(1);
       expect(handler2.handle).toHaveBeenCalledTimes(1);

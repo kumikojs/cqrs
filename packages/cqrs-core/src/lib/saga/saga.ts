@@ -31,11 +31,9 @@ export class Saga implements SagaContract {
     this.#sagaStepManager = sagaStepManager;
   }
 
-  public runOn(eventName: EventContract['eventName']): void {
-    this.#eventBus.bind(eventName).to({
-      handle: async (event: EventContract) => {
-        await this.run(event);
-      },
+  public runOn(eventName: EventContract['eventName']) {
+    return this.#eventBus.on(eventName, async (event: EventContract) => {
+      await this.run(event);
     });
   }
 
