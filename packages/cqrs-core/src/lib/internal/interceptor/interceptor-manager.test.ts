@@ -23,8 +23,27 @@ describe('InterceptorManager', () => {
   });
 
   test('should execute interceptors in the correct order', async () => {
-    interceptorManager.use(mockInterceptor);
-    interceptorManager.use(mockInterceptor);
+    const mockInterceptor1 = {
+      handle: vitest.fn(async (request, next) => {
+        if (next) {
+          const modifiedContext = { ...request, modified: true };
+          return await next(modifiedContext);
+        }
+        return request;
+      }),
+    };
+    const mockInterceptor2 = {
+      handle: vitest.fn(async (request, next) => {
+        if (next) {
+          const modifiedContext = { ...request, modified2: true };
+          return await next(modifiedContext);
+        }
+        return request;
+      }),
+    };
+
+    interceptorManager.use(mockInterceptor1);
+    interceptorManager.use(mockInterceptor2);
 
     const result = await interceptorManager.execute(
       { initial: true },
@@ -33,7 +52,20 @@ describe('InterceptorManager', () => {
       }
     );
 
-    expect(result).toEqual({ initial: true, modified: true });
+    expect(result).toEqual({
+      initial: true,
+      modified: true,
+      modified2: true,
+    });
+
+    expect(mockInterceptor1.handle).toHaveBeenCalledWith(
+      { initial: true },
+      expect.any(Function)
+    );
+    expect(mockInterceptor2.handle).toHaveBeenCalledWith(
+      { initial: true, modified: true },
+      expect.any(Function)
+    );
   });
 
   test('should handle case with no interceptors', async () => {
