@@ -58,8 +58,8 @@ export interface ClientContract<TOptions = unknown> {
 }
 
 export class Client<TOptions = unknown> implements ClientContract<TOptions> {
-  #commandClient: CommandClient<TOptions>;
-  #queryClient: QueryClientContract<TOptions>;
+  #commandClient: CommandClient<Partial<TOptions>>;
+  #queryClient: QueryClientContract<Partial<TOptions>>;
   #eventBus: EventBusContract;
 
   constructor(options: ClientOptions = {}) {
