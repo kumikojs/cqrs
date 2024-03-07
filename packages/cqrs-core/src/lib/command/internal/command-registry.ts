@@ -5,25 +5,25 @@ import type { CommandHandlerContract } from '../command-handler';
 
 export interface CommandRegistryContract {
   register<TCommand extends CommandContract>(
-    commandName: string,
+    commandName: TCommand['commandName'],
     handler: CommandHandlerContract<TCommand>
   ): VoidFunction;
 
   resolve<TCommand extends CommandContract, TResponse>(
-    commandName: string
+    commandName: TCommand['commandName']
   ): CommandHandlerContract<TCommand, TResponse>;
 
   clear(): void;
 }
 
 export class CommandAlreadyRegisteredException extends Error {
-  constructor(commandName: string) {
+  constructor(commandName: CommandContract['commandName']) {
     super(`Command handler for "${commandName}" is already registered`);
   }
 }
 
 export class CommandNotRegisteredException extends Error {
-  constructor(commandName: string) {
+  constructor(commandName: CommandContract['commandName']) {
     super(`Command handler for "${commandName}" is not registered`);
   }
 }
@@ -39,7 +39,7 @@ export class CommandRegistry implements CommandRegistryContract {
   }
 
   public register<TCommand extends CommandContract>(
-    commandName: CommandContract['commandName'],
+    commandName: TCommand['commandName'],
     handler: CommandHandlerContract<TCommand>
   ): VoidFunction {
     if (this.#handlers.has(commandName)) {
@@ -52,7 +52,7 @@ export class CommandRegistry implements CommandRegistryContract {
   }
 
   public resolve<TCommand extends CommandContract, TResponse>(
-    commandName: CommandContract['commandName']
+    commandName: TCommand['commandName']
   ): CommandHandlerContract<TCommand, TResponse> {
     const handler = this.#handlers.get(commandName);
     if (!handler) {

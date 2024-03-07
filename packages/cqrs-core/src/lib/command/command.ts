@@ -3,12 +3,12 @@ import type { RetryOptions } from '../strategy/retry-strategy';
 import type { ThrottleOptions } from '../strategy/throttle-strategy';
 import type { TimeoutOptions } from '../strategy/timeout-strategy';
 
-export type CommandOptions = {
-  retry?: RetryOptions;
-  timeout?: TimeoutOptions['timeout'];
-  throttle?: Omit<ThrottleOptions, 'serialize'>;
-  fallback?: FallbackOptions['fallback'];
-};
+export type CommandOptions = Partial<{
+  retry: RetryOptions;
+  timeout: TimeoutOptions['timeout'];
+  throttle: Omit<ThrottleOptions, 'serialize'>;
+  fallback: FallbackOptions['fallback'];
+}>;
 
 export interface CommandContract<
   TName extends string = string,
