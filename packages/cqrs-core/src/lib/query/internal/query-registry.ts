@@ -5,12 +5,12 @@ import type { QueryHandlerContract } from '../query-handler';
 
 export interface QueryRegistryContract {
   register<TQuery extends QueryContract>(
-    queryName: string,
+    queryName: TQuery['queryName'],
     handler: QueryHandlerContract<TQuery>
   ): VoidFunction;
 
   resolve<TQuery extends QueryContract, TResponse>(
-    queryName: string
+    queryName: TQuery['queryName']
   ): QueryHandlerContract<TQuery, TResponse>;
 
   clear(): void;
@@ -39,7 +39,7 @@ export class QueryRegistry implements QueryRegistryContract {
   }
 
   public register<TQuery extends QueryContract>(
-    queryName: QueryContract['queryName'],
+    queryName: TQuery['queryName'],
     handler: QueryHandlerContract<TQuery>
   ): VoidFunction {
     if (this.#handlers.has(queryName)) {
@@ -52,7 +52,7 @@ export class QueryRegistry implements QueryRegistryContract {
   }
 
   public resolve<TQuery extends QueryContract, TResponse>(
-    queryName: QueryContract['queryName']
+    queryName: TQuery['queryName']
   ): QueryHandlerContract<TQuery, TResponse> {
     const handler = this.#handlers.get(queryName);
     if (!handler) {

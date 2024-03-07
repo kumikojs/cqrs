@@ -8,13 +8,13 @@ type QueryContext = {
   signal?: AbortSignal;
 };
 
-export type QueryOptions = {
-  retry?: RetryOptions;
-  cache?: Omit<CacheOptions, 'serialize'>;
-  timeout?: TimeoutOptions['timeout'];
-  throttle?: Omit<ThrottleOptions, 'serialize'>;
-  fallback?: FallbackOptions['fallback'];
-};
+export type QueryOptions = Partial<{
+  retry: RetryOptions;
+  cache: Omit<CacheOptions, 'serialize'>;
+  timeout: TimeoutOptions['timeout'];
+  throttle: Omit<ThrottleOptions, 'serialize'>;
+  fallback: FallbackOptions['fallback'];
+}>;
 
 export interface QueryContract<
   TName extends string = string,
