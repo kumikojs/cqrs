@@ -1,9 +1,8 @@
-import type { EventContract, EventName } from './event';
+import { EventRegistry } from './internal/event-registry';
+
+import type { EventContract } from './event';
 import type { EventHandlerContract } from './event-handler';
-import {
-  EventRegistry,
-  type EventRegistryContract,
-} from './internal/event-registry';
+import type { EventRegistryContract } from './internal/event-registry';
 
 /**
  * Export internal Exception classes
@@ -11,10 +10,9 @@ import {
  */
 export { EventNotRegisteredException } from './internal/event-registry';
 
-type EventHandlerFn<
-  T extends EventContract = EventContract,
-  TResponse = unknown
-> = (event: T) => Promise<TResponse>;
+type EventHandlerFn<T extends EventContract = EventContract> = (
+  event: T
+) => Promise<void>;
 
 type Subscription = {
   off: VoidFunction;
@@ -24,7 +22,7 @@ export interface EventBusContract<
   BaseEvent extends EventContract = EventContract
 > {
   on<TEvent extends BaseEvent>(
-    eventName: EventName,
+    eventName: TEvent['eventName'],
     handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
   ): Subscription;
 
@@ -43,7 +41,7 @@ export class EventBus implements EventBusContract {
   }
 
   on<TEvent extends EventContract>(
-    eventName: EventName,
+    eventName: TEvent['eventName'],
     handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
   ) {
     if (typeof handler === 'function') {

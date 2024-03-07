@@ -1,16 +1,18 @@
 import type { VoidFunction } from '../../internal/types';
-import type { EventContract, EventName } from '../event';
+import type { EventContract } from '../event';
 import type { EventHandlerContract } from '../event-handler';
 
 export interface EventRegistryContract<
   BaseEvent extends EventContract = EventContract
 > {
   register<TEvent extends BaseEvent>(
-    eventName: EventName,
+    eventName: string,
     handler: EventHandlerContract<TEvent>
   ): VoidFunction;
 
-  resolve(eventName: EventName): EventHandlerContract[];
+  resolve<TEvent extends BaseEvent>(
+    eventName: TEvent['eventName']
+  ): EventHandlerContract[];
 
   clear(): void;
 }
@@ -22,14 +24,14 @@ export class EventNotRegisteredException extends Error {
 }
 
 export class EventRegistry implements EventRegistryContract {
-  #handlers: Map<EventName, EventHandlerContract[]>;
+  #handlers: Map<EventContract['eventName'], EventHandlerContract[]>;
 
   constructor() {
     this.#handlers = new Map();
   }
 
   public register<TEvent extends EventContract>(
-    eventName: EventName,
+    eventName: TEvent['eventName'],
     handler: EventHandlerContract<TEvent>
   ): VoidFunction {
     if (!this.#handlers.has(eventName)) {
@@ -57,8 +59,11 @@ export class EventRegistry implements EventRegistryContract {
     };
   }
 
-  public resolve(eventName: EventName): EventHandlerContract[] {
+  public resolve<TEvent extends EventContract>(
+    eventName: TEvent['eventName']
+  ): EventHandlerContract[] {
     const handler = this.#handlers.get(eventName);
+
     if (!handler) {
       throw new EventNotRegisteredException(eventName);
     }

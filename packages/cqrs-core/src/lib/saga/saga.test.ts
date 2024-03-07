@@ -25,7 +25,7 @@ describe('Saga', () => {
 
     saga.runOn('event');
 
-    await eventBus.handle(event);
+    await eventBus.emit(event);
 
     expect(step.execute).toHaveBeenCalledWith(event);
   });

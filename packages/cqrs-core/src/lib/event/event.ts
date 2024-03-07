@@ -1,14 +1,9 @@
 import type { Nullable } from '../internal/types';
 
-export type EventName = string;
-
-type EventContext = Record<string, unknown>;
-
-export type EventOptions = Record<string, unknown>;
-
-export interface EventContract<TPayload = unknown> {
-  eventName: EventName;
+export interface EventContract<
+  TName extends string = string,
+  TPayload = unknown
+> {
+  eventName: TName;
   payload?: Nullable<TPayload>;
-  options?: EventOptions;
-  context?: EventContext;
 }

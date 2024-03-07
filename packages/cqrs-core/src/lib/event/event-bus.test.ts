@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { EventBus } from './event-bus';
+
 import type { EventContract } from './event';
-import { EventBus, type EventBusContract } from './event-bus';
+import type { EventBusContract } from './event-bus';
 import type { EventHandlerContract } from './event-handler';
 
 class TestEvent implements EventContract {
@@ -39,12 +41,17 @@ describe('EventBus', () => {
 
     test('should register a event handler as a function and unregister it', () => {
       const eventName = 'testEvent';
-      const handler = vitest.fn();
+      const spy = vitest.spyOn(console, 'log').mockImplementation(() => {
+        return;
+      });
+      const handler = async (event: TestEvent) => {
+        console.log('test');
+      };
 
       const subscription = eventBus.on(eventName, handler);
 
       expect(() => eventBus.emit(new TestEvent(eventName))).not.toThrow();
-      expect(handler).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledTimes(1);
 
       subscription.off();
 
@@ -53,14 +60,20 @@ describe('EventBus', () => {
 
     test('should register a event handler as an object and unregister it', () => {
       const eventName = 'testEvent';
+      const spy = vitest.spyOn(console, 'log').mockImplementation(() => {
+        return;
+      });
+
       const handler = {
-        handle: vitest.fn(),
+        handle: async (event: TestEvent) => {
+          console.log('test');
+        },
       };
 
       const subscription = eventBus.on(eventName, handler);
 
       expect(() => eventBus.emit(new TestEvent(eventName))).not.toThrow();
-      expect(handler.handle).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledTimes(1);
 
       subscription.off();
 
@@ -70,8 +83,8 @@ describe('EventBus', () => {
     test('should register a event handler as a class and unregister it', () => {
       const eventName = 'testEvent';
       class TestEventHandler implements EventHandlerContract<TestEvent> {
-        handle(): Promise<string> {
-          return Promise.resolve('test');
+        async handle(event: TestEvent) {
+          return;
         }
       }
 
