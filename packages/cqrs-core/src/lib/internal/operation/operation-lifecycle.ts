@@ -29,7 +29,7 @@ type FulfilledResult<T> = {
   isIdle: false;
   isFulfilled: true;
   isRejected: false;
-  response: T;
+  response?: T;
 };
 
 type RejectedResult = {
