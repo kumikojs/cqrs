@@ -5,3 +5,7 @@ export interface EventHandlerContract<
 > {
   handle(event: TEvent): Promise<void>;
 }
+
+export type EventHandlerFn<T extends EventContract = EventContract> = (
+  event: T
+) => Promise<void>;

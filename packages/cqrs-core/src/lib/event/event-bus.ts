@@ -1,7 +1,7 @@
 import { EventRegistry } from './internal/event-registry';
 
 import type { EventContract } from './event';
-import type { EventHandlerContract } from './event-handler';
+import type { EventHandlerContract, EventHandlerFn } from './event-handler';
 import type { EventRegistryContract } from './internal/event-registry';
 
 /**
@@ -9,10 +9,6 @@ import type { EventRegistryContract } from './internal/event-registry';
  * because they are used in the public API
  */
 export { EventNotRegisteredException } from './internal/event-registry';
-
-type EventHandlerFn<T extends EventContract = EventContract> = (
-  event: T
-) => Promise<void>;
 
 type Subscription = {
   off: VoidFunction;
