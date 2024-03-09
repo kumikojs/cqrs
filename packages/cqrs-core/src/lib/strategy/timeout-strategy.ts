@@ -1,10 +1,12 @@
-import type { PromiseAnyFunction } from '../internal/types';
-import { type TTL, ttlToMilliseconds } from '../internal/ttl/ttl';
+import { ms } from '../internal/ms/ms';
 import { Strategy } from './internal/strategy';
+
+import type { TimeDuration } from '../internal/ms/ms';
+import type { PromiseAnyFunction } from '../internal/types';
 
 export type TimeoutOptions = {
   /**
-   * The time to live before the task times out.
+   * The time to wait before timing out the task.
    * @default '30s'
    * @see {@link TTL}
    * @type {TTL}
@@ -13,7 +15,7 @@ export type TimeoutOptions = {
    * '30s' // 30 seconds
    * '5m' // 5 minutes
    */
-  timeout: TTL;
+  timeout: TimeDuration;
 };
 
 export class TimeoutException extends Error {
@@ -39,7 +41,7 @@ export class TimeoutStrategy extends Strategy<TimeoutOptions> {
     TTask extends PromiseAnyFunction,
     TResult = ReturnType<TTask>
   >(request: TRequest, task: TTask): Promise<TResult> {
-    const timeout = ttlToMilliseconds(this.options.timeout);
+    const timeout = ms(this.options.timeout);
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {

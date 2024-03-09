@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { ttlToMilliseconds, type TTL } from '../../ttl/ttl';
+import { ms } from '../../ms/ms';
+
+import type { TimeDuration } from '../../ms/ms';
 import type { CacheDriverContract } from '../cache-driver';
 
 interface CacheItem {
@@ -26,8 +28,8 @@ export class InMemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
     return item.value;
   }
 
-  set<TValue>(key: TKey, value: TValue, ttl?: TTL): void {
-    const expiration = ttl ? Date.now() + ttlToMilliseconds(ttl) : Infinity;
+  set<TValue>(key: TKey, value: TValue, ttl?: TimeDuration): void {
+    const expiration = ttl ? Date.now() + ms(ttl) : Infinity;
 
     this.#cache.set(key, { value, expiration });
   }

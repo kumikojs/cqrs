@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CacheDriverContract } from '../internal/cache/cache-driver';
-import type { TTL } from '../internal/ttl/ttl';
+import type { TimeDuration } from '../internal/ms/ms';
 import type { PromiseAnyFunction } from '../internal/types';
 
 import { CacheManager } from '../internal/cache/cache-manager';
@@ -10,9 +10,9 @@ export type CacheOptions = {
   /**
    * The time to live (TTL) for the cache.
    * @default '30s'
-   * @see {@link TTL}
+   * @see {@link TimeDuration}
    */
-  ttl: TTL;
+  ttl: TimeDuration;
 
   /**
    * If true, use localStorage, otherwise use in-memory cache.
@@ -21,6 +21,13 @@ export type CacheOptions = {
    */
   persist: boolean;
 
+  /**
+   * If true, invalidate the cache.
+   * @type {boolean}
+   * @default false
+   */
+  invalidate?: boolean;
+
   serialize?: (request: any) => string;
 };
 
@@ -28,6 +35,7 @@ export class CacheStrategy extends Strategy<CacheOptions> {
   static #defaultOptions: CacheOptions = {
     ttl: '30s',
     persist: false,
+    invalidate: false,
   };
 
   #cache: CacheDriverContract<string>;

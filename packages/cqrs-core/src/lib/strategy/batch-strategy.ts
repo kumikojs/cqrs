@@ -1,12 +1,12 @@
-import { ttlToMilliseconds } from '../internal/ttl/ttl';
 import { Strategy } from './internal/strategy';
+import { ms } from '../internal/ms/ms';
 
-import type { TTL } from '../internal/ttl/ttl';
 import type { PromiseAnyFunction } from '../internal/types';
+import type { TimeDuration } from '../internal/ms/ms';
 
 export type BatchOptions = Readonly<{
   maxBatchSize: number;
-  maxWaitTime: TTL;
+  maxWaitTime: TimeDuration;
 }>;
 
 export class BatchException extends Error {
@@ -49,7 +49,7 @@ export class BatchStrategy extends Strategy<BatchOptions> {
     if (!this.#timer) {
       this.#timer = setTimeout(
         () => this.#flush(),
-        ttlToMilliseconds(this.options.maxWaitTime)
+        ms(this.options.maxWaitTime)
       );
     }
 

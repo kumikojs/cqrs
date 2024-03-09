@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { PromiseAnyFunction } from '../internal/types';
-import { type TTL, ttlToMilliseconds } from '../internal/ttl/ttl';
-
+import { ms } from '../internal/ms/ms';
 import { Strategy } from './internal/strategy';
+
+import type { TimeDuration } from '../internal/ms/ms';
+import type { PromiseAnyFunction } from '../internal/types';
 
 export type RetryOptions = {
   /**
@@ -22,7 +23,7 @@ export type RetryOptions = {
    * '30s' // 30 seconds
    * '5m' // 5 minutes
    */
-  delay: TTL;
+  delay: TimeDuration;
 };
 
 export class RetryStrategy extends Strategy<RetryOptions> {
@@ -55,7 +56,7 @@ export class RetryStrategy extends Strategy<RetryOptions> {
       } catch (error) {
         attempts++;
         lastError = error;
-        await this.delayForBackoff(attempts, ttlToMilliseconds(delay));
+        await this.delayForBackoff(attempts, ms(delay));
       }
     }
 

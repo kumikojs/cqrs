@@ -1,24 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Strategy } from './internal/strategy';
+
 import type { CacheDriverContract } from '../internal/cache/cache-driver';
 import type { PromiseAnyFunction } from '../internal/types';
-import type { TTL } from '../internal/ttl/ttl';
-
-import { Strategy } from './internal/strategy';
+import type { TimeDuration } from '../internal/ms/ms';
 
 export type ThrottleOptions = {
   /**
-   * The time to live (TTL) for the cache.
-   * When the TTL is a number, it is treated as milliseconds.
+   * The interval to throttle the requests.
    * @default '5s'
-   * @see {@link TTL}
-   * @type {TTL}
+   * @see {@link TimeDuration}
+   * @type {TimeDuration}
    * @example
    * '500ms' // 500 milliseconds
    * '30s' // 30 seconds
    * '5m' // 5 minutes
    * 1000 // 1000 milliseconds
    */
-  interval: TTL;
+  interval: TimeDuration;
 
   /**
    * The maximum number of the same request that can be made within the TTL.
@@ -31,15 +30,16 @@ export type ThrottleOptions = {
 };
 
 export class ThrottleException extends Error {
-  public constructor(rate: number, ttl: TTL) {
+  public constructor(rate: number, ttl: TimeDuration) {
     super(
-      `Rate rate exceeded. Limit: ${rate} requests per ${ttl}${ThrottleException.#suffix(
+      `Rate limit exceeded. Limit: ${rate} requests per ${ttl}${ThrottleException.#suffix(
         ttl
       )}`
     );
   }
 
-  static #suffix = (ttl: TTL): string => (typeof ttl === 'number' ? 'ms' : '');
+  static #suffix = (ttl: TimeDuration): string =>
+    typeof ttl === 'number' ? 'ms' : '';
 }
 
 export class ThrottleStrategy extends Strategy<ThrottleOptions> {

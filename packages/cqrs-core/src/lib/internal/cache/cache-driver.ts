@@ -1,4 +1,4 @@
-import type { TTL } from '../ttl/ttl';
+import type { TTL } from '../ms/ms';
 
 export interface CacheDriverContract<TKey> {
   get<TValue>(key: TKey): TValue | undefined;
