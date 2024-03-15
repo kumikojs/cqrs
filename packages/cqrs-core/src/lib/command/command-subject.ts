@@ -1,5 +1,6 @@
 import { OperationLifecycle } from '../internal/operation/operation-lifecycle';
-import { VoidFunction } from '../internal/types';
+
+import type { VoidFunction } from '../internal/types';
 import type { CommandContract } from './command';
 import type { CommandHandlerFn } from './command-handler';
 

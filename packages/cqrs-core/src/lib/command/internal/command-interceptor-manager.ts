@@ -31,9 +31,29 @@ type CommandInterceptorProps = Readonly<{
   };
 }>;
 
+type ExtractedOptions<T extends CommandContract> = T extends {
+  options?: infer O;
+}
+  ? O
+  : never;
+
+type UnionToIntersection<U> = (
+  U extends unknown ? (k: U) => void : never
+) extends (k: infer I) => void
+  ? I
+  : never;
+
+type CombinedPartialOptions<
+  KnownCommands extends Record<string, CommandContract>
+> = Partial<
+  UnionToIntersection<ExtractedOptions<KnownCommands[keyof KnownCommands]>>
+>;
+
 export class CommandInterceptorManager<
-  BaseCommand extends CommandContract
-> extends InterceptorManager<BaseCommand> {
+  KnownCommands extends Record<string, CommandContract>
+> extends InterceptorManager<
+  CommandContract<string, unknown, CombinedPartialOptions<KnownCommands>>
+> {
   #props: Required<CommandInterceptorProps>;
 
   constructor({ cache, strategies }: Partial<CommandInterceptorProps> = {}) {

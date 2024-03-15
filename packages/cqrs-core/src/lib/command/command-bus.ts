@@ -15,37 +15,36 @@ export {
 } from './internal/command-registry';
 
 export interface CommandBusContract<
-  BaseCommand extends CommandContract = CommandContract
+  KnownCommands extends Record<string, CommandContract>
 > {
-  register<TCommand extends BaseCommand>(
+  register<TCommand extends KnownCommands[keyof KnownCommands]>(
     commandName: TCommand['commandName'],
     handler:
       | CommandHandlerContract<TCommand>
       | CommandHandlerContract<TCommand>['execute']
   ): VoidFunction;
 
-  execute<TCommand extends BaseCommand, TResponse = unknown>(
+  execute<
+    TCommand extends KnownCommands[keyof KnownCommands],
+    TResponse = unknown
+  >(
     command: TCommand
   ): Promise<TResponse>;
 }
 
-export class CommandBus<BaseCommand extends CommandContract>
-  implements CommandBusContract<BaseCommand>
+export class CommandBus<KnownCommands extends Record<string, CommandContract>>
+  implements CommandBusContract<KnownCommands>
 {
-  #commandRegistry: CommandRegistryContract;
+  #commandRegistry: CommandRegistryContract<KnownCommands>;
 
-  constructor({
-    registry = new CommandRegistry(),
-  }: {
-    registry?: CommandRegistryContract;
-  } = {}) {
-    this.#commandRegistry = registry;
+  constructor() {
+    this.#commandRegistry = new CommandRegistry<KnownCommands>();
 
     this.register = this.register.bind(this);
     this.execute = this.execute.bind(this);
   }
 
-  register<TCommand extends BaseCommand>(
+  register<TCommand extends KnownCommands[keyof KnownCommands]>(
     commandName: TCommand['commandName'],
     handler:
       | CommandHandlerContract<TCommand>
@@ -60,9 +59,10 @@ export class CommandBus<BaseCommand extends CommandContract>
     return this.#commandRegistry.register(commandName, handler);
   }
 
-  async execute<TCommand extends BaseCommand, TResponse = unknown>(
-    command: TCommand
-  ): Promise<TResponse> {
+  async execute<
+    TCommand extends KnownCommands[keyof KnownCommands],
+    TResponse = unknown
+  >(command: TCommand): Promise<TResponse> {
     return this.#commandRegistry
       .resolve<TCommand, TResponse>(command.commandName)
       .execute(command);

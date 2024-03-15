@@ -1,8 +1,9 @@
+import { CommandBus } from './command-bus';
 import { CommandInterceptorManager } from './internal/command-interceptor-manager';
 import { CommandTaskManager } from './internal/command-task-manager';
-import { CommandBus } from './command-bus';
 
-import type { InterceptorManagerContract } from '../internal/interceptor/interceptor-manager';
+import type { EventBusContract } from '../event/event-bus';
+import type { InvalidatedQueries } from '../internal/events/invalidated-queries';
 import type { TaskManagerContract } from '../internal/task/task-manager';
 import type { CommandContract } from './command';
 import type { CommandBusContract } from './command-bus';
@@ -12,44 +13,52 @@ import type {
 } from './command-handler';
 
 export interface CommandClientContract<
-  TOptions = unknown,
-  BaseCommand extends CommandContract = CommandContract<
-    string,
-    unknown,
-    TOptions
-  >
+  KnownCommands extends Record<string, CommandContract>
 > {
-  bus: CommandBusContract<BaseCommand>;
-  interceptors: InterceptorManagerContract<BaseCommand>;
-  execute<TCommand extends BaseCommand, TResponse>(
+  bus: CommandBusContract<KnownCommands>;
+  interceptors: CommandInterceptorManager<KnownCommands>;
+  execute<TCommand extends KnownCommands[keyof KnownCommands], TResponse>(
     command: TCommand,
     handler?: CommandHandlerFn<TCommand, TResponse>
   ): Promise<TResponse>;
 }
 
 export class CommandClient<
-  TOptions = unknown,
-  BaseCommand extends CommandContract = CommandContract<
-    string,
-    unknown,
-    TOptions
-  >
-> {
-  #commandBus: CommandBusContract<BaseCommand>;
-  #commandInterceptorManager: InterceptorManagerContract<BaseCommand>;
+  KnownCommands extends Record<string, CommandContract>
+> implements CommandClientContract<KnownCommands>
+{
+  #commandBus: CommandBusContract<KnownCommands>;
+  #eventBus: EventBusContract;
+
+  /**
+   * The command interceptor manager
+   * Which is used to apply interceptors to the command execution
+   */
+  #commandInterceptorManager: CommandInterceptorManager<KnownCommands>;
+
   #taskManager: TaskManagerContract<
     CommandContract,
     CommandHandlerContract['execute']
   >;
 
   constructor({
-    commandBus = new CommandBus<BaseCommand>(),
+    commandBus = new CommandBus<KnownCommands>(),
     taskManager = new CommandTaskManager(),
-    interceptorManager = new CommandInterceptorManager<BaseCommand>(),
-  } = {}) {
+    interceptorManager,
+    eventBus,
+  }: {
+    commandBus?: CommandBusContract<KnownCommands>;
+    taskManager?: TaskManagerContract<
+      CommandContract,
+      CommandHandlerContract['execute']
+    >;
+    interceptorManager: CommandInterceptorManager<KnownCommands>;
+    eventBus: EventBusContract;
+  }) {
     this.#commandBus = commandBus;
-    this.#commandInterceptorManager = interceptorManager;
+    this.#eventBus = eventBus;
     this.#taskManager = taskManager;
+    this.#commandInterceptorManager = interceptorManager;
 
     this.execute = this.execute.bind(this);
   }
@@ -62,15 +71,28 @@ export class CommandClient<
     return this.#commandInterceptorManager;
   }
 
-  execute<TCommand extends BaseCommand, TResponse = void>(
+  async execute<
+    TCommand extends KnownCommands[keyof KnownCommands],
+    TResponse = void
+  >(
     command: TCommand,
     handler?: CommandHandlerFn<TCommand, TResponse>
   ): Promise<TResponse> {
-    return this.#taskManager.execute(command, () =>
+    const result = await this.#taskManager.execute<TResponse>(command, () =>
       this.#commandInterceptorManager.execute<TCommand, TResponse>(
         command,
         handler ? handler : this.#commandBus.execute
       )
     );
+
+    if (command.options?.invalidateQueries && command.options?.queries) {
+      this.#eventBus.emit<InvalidatedQueries>({
+        eventName: 'invalidated-queries',
+        payload: {
+          queries: command.options.queries,
+        },
+      });
+    }
+    return result;
   }
 }

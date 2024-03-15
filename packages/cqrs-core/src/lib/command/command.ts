@@ -8,6 +8,8 @@ export type CommandOptions = Partial<{
   timeout: TimeoutOptions['timeout'];
   throttle: Omit<ThrottleOptions, 'serialize'>;
   fallback: FallbackOptions['fallback'];
+  queries: string[];
+  invalidateQueries: boolean;
 }>;
 
 export interface CommandContract<
