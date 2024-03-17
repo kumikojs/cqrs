@@ -3,16 +3,19 @@ import type { EventContract } from '../event';
 import type { EventHandlerContract } from '../event-handler';
 
 export interface EventRegistryContract<
-  BaseEvent extends EventContract = EventContract
+  KnownEvents extends Record<string, EventContract> = Record<
+    string,
+    EventContract
+  >
 > {
-  register<TEvent extends BaseEvent>(
-    eventName: string,
+  register<TEvent extends KnownEvents[keyof KnownEvents]>(
+    eventName: TEvent['eventName'],
     handler: EventHandlerContract<TEvent>
   ): VoidFunction;
 
-  resolve<TEvent extends BaseEvent>(
+  resolve<TEvent extends KnownEvents[keyof KnownEvents]>(
     eventName: TEvent['eventName']
-  ): EventHandlerContract[];
+  ): EventHandlerContract<TEvent>[];
 
   clear(): void;
 }
@@ -23,14 +26,19 @@ export class EventNotRegisteredException extends Error {
   }
 }
 
-export class EventRegistry implements EventRegistryContract {
-  #handlers: Map<EventContract['eventName'], EventHandlerContract[]>;
+export class EventRegistry<KnownEvents extends Record<string, EventContract>>
+  implements EventRegistryContract<KnownEvents>
+{
+  #handlers: Map<
+    keyof KnownEvents,
+    EventHandlerContract<KnownEvents[keyof KnownEvents]>[]
+  >;
 
   constructor() {
     this.#handlers = new Map();
   }
 
-  public register<TEvent extends EventContract>(
+  public register<TEvent extends KnownEvents[keyof KnownEvents]>(
     eventName: TEvent['eventName'],
     handler: EventHandlerContract<TEvent>
   ): VoidFunction {
@@ -59,7 +67,7 @@ export class EventRegistry implements EventRegistryContract {
     };
   }
 
-  public resolve<TEvent extends EventContract>(
+  public resolve<TEvent extends KnownEvents[keyof KnownEvents]>(
     eventName: TEvent['eventName']
   ): EventHandlerContract[] {
     const handler = this.#handlers.get(eventName);

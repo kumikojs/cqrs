@@ -15,28 +15,28 @@ type Subscription = {
 };
 
 export interface EventBusContract<
-  BaseEvent extends EventContract = EventContract
+  KnownEvents extends Record<string, EventContract> = Record<
+    string,
+    EventContract
+  >
 > {
-  on<TEvent extends BaseEvent>(
+  on<TEvent extends KnownEvents[keyof KnownEvents]>(
     eventName: TEvent['eventName'],
     handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
   ): Subscription;
 
-  emit<TEvent extends EventContract>(event: TEvent): Promise<void>;
+  emit<TEvent extends KnownEvents[keyof KnownEvents]>(
+    event: TEvent
+  ): Promise<void>;
 }
 
-export class EventBus implements EventBusContract {
-  #eventRegistry: EventRegistryContract;
+export class EventBus<KnownEvents extends Record<string, EventContract>>
+  implements EventBusContract<KnownEvents>
+{
+  #eventRegistry: EventRegistryContract<KnownEvents> =
+    new EventRegistry<KnownEvents>();
 
-  constructor({
-    registry = new EventRegistry(),
-  }: {
-    registry?: EventRegistryContract;
-  } = {}) {
-    this.#eventRegistry = registry;
-  }
-
-  on<TEvent extends EventContract>(
+  on<TEvent extends KnownEvents[keyof KnownEvents]>(
     eventName: TEvent['eventName'],
     handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
   ) {
@@ -49,7 +49,7 @@ export class EventBus implements EventBusContract {
     return { off: this.#eventRegistry.register(eventName, handler) };
   }
 
-  async emit<TEvent extends EventContract>(event: TEvent): Promise<void> {
+  async emit<TEvent extends KnownEvents[keyof KnownEvents]>(event: TEvent) {
     const handler = this.#eventRegistry.resolve(event.eventName);
 
     handler.forEach((h) => {
