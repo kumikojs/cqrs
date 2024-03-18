@@ -34,12 +34,8 @@ export class QueryBus<BaseQuery extends QueryContract>
 {
   #queryRegistry: QueryRegistryContract;
 
-  constructor({
-    registry = new QueryRegistry(),
-  }: {
-    registry?: QueryRegistryContract;
-  } = {}) {
-    this.#queryRegistry = registry;
+  constructor() {
+    this.#queryRegistry = new QueryRegistry();
 
     this.register = this.register.bind(this);
     this.execute = this.execute.bind(this);
