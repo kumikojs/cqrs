@@ -4,8 +4,10 @@ import { EventBus } from './event/event-bus';
 import { QueryInterceptorManager } from './query/internal/query-interceptor-manager';
 import { QueryClient } from './query/query-client';
 
+import type { CommandContract } from './command/command';
+import type { EventContract } from './event/event';
 import type { EventBusContract } from './event/event-bus';
-import type { QueryClientContract } from './query/query-client';
+import type { QueryContract } from './query/query';
 import type { CacheOptions } from './strategy/cache-strategy';
 import type { RetryOptions } from './strategy/retry-strategy';
 import type { ThrottleOptions } from './strategy/throttle-strategy';
@@ -35,35 +37,60 @@ export type ClientOptions = Readonly<{
   };
 }>;
 
-export interface ClientContract<TOptions = unknown> {
+export interface ClientContract<
+  KnownCommands extends Record<string, CommandContract> = Record<
+    string,
+    CommandContract
+  >,
+  KnownQueries extends Record<string, QueryContract> = Record<
+    string,
+    QueryContract
+  >,
+  KnownEvents extends Record<string, EventContract> = Record<
+    string,
+    EventContract
+  >
+> {
   command: {
-    register: CommandClient<TOptions>['bus']['register'];
-    dispatch: CommandClient<TOptions>['execute'];
-    interceptors: {
-      use: CommandClient<TOptions>['interceptors']['use'];
-      tap: CommandClient<TOptions>['interceptors']['tap'];
-    };
+    register: CommandClient<KnownCommands, KnownQueries>['register'];
+    dispatch: CommandClient<KnownCommands, KnownQueries>['execute'];
+    interceptors: CommandClient<KnownCommands, KnownQueries>['interceptors'];
   };
 
   query: {
-    register: QueryClient<TOptions>['bus']['register'];
-    dispatch: QueryClient<TOptions>['execute'];
-    interceptors: {
-      use: QueryClient<TOptions>['interceptors']['use'];
-      tap: QueryClient<TOptions>['interceptors']['tap'];
-    };
+    register: QueryClient<KnownQueries>['register'];
+    dispatch: QueryClient<KnownQueries>['execute'];
+    interceptors: QueryClient<KnownQueries>['interceptors'];
+    manager: QueryClient<KnownQueries>['manager'];
   };
 
-  eventBus: EventBusContract;
+  eventBus: EventBusContract<KnownEvents>;
 }
 
-export class Client<TOptions = unknown> implements ClientContract<TOptions> {
-  #commandClient: CommandClient<Partial<TOptions>>;
-  #queryClient: QueryClientContract<Partial<TOptions>>;
-  #eventBus: EventBusContract;
+export class Client<
+  KnownCommands extends Record<string, CommandContract> = Record<
+    string,
+    CommandContract
+  >,
+  KnownQueries extends Record<string, QueryContract> = Record<
+    string,
+    QueryContract
+  >,
+  KnownEvents extends Record<string, EventContract> = Record<
+    string,
+    EventContract
+  >
+> implements ClientContract<KnownCommands, KnownQueries, KnownEvents>
+{
+  #eventBus: EventBusContract<KnownEvents> = new EventBus<KnownEvents>();
+
+  #commandClient: CommandClient<KnownCommands, KnownQueries>;
+
+  #queryClient: QueryClient<KnownQueries>;
 
   constructor(options: ClientOptions = {}) {
     this.#commandClient = new CommandClient({
+      eventBus: this.#eventBus,
       interceptorManager: new CommandInterceptorManager({
         strategies: {
           fallback: options?.strategies?.fallback,
@@ -75,6 +102,7 @@ export class Client<TOptions = unknown> implements ClientContract<TOptions> {
     });
 
     this.#queryClient = new QueryClient({
+      eventBus: this.#eventBus,
       interceptorManager: new QueryInterceptorManager({
         strategies: {
           cache: options?.strategies?.cache,
@@ -85,29 +113,22 @@ export class Client<TOptions = unknown> implements ClientContract<TOptions> {
         },
       }),
     });
-
-    this.#eventBus = new EventBus();
   }
 
   get command() {
     return {
-      register: this.#commandClient.bus.register,
+      register: this.#commandClient.register,
       dispatch: this.#commandClient.execute,
-      interceptors: {
-        use: this.#commandClient.interceptors.use,
-        tap: this.#commandClient.interceptors.tap,
-      },
+      interceptors: this.#commandClient.interceptors,
     };
   }
 
   get query() {
     return {
-      register: this.#queryClient.bus.register,
+      register: this.#queryClient.register,
       dispatch: this.#queryClient.execute,
-      interceptors: {
-        use: this.#queryClient.interceptors.use,
-        tap: this.#queryClient.interceptors.tap,
-      },
+      interceptors: this.#queryClient.interceptors,
+      manager: this.#queryClient.manager,
     };
   }
 
