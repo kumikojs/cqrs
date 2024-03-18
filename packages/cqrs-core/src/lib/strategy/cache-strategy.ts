@@ -59,6 +59,10 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     const key = `cache_strategy_key::${
       this.options.serialize?.(request) ?? JSON.stringify(request)
     }`;
+    if (this.options.invalidate) {
+      this.#cache.delete(key);
+    }
+
     const cachedValue = await this.#cache.get<TResult>(key);
 
     if (cachedValue !== undefined) {
@@ -66,7 +70,9 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     }
 
     const result = await task(request);
-    await this.#cache.set(key, result, this.options.ttl);
+
+    this.#cache.set(key, result, this.options.ttl);
+
     return result;
   }
 }

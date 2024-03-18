@@ -14,7 +14,7 @@ export interface InterceptorManagerContract<T> {
     interceptor: Interceptor<TRequest>
   ): this;
 
-  execute<TRequest extends T, TResponse>(
+  execute<TRequest, TResponse>(
     request: TRequest,
     handler: Handler<TRequest>
   ): Promise<TResponse>;
@@ -56,7 +56,7 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
     return this;
   }
 
-  async execute<TRequest extends T, TResponse>(
+  async execute<TRequest, TResponse>(
     request: TRequest,
     handler: Handler<TRequest>
   ): Promise<TResponse> {

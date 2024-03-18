@@ -5,6 +5,7 @@ const STATUS = {
   PENDING: 'pending',
   FULFILLED: 'fulfilled',
   REJECTED: 'rejected',
+  INVALIDATED: 'invalidated',
 } as const;
 
 type PendingResult = {
@@ -13,6 +14,7 @@ type PendingResult = {
   isIdle: false;
   isFulfilled: false;
   isRejected: false;
+  isInvalidated: false;
 };
 
 type IdleResult = {
@@ -21,15 +23,16 @@ type IdleResult = {
   isIdle: true;
   isFulfilled: false;
   isRejected: false;
+  isInvalidated: false;
 };
 
-type FulfilledResult<T> = {
+type FulfilledResult = {
   status: 'fulfilled';
   isPending: false;
   isIdle: false;
   isFulfilled: true;
   isRejected: false;
-  response?: T;
+  isInvalidated: false;
 };
 
 type RejectedResult = {
@@ -38,14 +41,31 @@ type RejectedResult = {
   isIdle: false;
   isFulfilled: false;
   isRejected: true;
-  error: Error;
+  isInvalidated: false;
 };
 
-type OperationResult<T> =
-  | PendingResult
-  | IdleResult
-  | FulfilledResult<T>
-  | RejectedResult;
+type InvalidatedResult = {
+  status: 'invalidated';
+  isPending: false;
+  isIdle: false;
+  isFulfilled: false;
+  isRejected: false;
+  isInvalidated: true;
+};
+
+type OperationState<T> = {
+  response?: T;
+  error?: Error;
+};
+
+export type OperationResult<T> = OperationState<T> &
+  (
+    | PendingResult
+    | IdleResult
+    | FulfilledResult
+    | RejectedResult
+    | InvalidatedResult
+  );
 
 export class OperationLifecycle<T> extends Subject<OperationResult<T>> {
   constructor() {
@@ -55,6 +75,7 @@ export class OperationLifecycle<T> extends Subject<OperationResult<T>> {
       isPending: false,
       isFulfilled: false,
       isRejected: false,
+      isInvalidated: false,
     });
   }
 
@@ -63,11 +84,13 @@ export class OperationLifecycle<T> extends Subject<OperationResult<T>> {
     handlerFn: (operation: TOperation) => Promise<TResponse>
   ): Promise<TResponse> {
     this.state = {
+      ...this.state,
       status: STATUS.PENDING,
       isPending: true,
       isIdle: false,
       isFulfilled: false,
       isRejected: false,
+      isInvalidated: false,
     };
 
     try {
@@ -80,6 +103,7 @@ export class OperationLifecycle<T> extends Subject<OperationResult<T>> {
         isIdle: false,
         isFulfilled: true,
         isRejected: false,
+        isInvalidated: false,
       };
 
       return response;
@@ -91,8 +115,21 @@ export class OperationLifecycle<T> extends Subject<OperationResult<T>> {
         isIdle: false,
         isFulfilled: false,
         isRejected: true,
+        isInvalidated: false,
       };
       throw error;
     }
+  }
+
+  invalidate() {
+    this.state = {
+      ...this.state,
+      status: STATUS.INVALIDATED,
+      isPending: false,
+      isIdle: false,
+      isFulfilled: false,
+      isRejected: false,
+      isInvalidated: true,
+    };
   }
 }
