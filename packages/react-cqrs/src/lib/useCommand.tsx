@@ -1,14 +1,18 @@
-import {
-  CommandSubject,
-  type ClientContract,
-  type CommandContract,
-} from '@stoik/cqrs-core';
 import { useCallback, useState, useSyncExternalStore } from 'react';
+
+import { CommandSubject } from '@stoik/cqrs-core';
 import { useClient } from './ClientProvider';
 
-function useBaseCommand<TResponse = void>(
+import type {
+  ClientContract,
+  CommandContract,
+  CommandHandlerContract,
+} from '@stoik/cqrs-core';
+
+export function useBaseCommand<TRequest extends CommandContract, TResponse>(
   client: ClientContract,
-  command: CommandContract
+  command: TRequest,
+  handler?: CommandHandlerContract<TRequest, TResponse>['execute']
 ) {
   const [subject] = useState(() => new CommandSubject<TResponse>());
 
@@ -19,13 +23,14 @@ function useBaseCommand<TResponse = void>(
   );
 
   const execute = useCallback(
-    (payload?: Pick<CommandContract, 'payload'>) => {
+    (payload?: TRequest['payload']) => {
       subject.execute(
         {
+          payload,
           ...command,
-          ...payload,
         },
-        client.command.dispatch
+        (command) =>
+          client.command.dispatch<TRequest, TResponse>(command, handler)
       );
     },
     [subject]
@@ -35,13 +40,10 @@ function useBaseCommand<TResponse = void>(
 }
 
 export function useCommand<TRequest extends CommandContract, TResponse = void>(
-  commandName: TRequest['commandName'],
-  options?: Pick<TRequest, 'options' | 'context'>
+  command: TRequest,
+  handler?: CommandHandlerContract<TRequest, TResponse>['execute']
 ) {
   const client = useClient();
 
-  return useBaseCommand<TResponse>(client, {
-    commandName,
-    ...options,
-  });
+  return useBaseCommand<TRequest, TResponse>(client, command, handler);
 }

@@ -1,19 +1,21 @@
-import {
-  QuerySubject,
-  type ClientContract,
-  type QueryContract,
-  type QueryHandlerContract,
-  type QueryHandlerFn,
-} from '@stoik/cqrs-core';
-import { useCallback, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+
 import { useClient } from './ClientProvider';
 
-function useBaseQuery<TRequest extends QueryContract, TResponse>(
+import type {
+  ClientContract,
+  QueryContract,
+  QueryHandlerContract,
+} from '@stoik/cqrs-core';
+
+export function useBaseQuery<TRequest extends QueryContract, TResponse>(
   client: ClientContract,
   query: TRequest,
-  handler?: QueryHandlerFn<TRequest, TResponse>
+  handler?: QueryHandlerContract<TRequest, TResponse>['execute']
 ) {
-  const [subject] = useState(() => new QuerySubject<TResponse>());
+  const [subject] = useState(() =>
+    client.query.manager.getOrSet<TResponse>(query.queryName)
+  );
 
   const result = useSyncExternalStore(
     useCallback((onStateChange) => subject.subscribe(onStateChange), [subject]),
@@ -22,13 +24,13 @@ function useBaseQuery<TRequest extends QueryContract, TResponse>(
   );
 
   const execute = useCallback(
-    (payload?: Pick<QueryContract, 'payload'>) => {
+    (payload?: TRequest['payload']) => {
       subject.execute(
         {
+          payload,
           ...query,
-          ...payload,
         },
-        (query) => client.query.dispatch<TRequest, TResponse>(query, handler)
+        (query) => client.query.dispatch(query, handler)
       );
     },
     [subject]
