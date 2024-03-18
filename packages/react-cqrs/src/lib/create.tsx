@@ -1,6 +1,6 @@
-import { useBaseEvent } from './useEvent';
-import { useBaseCommand } from './useCommand';
-import { useBaseQuery } from './useQuery';
+import { useBaseEvent } from './useBaseEvent';
+import { useBaseCommand } from './useBaseCommand';
+import { useBaseQuery } from './useBaseQuery';
 import { Client } from '@stoik/cqrs-core';
 
 import type {

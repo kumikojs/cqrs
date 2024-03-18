@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-
-import { useClient } from './ClientProvider';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 
 import type {
   ClientContract,
@@ -37,13 +35,4 @@ export function useBaseQuery<TRequest extends QueryContract, TResponse>(
   );
 
   return [result, execute] as const;
-}
-
-export function useQuery<TRequest extends QueryContract, TResponse>(
-  query: TRequest,
-  handler?: QueryHandlerContract<TRequest, TResponse>['execute']
-) {
-  const client = useClient();
-
-  return useBaseQuery<TRequest, TResponse>(client, query, handler);
 }
