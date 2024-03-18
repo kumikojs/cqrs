@@ -3,15 +3,13 @@ import type { VoidFunction } from '../../internal/types';
 import type { CommandContract } from '../command';
 import type { CommandHandlerContract } from '../command-handler';
 
-export interface CommandRegistryContract<
-  KnownCommands extends Record<string, CommandContract>
-> {
-  register<TCommand extends KnownCommands[keyof KnownCommands]>(
+export interface CommandRegistryContract {
+  register<TCommand extends CommandContract>(
     commandName: TCommand['commandName'],
     handler: CommandHandlerContract<TCommand>
   ): VoidFunction;
 
-  resolve<TCommand extends KnownCommands[keyof KnownCommands], TResponse>(
+  resolve<TCommand extends CommandContract, TResponse>(
     commandName: TCommand['commandName']
   ): CommandHandlerContract<TCommand, TResponse>;
 
@@ -19,50 +17,44 @@ export interface CommandRegistryContract<
 }
 
 export class CommandAlreadyRegisteredException extends Error {
-  constructor(commandName: CommandContract['commandName']) {
+  constructor(commandName: string) {
     super(`Command handler for "${commandName}" is already registered`);
   }
 }
 
 export class CommandNotRegisteredException extends Error {
-  constructor(commandName: CommandContract['commandName']) {
+  constructor(commandName: string) {
     super(`Command handler for "${commandName}" is not registered`);
   }
 }
 
-export class CommandRegistry<
-  KnownCommands extends Record<string, CommandContract>
-> implements CommandRegistryContract<KnownCommands>
-{
+export class CommandRegistry implements CommandRegistryContract {
   #handlers: Map<
-    keyof KnownCommands,
-    CommandHandlerContract<KnownCommands[keyof KnownCommands], any>
+    CommandContract['commandName'],
+    CommandHandlerContract<CommandContract, any>
   >;
 
   constructor() {
     this.#handlers = new Map();
   }
 
-  public register<TCommand extends KnownCommands[keyof KnownCommands]>(
+  public register<TCommand extends CommandContract>(
     commandName: TCommand['commandName'],
     handler: CommandHandlerContract<TCommand>
   ): VoidFunction {
-    if (this.#handlers.has(commandName as keyof KnownCommands)) {
+    if (this.#handlers.has(commandName)) {
       throw new CommandAlreadyRegisteredException(commandName);
     }
 
-    this.#handlers.set(commandName as keyof KnownCommands, handler);
+    this.#handlers.set(commandName, handler);
 
-    return () => this.#handlers.delete(commandName as keyof KnownCommands);
+    return () => this.#handlers.delete(commandName);
   }
 
-  public resolve<
-    TCommand extends KnownCommands[keyof KnownCommands],
-    TResponse
-  >(
+  public resolve<TCommand extends CommandContract, TResponse>(
     commandName: TCommand['commandName']
   ): CommandHandlerContract<TCommand, TResponse> {
-    const handler = this.#handlers.get(commandName as keyof KnownCommands);
+    const handler = this.#handlers.get(commandName);
     if (!handler) {
       throw new CommandNotRegisteredException(commandName);
     }

@@ -15,36 +15,33 @@ export {
 } from './internal/command-registry';
 
 export interface CommandBusContract<
-  KnownCommands extends Record<string, CommandContract>
+  BaseCommand extends CommandContract = CommandContract
 > {
-  register<TCommand extends KnownCommands[keyof KnownCommands]>(
+  register<TCommand extends BaseCommand>(
     commandName: TCommand['commandName'],
     handler:
       | CommandHandlerContract<TCommand>
       | CommandHandlerContract<TCommand>['execute']
   ): VoidFunction;
 
-  execute<
-    TCommand extends KnownCommands[keyof KnownCommands],
-    TResponse = unknown
-  >(
+  execute<TCommand extends BaseCommand, TResponse = unknown>(
     command: TCommand
   ): Promise<TResponse>;
 }
 
-export class CommandBus<KnownCommands extends Record<string, CommandContract>>
-  implements CommandBusContract<KnownCommands>
+export class CommandBus<BaseCommand extends CommandContract>
+  implements CommandBusContract<BaseCommand>
 {
-  #commandRegistry: CommandRegistryContract<KnownCommands>;
+  #commandRegistry: CommandRegistryContract;
 
   constructor() {
-    this.#commandRegistry = new CommandRegistry<KnownCommands>();
+    this.#commandRegistry = new CommandRegistry();
 
     this.register = this.register.bind(this);
     this.execute = this.execute.bind(this);
   }
 
-  register<TCommand extends KnownCommands[keyof KnownCommands]>(
+  register<TCommand extends BaseCommand>(
     commandName: TCommand['commandName'],
     handler:
       | CommandHandlerContract<TCommand>
@@ -59,10 +56,9 @@ export class CommandBus<KnownCommands extends Record<string, CommandContract>>
     return this.#commandRegistry.register(commandName, handler);
   }
 
-  async execute<
-    TCommand extends KnownCommands[keyof KnownCommands],
-    TResponse = unknown
-  >(command: TCommand): Promise<TResponse> {
+  async execute<TCommand extends BaseCommand, TResponse = unknown>(
+    command: TCommand
+  ): Promise<TResponse> {
     return this.#commandRegistry
       .resolve<TCommand, TResponse>(command.commandName)
       .execute(command);
