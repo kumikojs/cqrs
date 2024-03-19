@@ -10,7 +10,7 @@ type HourAndMinuteAndSecond = `${Hour}${Minute}${Second}`;
 type HourAndMinuteAndSecondAndMillisecond =
   `${Hour}${Minute}${Second}${Millisecond}`;
 
-export type TimeDuration =
+export type DurationUnit =
   | Millisecond
   | Second
   | Minute
@@ -52,7 +52,7 @@ const parse = (duration: string): [number, string][] => {
   });
 };
 
-export const ms = (duration: TimeDuration): number => {
+export const ms = (duration: DurationUnit): number => {
   if (typeof duration === 'number') {
     return duration < 0 ? duration * -1 : duration;
   }

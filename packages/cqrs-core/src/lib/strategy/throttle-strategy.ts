@@ -3,21 +3,21 @@ import { Strategy } from './internal/strategy';
 
 import type { CacheDriverContract } from '../internal/cache/cache-driver';
 import type { PromiseAnyFunction } from '../internal/types';
-import type { TimeDuration } from '../internal/ms/ms';
+import type { DurationUnit } from '../internal/ms/ms';
 
 export type ThrottleOptions = {
   /**
    * The interval to throttle the requests.
    * @default '5s'
-   * @see {@link TimeDuration}
-   * @type {TimeDuration}
+   * @see {@link DurationUnit}
+   * @type {DurationUnit}
    * @example
    * '500ms' // 500 milliseconds
    * '30s' // 30 seconds
    * '5m' // 5 minutes
    * 1000 // 1000 milliseconds
    */
-  interval: TimeDuration;
+  interval: DurationUnit;
 
   /**
    * The maximum number of the same request that can be made within the TTL.
@@ -30,7 +30,7 @@ export type ThrottleOptions = {
 };
 
 export class ThrottleException extends Error {
-  public constructor(rate: number, ttl: TimeDuration) {
+  public constructor(rate: number, ttl: DurationUnit) {
     super(
       `Rate limit exceeded. Limit: ${rate} requests per ${ttl}${ThrottleException.#suffix(
         ttl
@@ -38,7 +38,7 @@ export class ThrottleException extends Error {
     );
   }
 
-  static #suffix = (ttl: TimeDuration): string =>
+  static #suffix = (ttl: DurationUnit): string =>
     typeof ttl === 'number' ? 'ms' : '';
 }
 

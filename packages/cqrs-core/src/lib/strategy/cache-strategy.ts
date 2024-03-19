@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { CacheDriverContract } from '../internal/cache/cache-driver';
-import type { TimeDuration } from '../internal/ms/ms';
+import type { DurationUnit } from '../internal/ms/ms';
 import type { PromiseAnyFunction } from '../internal/types';
 
 import { CacheManager } from '../internal/cache/cache-manager';
@@ -10,9 +10,9 @@ export type CacheOptions = {
   /**
    * The time to live (TTL) for the cache.
    * @default '30s'
-   * @see {@link TimeDuration}
+   * @see {@link DurationUnit}
    */
-  ttl: TimeDuration;
+  ttl: DurationUnit;
 
   /**
    * If true, use localStorage, otherwise use in-memory cache.

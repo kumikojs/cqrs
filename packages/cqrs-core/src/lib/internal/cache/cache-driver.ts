@@ -1,7 +1,7 @@
-import type { TTL } from '../ms/ms';
+import type { DurationUnit } from '../ms/ms';
 
 export interface CacheDriverContract<TKey> {
   get<TValue>(key: TKey): TValue | undefined;
-  set<TValue>(key: TKey, value: TValue, ttl?: TTL | number): void;
+  set<TValue>(key: TKey, value: TValue, ttl?: DurationUnit | number): void;
   delete(key: TKey): void;
 }

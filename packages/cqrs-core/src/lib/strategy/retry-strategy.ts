@@ -2,7 +2,7 @@
 import { ms } from '../internal/ms/ms';
 import { Strategy } from './internal/strategy';
 
-import type { TimeDuration } from '../internal/ms/ms';
+import type { DurationUnit } from '../internal/ms/ms';
 import type { PromiseAnyFunction } from '../internal/types';
 
 export type RetryOptions = {
@@ -23,7 +23,7 @@ export type RetryOptions = {
    * '30s' // 30 seconds
    * '5m' // 5 minutes
    */
-  delay: TimeDuration;
+  delay: DurationUnit;
 };
 
 export class RetryStrategy extends Strategy<RetryOptions> {

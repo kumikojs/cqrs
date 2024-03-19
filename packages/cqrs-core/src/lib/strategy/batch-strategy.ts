@@ -2,11 +2,11 @@ import { Strategy } from './internal/strategy';
 import { ms } from '../internal/ms/ms';
 
 import type { PromiseAnyFunction } from '../internal/types';
-import type { TimeDuration } from '../internal/ms/ms';
+import type { DurationUnit } from '../internal/ms/ms';
 
 export type BatchOptions = Readonly<{
   maxBatchSize: number;
-  maxWaitTime: TimeDuration;
+  maxWaitTime: DurationUnit;
 }>;
 
 export class BatchException extends Error {

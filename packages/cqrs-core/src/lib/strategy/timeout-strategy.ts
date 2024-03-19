@@ -1,7 +1,7 @@
 import { ms } from '../internal/ms/ms';
 import { Strategy } from './internal/strategy';
 
-import type { TimeDuration } from '../internal/ms/ms';
+import type { DurationUnit } from '../internal/ms/ms';
 import type { PromiseAnyFunction } from '../internal/types';
 
 export type TimeoutOptions = {
@@ -15,7 +15,7 @@ export type TimeoutOptions = {
    * '30s' // 30 seconds
    * '5m' // 5 minutes
    */
-  timeout: TimeDuration;
+  timeout: DurationUnit;
 };
 
 export class TimeoutException extends Error {

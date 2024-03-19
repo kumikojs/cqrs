@@ -1,6 +1,6 @@
 import { ms } from '../../ms/ms';
 
-import type { TimeDuration } from '../../ms/ms';
+import type { DurationUnit } from '../../ms/ms';
 import type { CacheDriverContract } from '../cache-driver';
 
 export class LocalStorageCacheDriver<TKey extends string>
@@ -46,7 +46,7 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
-  set<TValue>(key: TKey, value: TValue, ttl?: TimeDuration): void {
+  set<TValue>(key: TKey, value: TValue, ttl?: DurationUnit): void {
     try {
       const expiration = ttl ? Date.now() + ms(ttl) : Infinity;
 
