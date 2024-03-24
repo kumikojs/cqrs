@@ -1,18 +1,14 @@
-export type * from './lib/command/command';
-export * from './lib/command/command-bus';
-export * from './lib/command/command-client';
-export type * from './lib/command/command-handler';
-export * from './lib/command/command-subject';
+export * from './lib/command/bus';
+export * from './lib/command/subject';
+export type * from './lib/command/contracts';
+export type { InferredCommands } from './lib/command/types';
 
-export type * from './lib/event/event';
-export * from './lib/event/event-bus';
-export type * from './lib/event/event-handler';
+export * from './lib/event/bus';
+export type * from './lib/event/contracts';
 
-export type * from './lib/query/query';
-export * from './lib/query/query-bus';
-export * from './lib/query/query-client';
-export type * from './lib/query/query-handler';
-export * from './lib/query/query-subject';
+export * from './lib/query/bus';
+export type * from './lib/query/contracts';
+export * from './lib/query/subject';
 
 export * from './lib/saga/saga';
 

@@ -1,5 +1,5 @@
 import type { EventContract } from '../event/event';
-import { EventBus, type EventBusContract } from '../event/event-bus';
+import { EventBus, type EventBusContract } from '../event/bus';
 import { SagaStateMachine } from './internal/saga-state-machine';
 import { SagaStepManager } from './internal/saga-step-manager';
 

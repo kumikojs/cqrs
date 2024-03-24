@@ -3,7 +3,7 @@ import { Strategy } from './internal/strategy';
 
 import type { CacheDriverContract } from '../internal/cache/cache-driver';
 import type { PromiseAnyFunction } from '../internal/types';
-import type { DurationUnit } from '../internal/ms/ms';
+import type { DurationUnit } from '../internal/ms/types';
 
 export type ThrottleOptions = {
   /**

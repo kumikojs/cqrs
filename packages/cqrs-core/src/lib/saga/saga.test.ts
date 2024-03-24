@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { EventBus, type EventBusContract } from '../event/event-bus';
+import { EventBus, type EventBusContract } from '../event/bus';
 import { Saga } from './saga';
 
 describe('Saga', () => {

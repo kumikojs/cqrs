@@ -2,7 +2,7 @@ import { Strategy } from './internal/strategy';
 import { ms } from '../internal/ms/ms';
 
 import type { PromiseAnyFunction } from '../internal/types';
-import type { DurationUnit } from '../internal/ms/ms';
+import type { DurationUnit } from '../internal/ms/types';
 
 export type BatchOptions = Readonly<{
   maxBatchSize: number;

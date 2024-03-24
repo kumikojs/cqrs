@@ -30,12 +30,12 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
   use<TRequest extends T>(
     interceptor: Interceptor<TRequest> | InterceptorContract<TRequest>
   ) {
-    if (this.#isInterceptorContract(interceptor)) {
-      this.#interceptors.push(interceptor);
-    } else {
+    if (typeof interceptor === 'function') {
       this.#interceptors.push({
         handle: interceptor,
       });
+    } else {
+      this.#interceptors.push(interceptor);
     }
 
     return this;
@@ -67,11 +67,5 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
     );
 
     return await composed(request);
-  }
-
-  #isInterceptorContract<TRequest extends T>(
-    interceptor: Interceptor<TRequest> | InterceptorContract<TRequest>
-  ): interceptor is InterceptorContract<TRequest> {
-    return 'handle' in interceptor;
   }
 }

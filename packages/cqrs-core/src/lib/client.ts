@@ -1,41 +1,11 @@
-import { CommandClient } from './command/command-client';
-import { CommandInterceptorManager } from './command/internal/command-interceptor-manager';
-import { EventBus } from './event/event-bus';
-import { QueryInterceptorManager } from './query/internal/query-interceptor-manager';
-import { QueryClient } from './query/query-client';
+import { CommandBus } from './command/bus';
+import { EventBus } from './event/bus';
+import { CacheManager } from './internal/cache/cache-manager';
+import { QueryBus } from './query/bus';
 
-import type { CommandContract } from './command/command';
-import type { EventContract } from './event/event';
-import type { EventBusContract } from './event/event-bus';
-import type { QueryContract } from './query/query';
-import type { CacheOptions } from './strategy/cache-strategy';
-import type { RetryOptions } from './strategy/retry-strategy';
-import type { ThrottleOptions } from './strategy/throttle-strategy';
-import type { TimeoutOptions } from './strategy/timeout-strategy';
-
-export type ClientOptions = Readonly<{
-  strategies?: {
-    timeout?: {
-      enabled?: boolean;
-      options?: TimeoutOptions;
-    };
-    fallback?: {
-      enabled?: boolean;
-    };
-    retry?: {
-      enabled?: boolean;
-      options?: RetryOptions;
-    };
-    cache?: {
-      enabled?: boolean;
-      options?: CacheOptions;
-    };
-    throttle?: {
-      enabled?: boolean;
-      options?: ThrottleOptions;
-    };
-  };
-}>;
+import type { CommandContract } from './command/contracts';
+import type { EventBusContract, EventContract } from './event/contracts';
+import type { QueryContract } from './query/contracts';
 
 export interface ClientContract<
   KnownCommands extends Record<string, CommandContract> = Record<
@@ -52,19 +22,20 @@ export interface ClientContract<
   >
 > {
   command: {
-    register: CommandClient<KnownCommands, KnownQueries>['register'];
-    dispatch: CommandClient<KnownCommands, KnownQueries>['execute'];
-    interceptors: CommandClient<KnownCommands, KnownQueries>['interceptors'];
+    register: CommandBus<KnownCommands, KnownQueries>['register'];
+    dispatch: CommandBus<KnownCommands, KnownQueries>['execute'];
+    interceptors: CommandBus<KnownCommands, KnownQueries>['interceptors'];
   };
 
   query: {
-    register: QueryClient<KnownQueries>['register'];
-    dispatch: QueryClient<KnownQueries>['execute'];
-    interceptors: QueryClient<KnownQueries>['interceptors'];
-    manager: QueryClient<KnownQueries>['manager'];
+    register: QueryBus<KnownQueries>['register'];
+    dispatch: QueryBus<KnownQueries>['execute'];
+    interceptors: QueryBus<KnownQueries>['interceptors'];
   };
 
   eventBus: EventBusContract<KnownEvents>;
+
+  cache: CacheManager;
 }
 
 export class Client<
@@ -84,55 +55,38 @@ export class Client<
 {
   #eventBus: EventBusContract<KnownEvents> = new EventBus<KnownEvents>();
 
-  #commandClient: CommandClient<KnownCommands, KnownQueries>;
+  #commandBus: CommandBus<KnownCommands, KnownQueries>;
 
-  #queryClient: QueryClient<KnownQueries>;
+  #queryBus: QueryBus<KnownQueries>;
 
-  constructor(options: ClientOptions = {}) {
-    this.#commandClient = new CommandClient({
-      eventBus: this.#eventBus,
-      interceptorManager: new CommandInterceptorManager({
-        strategies: {
-          fallback: options?.strategies?.fallback,
-          retry: options?.strategies?.retry,
-          timeout: options?.strategies?.timeout,
-          throttle: options?.strategies?.throttle,
-        },
-      }),
-    });
+  #cacheManager: CacheManager = new CacheManager();
 
-    this.#queryClient = new QueryClient({
-      eventBus: this.#eventBus,
-      interceptorManager: new QueryInterceptorManager({
-        strategies: {
-          cache: options?.strategies?.cache,
-          fallback: options?.strategies?.fallback,
-          retry: options?.strategies?.retry,
-          timeout: options?.strategies?.timeout,
-          throttle: options?.strategies?.throttle,
-        },
-      }),
-    });
+  constructor() {
+    this.#commandBus = new CommandBus(this.#cacheManager);
+    this.#queryBus = new QueryBus(this.#cacheManager);
   }
 
   get command() {
     return {
-      register: this.#commandClient.register,
-      dispatch: this.#commandClient.execute,
-      interceptors: this.#commandClient.interceptors,
+      register: this.#commandBus.register,
+      dispatch: this.#commandBus.execute,
+      interceptors: this.#commandBus.interceptors,
     };
   }
 
   get query() {
     return {
-      register: this.#queryClient.register,
-      dispatch: this.#queryClient.execute,
-      interceptors: this.#queryClient.interceptors,
-      manager: this.#queryClient.manager,
+      register: this.#queryBus.register,
+      dispatch: this.#queryBus.execute,
+      interceptors: this.#queryBus.interceptors,
     };
   }
 
   get eventBus() {
     return this.#eventBus;
+  }
+
+  get cache() {
+    return this.#cacheManager;
   }
 }

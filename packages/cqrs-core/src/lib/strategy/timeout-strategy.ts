@@ -1,7 +1,7 @@
 import { ms } from '../internal/ms/ms';
 import { Strategy } from './internal/strategy';
 
-import type { DurationUnit } from '../internal/ms/ms';
+import type { DurationUnit } from '../internal/ms/types';
 import type { PromiseAnyFunction } from '../internal/types';
 
 export type TimeoutOptions = {

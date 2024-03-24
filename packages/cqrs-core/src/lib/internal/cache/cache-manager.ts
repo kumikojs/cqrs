@@ -17,4 +17,22 @@ export class CacheManager {
   get localStorageCache() {
     return this.#localStorageCache;
   }
+
+  invalidate(key: string) {
+    this.#inMemoryCache.delete(key);
+    this.#localStorageCache.delete(key);
+  }
+
+  onInvalidate(key: string, handler: (key: string) => void) {
+    const memorySubscription = this.#inMemoryCache.onInvalidate(key, handler);
+    const localStorageSubscription = this.#localStorageCache.onInvalidate(
+      key,
+      handler
+    );
+
+    return () => {
+      memorySubscription();
+      localStorageSubscription();
+    };
+  }
 }

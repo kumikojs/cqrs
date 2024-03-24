@@ -1,12 +1,18 @@
+import { MemoryBusDriver } from '../../../bus/drivers/memory_bus';
 import { ms } from '../../ms/ms';
 
-import type { DurationUnit } from '../../ms/ms';
+import type { BusDriver } from '../../../bus/bus_driver';
+import type { DurationUnit } from '../../ms/types';
 import type { CacheDriverContract } from '../cache-driver';
 
 export class LocalStorageCacheDriver<TKey extends string>
   implements CacheDriverContract<TKey>
 {
   #storage: Storage;
+  #emitter: BusDriver<string> = new MemoryBusDriver({
+    maxHandlersPerChannel: Infinity,
+    mode: 'soft',
+  });
 
   constructor() {
     if (!window || !window.localStorage) {
@@ -22,6 +28,14 @@ export class LocalStorageCacheDriver<TKey extends string>
     } else {
       this.#storage = window.localStorage;
     }
+  }
+
+  onInvalidate(key: TKey, handler: (key: TKey) => void) {
+    this.#emitter.subscribe(`invalidate:${key}`, handler);
+
+    return () => {
+      this.#emitter.unsubscribe(`invalidate:${key}`, handler);
+    };
   }
 
   get<TValue>(key: TKey): TValue | undefined {
@@ -64,7 +78,15 @@ export class LocalStorageCacheDriver<TKey extends string>
       this.#storage.removeItem(key.toString());
     } catch (error) {
       console.error('Error while deleting item from LocalStorage:', error);
+    } finally {
+      this.#emitInvalidate(key);
     }
+  }
+
+  // Method to emit cache invalidation events
+  #emitInvalidate(key: TKey) {
+    console.log('Emitting invalidate event for key:', key);
+    this.#emitter.publish(`invalidate:${key}`, key);
   }
 
   #hasExpired = (expiration: number) => Date.now() > expiration;

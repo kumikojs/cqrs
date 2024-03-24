@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { CacheDriverContract } from '../internal/cache/cache-driver';
-import type { DurationUnit } from '../internal/ms/ms';
-import type { PromiseAnyFunction } from '../internal/types';
 
 import { CacheManager } from '../internal/cache/cache-manager';
 import { Strategy } from './internal/strategy';
+
+import type { CacheDriverContract } from '../internal/cache/cache-driver';
+import type { DurationUnit } from '../internal/ms/types';
+import type { PromiseAnyFunction } from '../internal/types';
 
 export type CacheOptions = {
   /**

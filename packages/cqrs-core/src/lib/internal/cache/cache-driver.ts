@@ -1,4 +1,4 @@
-import type { DurationUnit } from '../ms/ms';
+import type { DurationUnit } from '../ms/types';
 
 export interface CacheDriverContract<TKey> {
   get<TValue>(key: TKey): TValue | undefined;
