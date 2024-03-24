@@ -1,9 +1,10 @@
 import { useCallback, useState, useSyncExternalStore } from 'react';
 
-import type {
-  ClientContract,
-  QueryContract,
-  QueryHandlerContract,
+import {
+  QuerySubject,
+  type ClientContract,
+  type QueryContract,
+  type QueryHandlerContract,
 } from '@stoik/cqrs-core';
 
 export function useBaseQuery<TRequest extends QueryContract, TResponse>(
@@ -11,8 +12,8 @@ export function useBaseQuery<TRequest extends QueryContract, TResponse>(
   query: TRequest,
   handler?: QueryHandlerContract<TRequest, TResponse>['execute']
 ) {
-  const [subject] = useState(() =>
-    client.query.manager.getOrSet<TResponse>(query.queryName)
+  const [subject] = useState(
+    () => new QuerySubject<TResponse>(query.queryName, client)
   );
 
   const result = useSyncExternalStore(

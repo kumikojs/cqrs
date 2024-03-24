@@ -3,17 +3,17 @@ import { useEffect } from 'react';
 import type {
   ClientContract,
   EventContract,
-  EventHandlerFn,
+  EventHandlerContract,
 } from '@stoik/cqrs-core';
 
 export const useBaseEvent = <TEvent extends EventContract>(
   client: ClientContract,
   eventName: TEvent['eventName'],
-  handler: EventHandlerFn<TEvent>
+  handler: EventHandlerContract<TEvent>['handle'] | EventHandlerContract<TEvent>
 ) => {
   useEffect(() => {
     const subscription = client.eventBus.on(eventName, handler);
 
-    return subscription.off;
+    return subscription;
   }, [client, eventName, handler]);
 };
