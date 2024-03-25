@@ -1,4 +1,4 @@
-import type { InterceptorManagerContract } from '../internal/interceptor/interceptor-manager';
+import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
 import type { CombinedPartialOptions } from '../types';
 import type { QueryContext, QueryHandlerFn, QueryOptions } from './types';
 

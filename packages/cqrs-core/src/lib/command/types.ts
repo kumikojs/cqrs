@@ -1,9 +1,9 @@
 import type { CommandContract } from './contracts';
 import type { QueryContract } from '../query/contracts';
-import type { FallbackOptions } from '../strategy/fallback-strategy';
-import type { RetryOptions } from '../strategy/retry-strategy';
-import type { ThrottleOptions } from '../strategy/throttle-strategy';
-import type { TimeoutOptions } from '../strategy/timeout-strategy';
+import type { FallbackOptions } from '../resilience/strategies/fallback_strategy';
+import type { RetryOptions } from '../resilience/strategies/retry_strategy';
+import type { ThrottleOptions } from '../resilience/strategies/throttle_strategy';
+import type { TimeoutOptions } from '../resilience/strategies/timeout_strategy';
 
 export type CommandOptions<TQueriesName extends string[] = string[]> = Partial<{
   retry: RetryOptions;

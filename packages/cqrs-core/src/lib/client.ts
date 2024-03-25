@@ -1,7 +1,7 @@
-import { CommandBus } from './command/bus';
-import { EventBus } from './event/bus';
-import { CacheManager } from './internal/cache/cache-manager';
-import { QueryBus } from './query/bus';
+import { CommandBus } from './command/command_bus';
+import { EventBus } from './event/event_bus';
+import { Cache } from './internal/cache/cache';
+import { QueryBus } from './query/query_bus';
 
 import type { CommandContract } from './command/contracts';
 import type { EventBusContract, EventContract } from './event/contracts';
@@ -35,7 +35,7 @@ export interface ClientContract<
 
   eventBus: EventBusContract<KnownEvents>;
 
-  cache: CacheManager;
+  cache: Cache;
 }
 
 export class Client<
@@ -59,11 +59,11 @@ export class Client<
 
   #queryBus: QueryBus<KnownQueries>;
 
-  #cacheManager: CacheManager = new CacheManager();
+  #cache: Cache = new Cache();
 
   constructor() {
-    this.#commandBus = new CommandBus(this.#cacheManager);
-    this.#queryBus = new QueryBus(this.#cacheManager);
+    this.#commandBus = new CommandBus(this.#cache);
+    this.#queryBus = new QueryBus(this.#cache);
   }
 
   get command() {
@@ -87,6 +87,6 @@ export class Client<
   }
 
   get cache() {
-    return this.#cacheManager;
+    return this.#cache;
   }
 }

@@ -1,5 +1,5 @@
-import { SagaStateMachine } from './internal/saga-state-machine';
-import { SagaStepManager } from './internal/saga-step-manager';
+import { StateMachine } from './internal/state_machine';
+import { Stepper } from './internal/stepper';
 
 import type { EventBusContract, EventContract } from '../event/contracts';
 
@@ -14,8 +14,8 @@ interface SagaContract {
 
 export class Saga implements SagaContract {
   #eventBus: EventBusContract;
-  #stateMachine: SagaStateMachine = new SagaStateMachine();
-  #sagaStepManager: SagaStepManager = new SagaStepManager();
+  #stateMachine: StateMachine = new StateMachine();
+  #stepper: Stepper = new Stepper();
 
   constructor(eventBus: EventBusContract) {
     this.#eventBus = eventBus;
@@ -31,24 +31,24 @@ export class Saga implements SagaContract {
     this.#stateMachine.transition({ type: 'run' });
 
     try {
-      await this.#sagaStepManager.run(data);
+      await this.#stepper.run(data);
       this.#stateMachine.transition({ type: 'complete' });
     } catch (error) {
       this.#stateMachine.transition({ type: 'error' });
-      await this.#sagaStepManager.compensate(data);
+      await this.#stepper.compensate(data);
       this.#stateMachine.transition({ type: 'compensate' });
       throw error;
     }
   }
 
   addStep(step: Step) {
-    this.#sagaStepManager.add(step);
+    this.#stepper.add(step);
 
     return this;
   }
 
   addSteps(...steps: Step[]) {
-    this.#sagaStepManager.add(...steps);
+    this.#stepper.add(...steps);
 
     return this;
   }

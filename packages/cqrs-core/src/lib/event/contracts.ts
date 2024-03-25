@@ -1,4 +1,4 @@
-import type { Nullable } from '../internal/types';
+import type { Nullable } from '../types';
 import type { EventHandlerFn } from './types';
 
 export interface EventContract<
