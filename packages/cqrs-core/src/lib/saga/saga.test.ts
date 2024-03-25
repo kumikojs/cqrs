@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { EventBus, type EventBusContract } from '../event/bus';
+import { EventBus } from '../event/bus';
 import { Saga } from './saga';
+
+import type { EventBusContract } from '../event/contracts';
 
 describe('Saga', () => {
   let saga: Saga;
@@ -8,9 +10,7 @@ describe('Saga', () => {
 
   beforeEach(() => {
     eventBus = new EventBus();
-    saga = new Saga({
-      eventBus,
-    });
+    saga = new Saga(eventBus);
   });
 
   test('should run saga when event is received', async () => {

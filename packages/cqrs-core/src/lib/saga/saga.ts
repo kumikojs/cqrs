@@ -1,7 +1,7 @@
-import type { EventContract } from '../event/event';
-import { EventBus, type EventBusContract } from '../event/bus';
 import { SagaStateMachine } from './internal/saga-state-machine';
 import { SagaStepManager } from './internal/saga-step-manager';
+
+import type { EventBusContract, EventContract } from '../event/contracts';
 
 export type Step = {
   execute: <TRequest>(request: TRequest) => Promise<void>;
@@ -14,21 +14,11 @@ interface SagaContract {
 
 export class Saga implements SagaContract {
   #eventBus: EventBusContract;
-  #stateMachine: SagaStateMachine;
-  #sagaStepManager: SagaStepManager;
+  #stateMachine: SagaStateMachine = new SagaStateMachine();
+  #sagaStepManager: SagaStepManager = new SagaStepManager();
 
-  constructor({
-    eventBus = new EventBus(),
-    stateMachine = new SagaStateMachine(),
-    sagaStepManager = new SagaStepManager(),
-  }: {
-    eventBus?: EventBusContract;
-    stateMachine?: SagaStateMachine;
-    sagaStepManager?: SagaStepManager;
-  } = {}) {
+  constructor(eventBus: EventBusContract) {
     this.#eventBus = eventBus;
-    this.#stateMachine = stateMachine;
-    this.#sagaStepManager = sagaStepManager;
   }
 
   public runOn(eventName: EventContract['eventName']) {
