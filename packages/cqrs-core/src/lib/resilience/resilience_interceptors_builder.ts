@@ -6,16 +6,34 @@ import { createResilienceStrategiesBuilder } from './resilience_strategies_build
 
 import type { ResilienceStrategiesBuilder } from './resilience_strategies_builder';
 
+/**
+ * The resilience interceptors builder.
+ */
 export class ResilienceInterceptorsBuilder<
   T extends {
     options?: any;
   }
 > {
+  /**
+   * The resilience strategies builder.
+   */
   #strategyBuilder: ResilienceStrategiesBuilder;
+
+  /**
+   * The interceptor manager.
+   */
   #interceptorManager: InterceptorManager<T>;
+
+  /**
+   * The deduplication strategy.
+   */
   #deduplicationStrategy: ReturnType<
     ResilienceStrategiesBuilder['deduplication']
   >;
+
+  /**
+   * The serializer function used to generate the cache key.
+   */
   #serializer: (request: T) => string;
 
   constructor(
@@ -30,7 +48,12 @@ export class ResilienceInterceptorsBuilder<
     this.#serializer = serialize;
   }
 
-  public addRetryInterceptor() {
+  /**
+   * Add the retry interceptor.
+   *
+   * @returns {this} The builder.
+   */
+  public addRetryInterceptor(): this {
     this.#interceptorManager.tap(
       (command) => Boolean(command.options?.retry),
       async (command, next) => {
@@ -45,7 +68,12 @@ export class ResilienceInterceptorsBuilder<
     return this;
   }
 
-  public addTimeoutInterceptor() {
+  /**
+   * Add the timeout interceptor.
+   *
+   * @returns {this} The builder.
+   */
+  public addTimeoutInterceptor(): this {
     this.#interceptorManager.tap(
       (command) => Boolean(command.options?.timeout),
       async (command, next) => {
@@ -59,7 +87,12 @@ export class ResilienceInterceptorsBuilder<
     return this;
   }
 
-  public addThrottleInterceptor() {
+  /**
+   * Add the throttle interceptor.
+   *
+   * @returns {this} The builder.
+   */
+  public addThrottleInterceptor(): this {
     this.#interceptorManager.tap(
       (command) => Boolean(command.options?.throttle),
       async (command, next) => {
@@ -75,7 +108,12 @@ export class ResilienceInterceptorsBuilder<
     return this;
   }
 
-  public addFallbackInterceptor() {
+  /**
+   * Add the fallback interceptor.
+   *
+   * @returns {this} The builder.
+   */
+  public addFallbackInterceptor(): this {
     this.#interceptorManager.use(async (command, next) => {
       console.log('fallback');
       if (command?.options?.fallback) {
@@ -89,7 +127,12 @@ export class ResilienceInterceptorsBuilder<
     return this;
   }
 
-  public addCacheInterceptor() {
+  /**
+   * Add the cache interceptor.
+   *
+   * @returns {this} The builder.
+   */
+  public addCacheInterceptor(): this {
     this.#interceptorManager.tap(
       (command) => Boolean(command.options?.cache),
       async (command, next) => {
@@ -104,7 +147,12 @@ export class ResilienceInterceptorsBuilder<
     return this;
   }
 
-  public addDeduplicationInterceptor() {
+  /**
+   * Add the deduplication interceptor.
+   *
+   * @returns {this} The builder.
+   */
+  public addDeduplicationInterceptor(): this {
     this.#interceptorManager.use(async (command, next) => {
       console.log('deduplication', this.#serializer(command));
       return this.#deduplicationStrategy.execute(command, async (request) =>
@@ -114,7 +162,12 @@ export class ResilienceInterceptorsBuilder<
     return this;
   }
 
-  public build() {
+  /**
+   * Build the interceptor manager.
+   *
+   * @returns {InterceptorManager<T>} The interceptor manager.
+   */
+  public build(): InterceptorManager<T> {
     return this.#interceptorManager;
   }
 }

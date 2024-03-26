@@ -10,6 +10,11 @@ type HourAndMinuteAndSecond = `${Hour}${Minute}${Second}`;
 type HourAndMinuteAndSecondAndMillisecond =
   `${Hour}${Minute}${Second}${Millisecond}`;
 
+/**
+ * The duration unit type.
+ *
+ * @typedef DurationUnit
+ */
 export type DurationUnit =
   | Millisecond
   | Second

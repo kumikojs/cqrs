@@ -4,11 +4,31 @@ import { ms } from '../../ms/ms';
 import type { BusDriver } from '../../bus/bus_driver';
 import type { DurationUnit } from '../../ms/types';
 import type { CacheDriverContract } from '../cache_driver';
+import type { VoidFunction } from '../../../types';
 
+/**
+ * The LocalStorageCacheDriver is a simple cache driver that uses the LocalStorage API
+ * to store and retrieve values.
+ * It also emits cache invalidation events when a key is invalidated.
+ *
+ * @template TKey - The type of key to use.
+ * @implements CacheDriverContract<TKey> - The cache driver contract.
+ */
 export class LocalStorageCacheDriver<TKey extends string>
   implements CacheDriverContract<TKey>
 {
+  /**
+   * The LocalStorage API.
+   *
+   * @type {Storage}
+   */
   #storage: Storage;
+
+  /**
+   * The event emitter.
+   *
+   * @type {BusDriver<string>}
+   */
   #emitter: BusDriver<string> = new MemoryBusDriver({
     maxHandlersPerChannel: Infinity,
     mode: 'soft',
@@ -30,14 +50,13 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
-  onInvalidate(key: TKey, handler: (key: TKey) => void) {
-    this.#emitter.subscribe(`invalidate:${key}`, handler);
-
-    return () => {
-      this.#emitter.unsubscribe(`invalidate:${key}`, handler);
-    };
-  }
-
+  /**
+   * Get a value from the cache.
+   *
+   * @template TValue - The type of value to get.
+   * @param {TKey} key - The key to get the value for.
+   * @returns {TValue | undefined} The value from the cache, or undefined if not found.
+   */
   get<TValue>(key: TKey): TValue | undefined {
     try {
       const item = this.#storage.getItem(key.toString());
@@ -60,6 +79,14 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
+  /**
+   * Set a value in the cache.
+   *
+   * @template TValue - The type of value to set.
+   * @param {TKey} key - The key to set the value for.
+   * @param {TValue} value - The value to set.
+   * @param {DurationUnit} [ttl] - The time-to-live for the value.
+   */
   set<TValue>(key: TKey, value: TValue, ttl?: DurationUnit): void {
     try {
       const expiration = ttl ? Date.now() + ms(ttl) : Infinity;
@@ -73,6 +100,11 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
+  /**
+   * Delete a key from the cache.
+   *
+   * @param {TKey} key - The key to delete.
+   */
   delete(key: TKey): void {
     try {
       this.#storage.removeItem(key.toString());
@@ -81,14 +113,35 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
+  /**
+   * Invalidate a key in the cache.
+   *
+   * @param {TKey} key - The key to invalidate.
+   */
   invalidate(key: TKey): void {
     this.delete(key);
-    this.#emitInvalidate(key); // Emit cache invalidation event when invalidating
+    this.#emitInvalidate(key);
   }
 
-  // Method to emit cache invalidation events
+  /**
+   * Subscribe to an invalidate event.
+   *
+   * @param {TKey} key - The key to subscribe to.
+   * @param {(key: TKey) => void} handler - The handler to call when the key is invalidated.
+   * @returns {VoidFunction} A function to unsubscribe from the event.
+   */
+  onInvalidate(key: TKey, handler: (key: TKey) => void): VoidFunction {
+    this.#emitter.subscribe(`invalidate:${key}`, handler);
+
+    return () => {
+      this.#emitter.unsubscribe(`invalidate:${key}`, handler);
+    };
+  }
+
+  /**
+   * Emit an invalidate event.
+   */
   #emitInvalidate(key: TKey) {
-    console.log('Emitting invalidate event for key:', key);
     this.#emitter.publish(`invalidate:${key}`, key);
   }
 

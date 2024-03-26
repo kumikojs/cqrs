@@ -44,9 +44,27 @@ type OperationState<T> = {
   error?: Error;
 };
 
+/**
+ * The result of an operation.
+ *
+ * @template T - The type of the operation response.
+ * @property {string} status - The status of the operation.
+ * @property {boolean} isPending - Whether the operation is pending.
+ * @property {boolean} isIdle - Whether the operation is idle.
+ * @property {boolean} isFulfilled - Whether the operation is fulfilled.
+ * @property {boolean} isRejected - Whether the operation is rejected.
+ * @property {T | undefined} response - The response of the operation.
+ * @property {Error | undefined} error - The error of the operation.
+ */
 export type OperationResult<T> = OperationState<T> &
   (PendingResult | IdleResult | FulfilledResult | RejectedResult);
 
+/**
+ * Wraps an operation and provides a reactive interface for it.
+ *
+ * @template T - The type of the operation response.
+ * @extends {Subject<OperationResult<T>>}
+ */
 export class Operation<T> extends Subject<OperationResult<T>> {
   constructor() {
     super({
@@ -58,6 +76,15 @@ export class Operation<T> extends Subject<OperationResult<T>> {
     });
   }
 
+  /**
+   * Executes an operation and updates the state accordingly.
+   *
+   * @template TOperation - The type of the operation.
+   * @template TResponse - The type of the operation response.
+   * @param {TOperation} operation - The operation to execute.
+   * @param {(operation: TOperation) => Promise<TResponse>} handlerFn - The handler function for the operation.
+   * @returns {Promise<TResponse>} The response of the operation.
+   */
   async execute<TOperation = unknown, TResponse extends T = T>(
     operation: TOperation,
     handlerFn: (operation: TOperation) => Promise<TResponse>

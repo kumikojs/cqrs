@@ -1,3 +1,6 @@
+/**
+ * @module command
+ */
 import { Cache } from '../internal/cache/cache';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 
@@ -5,6 +8,12 @@ import type { InterceptorManagerContract } from '../internal/interceptor/contrac
 import type { CombinedPartialOptions } from '../types';
 import type { CommandContract } from './contracts';
 
+/**
+ * Command interceptors class is used to build interceptors for the command bus.
+ *
+ * @template TCommand - The type of command the handler accepts, extending {@link CommandContract}.
+ * @template KnownCommands - The known commands in the system.
+ */
 export class CommandInterceptors<
   TCommand extends CommandContract<
     string,
@@ -13,8 +22,17 @@ export class CommandInterceptors<
   >,
   KnownCommands extends Record<string, CommandContract>
 > {
-  #resilienceInterceptorsBuilder: ResilienceInterceptorsBuilder<TCommand>;
+  /**
+   * The cache instance.
+   */
   #cache: Cache;
+
+  /**
+   * Resilience interceptors builder.
+   *
+   * This builder is used to build resilience interceptors for the command bus.
+   */
+  #resilienceInterceptorsBuilder: ResilienceInterceptorsBuilder<TCommand>;
 
   constructor(cache: Cache) {
     this.#cache = cache;
@@ -28,6 +46,11 @@ export class CommandInterceptors<
       });
   }
 
+  /**
+   * Build interceptors for the command bus.
+   *
+   * @returns The interceptor manager.
+   */
   buildInterceptors(): InterceptorManagerContract<TCommand> {
     const interceptorManager = this.#resilienceInterceptorsBuilder
       .addDeduplicationInterceptor()
@@ -42,6 +65,11 @@ export class CommandInterceptors<
     return interceptorManager;
   }
 
+  /**
+   * Add an interceptor that invalidates queries after the command is executed.
+   *
+   * @param interceptorManager - The interceptor manager.
+   */
   #addInvalidatingQueriesInterceptor(
     interceptorManager: InterceptorManagerContract<TCommand>
   ) {
@@ -52,9 +80,9 @@ export class CommandInterceptors<
 
         const result = await next?.(command);
 
-        invalidatingQueries.map((queryName) => {
-          return this.#cache.invalidate(queryName);
-        });
+        invalidatingQueries.map((queryName) =>
+          this.#cache.invalidate(queryName)
+        );
 
         return result;
       }

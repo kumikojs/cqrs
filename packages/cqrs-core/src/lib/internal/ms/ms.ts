@@ -29,6 +29,12 @@ const parse = (duration: string): [number, string][] => {
   });
 };
 
+/**
+ * Convert a duration string to milliseconds.
+ *
+ * @param {DurationUnit} duration - The duration to convert.
+ * @returns {number} The duration in milliseconds.
+ */
 export const ms = (duration: DurationUnit): number => {
   if (typeof duration === 'number') {
     return duration < 0 ? duration * -1 : duration;

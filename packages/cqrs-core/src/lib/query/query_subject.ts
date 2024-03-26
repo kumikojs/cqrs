@@ -5,13 +5,40 @@ import { Operation } from '../internal/operation/operation';
 import type { VoidFunction } from '../types';
 import type { QueryContract, QueryHandlerContract } from './contracts';
 
+/**
+ * The query subject.
+ *
+ * The query subject is a class that represents a query.
+ * It is used to execute a query and subscribe to its state changes.
+ *
+ * @template TResult The query result type.
+ */
 export class QuerySubject<TResult> {
+  /**
+   * The operation instance used to execute the query.
+   * It's responsible for managing the query execution and state changes.
+   */
   #operation: Operation<TResult>;
+
+  /**
+   * The last operation executed.
+   * This is used to re-execute the query when the cache is invalidated.
+   */
   #lastOperation: {
     query: QueryContract;
     handlerFn: QueryHandlerContract<any, TResult>['execute'];
   } | null = null;
+
+  /**
+   * The client instance.
+   * It's used to interact with the cache.
+   */
   #client: ClientContract;
+
+  /**
+   * The query name.
+   * It's used to subscribe to cache invalidation events.
+   */
   #queryName: string;
 
   constructor(queryName: string, client: ClientContract) {

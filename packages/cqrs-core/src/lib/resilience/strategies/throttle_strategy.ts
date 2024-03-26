@@ -5,9 +5,13 @@ import type { CacheDriverContract } from '../../internal/cache/cache_driver';
 import type { DurationUnit } from '../../internal/ms/types';
 import type { AsyncFunction } from '../../types';
 
+/**
+ * The throttle options.
+ */
 export type ThrottleOptions = {
   /**
    * The interval to throttle the requests.
+   *
    * @default '5s'
    * @see {@link DurationUnit}
    * @type {DurationUnit}
@@ -21,6 +25,7 @@ export type ThrottleOptions = {
 
   /**
    * The maximum number of the same request that can be made within the TTL.
+   *
    * @type {number}
    * @default 5
    */
@@ -29,6 +34,9 @@ export type ThrottleOptions = {
   serialize?: (request: any) => string;
 };
 
+/**
+ * The throttle exception.
+ */
 export class ThrottleException extends Error {
   public constructor(rate: number, ttl: DurationUnit) {
     super(
@@ -38,10 +46,20 @@ export class ThrottleException extends Error {
     );
   }
 
+  /**
+   * Get the suffix for the duration unit.
+   * @param {DurationUnit} ttl - The duration unit.
+   * @returns {string} The suffix.
+   */
   static #suffix = (ttl: DurationUnit): string =>
     typeof ttl === 'number' ? 'ms' : '';
 }
 
+/**
+ * The throttle strategy.
+ * This strategy will throttle the requests.
+ * If the same request is made more than the rate within the interval, an exception will be thrown.
+ */
 export class ThrottleStrategy extends Strategy<ThrottleOptions> {
   static #options: ThrottleOptions = {
     interval: '5s',
@@ -67,6 +85,20 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
     this.#cache = cache;
   }
 
+  /**
+   * Execute the task with throttling.
+   *
+   * If the same request is made more than the rate within the interval,
+   * an exception will be thrown.
+   *
+   * @template TRequest - The type of request.
+   * @template TTask - The type of task.
+   * @template TResult - The type of result.
+   * @param {TRequest} request - The request to execute the task with.
+   * @param {TTask} task - The task to execute.
+   * @returns {Promise<TResult>} The result of the task.
+   * @throws {ThrottleException} Thrown when the rate limit is exceeded.
+   */
   public async execute<
     TRequest,
     TTask extends AsyncFunction,
