@@ -1,8 +1,8 @@
-import { OperationLifecycle } from './operation-lifecycle';
+import { Operation } from './operation';
 
-describe('OperationLifecycle', () => {
+describe('Operation', () => {
   it('should have an initial state', () => {
-    const lifecycle = new OperationLifecycle();
+    const lifecycle = new Operation();
     expect(lifecycle.state).toEqual({
       status: 'idle',
       isIdle: true,
@@ -13,7 +13,7 @@ describe('OperationLifecycle', () => {
   });
 
   it('should execute an operation', async () => {
-    const lifecycle = new OperationLifecycle();
+    const lifecycle = new Operation();
     const operation = 'test';
     const handlerFn = vitest.fn().mockResolvedValue('response');
     const response = await lifecycle.execute(operation, handlerFn);
@@ -30,7 +30,7 @@ describe('OperationLifecycle', () => {
   });
 
   it('should handle an error', async () => {
-    const lifecycle = new OperationLifecycle();
+    const lifecycle = new Operation();
     const operation = 'test';
     const handlerFn = vitest.fn().mockRejectedValue(new Error('test'));
     await expect(lifecycle.execute(operation, handlerFn)).rejects.toThrow(

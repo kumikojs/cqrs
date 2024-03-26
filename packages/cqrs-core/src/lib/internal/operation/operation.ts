@@ -47,7 +47,7 @@ type OperationState<T> = {
 export type OperationResult<T> = OperationState<T> &
   (PendingResult | IdleResult | FulfilledResult | RejectedResult);
 
-export class OperationLifecycle<T> extends Subject<OperationResult<T>> {
+export class Operation<T> extends Subject<OperationResult<T>> {
   constructor() {
     super({
       status: STATUS.IDLE,
