@@ -14,10 +14,8 @@ export class QueryInterceptors<
   KnownQueries extends Record<string, QueryContract>
 > {
   #resilienceInterceptorsBuilder: ResilienceInterceptorsBuilder<TQuery>;
-  #cache: Cache;
 
   constructor(cache: Cache) {
-    this.#cache = cache;
     this.#resilienceInterceptorsBuilder =
       new ResilienceInterceptorsBuilder<TQuery>(cache, {
         serialize: (request) =>

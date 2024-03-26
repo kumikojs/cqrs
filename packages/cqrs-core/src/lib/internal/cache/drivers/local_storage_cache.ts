@@ -78,9 +78,12 @@ export class LocalStorageCacheDriver<TKey extends string>
       this.#storage.removeItem(key.toString());
     } catch (error) {
       console.error('Error while deleting item from LocalStorage:', error);
-    } finally {
-      this.#emitInvalidate(key);
     }
+  }
+
+  invalidate(key: TKey): void {
+    this.delete(key);
+    this.#emitInvalidate(key); // Emit cache invalidation event when invalidating
   }
 
   // Method to emit cache invalidation events

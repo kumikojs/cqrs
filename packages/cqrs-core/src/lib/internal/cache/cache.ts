@@ -19,6 +19,11 @@ export class Cache {
   }
 
   invalidate(key: string) {
+    this.#inMemoryCache.invalidate(key);
+    this.#localStorageCache.invalidate(key);
+  }
+
+  clear(key: string) {
     this.#inMemoryCache.delete(key);
     this.#localStorageCache.delete(key);
   }

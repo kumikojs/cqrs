@@ -1,41 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ClientContract } from '../client';
-import { OperationLifecycle } from '../internal/operation/operation-lifecycle';
+import { Operation } from '../internal/operation/operation';
 
 import type { VoidFunction } from '../types';
-import type { QueryContract } from './contracts';
-import type { QueryHandlerFn } from './types';
+import type { QueryContract, QueryHandlerContract } from './contracts';
 
 export class QuerySubject<TResult> {
-  #operationLifecycle: OperationLifecycle<TResult>;
+  #operation: Operation<TResult>;
   #lastOperation: {
     query: QueryContract;
-    handlerFn: QueryHandlerFn<any, TResult>;
+    handlerFn: QueryHandlerContract<any, TResult>['execute'];
   } | null = null;
   #client: ClientContract;
   #queryName: string;
 
   constructor(queryName: string, client: ClientContract) {
-    this.#operationLifecycle = new OperationLifecycle<TResult>();
+    this.#operation = new Operation<TResult>();
     this.#client = client;
     this.#queryName = queryName;
   }
 
   async execute<TRequest extends QueryContract>(
     query: TRequest,
-    handlerFn: QueryHandlerFn<TRequest, TResult>
+    handlerFn: QueryHandlerContract<TRequest, TResult>['execute']
   ): Promise<TResult> {
     this.#lastOperation = { query, handlerFn };
 
-    return this.#operationLifecycle.execute<TRequest, TResult>(
-      query,
-      handlerFn
-    );
+    return this.#operation.execute<TRequest, TResult>(query, handlerFn);
   }
 
   subscribe(onStateChange: VoidFunction) {
     const subscriptions = [
-      this.#operationLifecycle.subscribe(onStateChange),
+      this.#operation.subscribe(onStateChange),
       this.#client.cache.onInvalidate(this.#queryName, () => {
         if (this.#lastOperation) {
           this.execute(
@@ -60,6 +56,6 @@ export class QuerySubject<TResult> {
   }
 
   get state() {
-    return this.#operationLifecycle.state;
+    return this.#operation.state;
   }
 }

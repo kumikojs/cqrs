@@ -1,5 +1,4 @@
 import type { Nullable } from '../types';
-import type { EventHandlerFn } from './types';
 
 export interface EventContract<
   TName extends string = string,
@@ -23,12 +22,16 @@ export interface EventBusContract<
 > {
   on<TEvent extends KnownEvents[keyof KnownEvents]>(
     eventName: TEvent['eventName'],
-    handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
+    handler:
+      | EventHandlerContract<TEvent>
+      | EventHandlerContract<TEvent>['handle']
   ): VoidFunction;
 
   off<TEvent extends KnownEvents[keyof KnownEvents]>(
     eventName: TEvent['eventName'],
-    handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
+    handler:
+      | EventHandlerContract<TEvent>
+      | EventHandlerContract<TEvent>['handle']
   ): void;
 
   emit<TEvent extends KnownEvents[keyof KnownEvents]>(

@@ -51,7 +51,12 @@ export class MemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
   delete(key: TKey): void {
     console.log('Deleting key:', key);
     this.#cache.delete(key);
-    this.#emitInvalidate(key); // Emit cache invalidation event when deleting
+  }
+
+  invalidate(key: TKey): void {
+    console.log('Invalidating key:', key);
+    this.delete(key);
+    this.#emitInvalidate(key); // Emit cache invalidation event when invalidating
   }
 
   // Method to emit cache invalidation events

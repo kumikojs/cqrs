@@ -6,7 +6,6 @@ import type {
   EventContract,
   EventHandlerContract,
 } from './contracts';
-import type { EventHandlerFn } from './types';
 
 export class EventBus<KnownEvents extends Record<string, EventContract>>
   implements EventBusContract<KnownEvents>
@@ -17,7 +16,9 @@ export class EventBus<KnownEvents extends Record<string, EventContract>>
 
   on<TEvent extends KnownEvents[keyof KnownEvents]>(
     eventName: TEvent['eventName'],
-    handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
+    handler:
+      | EventHandlerContract<TEvent>
+      | EventHandlerContract<TEvent>['handle']
   ) {
     if (typeof handler === 'function') {
       this.#driver.subscribe(eventName, handler);
@@ -30,7 +31,9 @@ export class EventBus<KnownEvents extends Record<string, EventContract>>
 
   off<TEvent extends KnownEvents[keyof KnownEvents]>(
     eventName: TEvent['eventName'],
-    handler: EventHandlerContract<TEvent> | EventHandlerFn<TEvent>
+    handler:
+      | EventHandlerContract<TEvent>
+      | EventHandlerContract<TEvent>['handle']
   ) {
     if (typeof handler === 'function') {
       this.#driver.unsubscribe(eventName, handler);

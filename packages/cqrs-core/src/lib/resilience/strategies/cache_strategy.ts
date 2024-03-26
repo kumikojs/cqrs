@@ -28,7 +28,7 @@ export type CacheOptions = {
    */
   invalidate?: boolean;
 
-  serialize?: (request: any) => string;
+  serialize: (request: any) => string;
 };
 
 export class CacheStrategy extends Strategy<CacheOptions> {
@@ -36,6 +36,7 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     ttl: '30s',
     persist: false,
     invalidate: false,
+    serialize: (request) => JSON.stringify(request),
   };
 
   #cache: CacheDriverContract<string>;
@@ -56,9 +57,8 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     TTask extends AsyncFunction,
     TResult = ReturnType<TTask>
   >(request: TRequest, task: TTask): Promise<TResult> {
-    const key = `cache_strategy_key::${
-      this.options.serialize?.(request) ?? JSON.stringify(request)
-    }`;
+    const key = `cache_id:${this.options.serialize?.(request)}`;
+
     if (this.options.invalidate) {
       this.#cache.delete(key);
     }

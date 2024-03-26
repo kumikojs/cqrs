@@ -72,7 +72,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
     TTask extends AsyncFunction,
     TResult = ReturnType<TTask>
   >(request: TRequest, task: TTask): Promise<TResult> {
-    const key = `throttle_strategy_id::${
+    const key = `throttle_id:${
       this.options.serialize?.(request) ?? JSON.stringify(request)
     }`;
     const cachedValue = this.#cache.get<number>(key);

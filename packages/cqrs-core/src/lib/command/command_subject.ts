@@ -1,27 +1,23 @@
-import { OperationLifecycle } from '../internal/operation/operation-lifecycle';
+import { Operation } from '../internal/operation/operation';
 
 import type { VoidFunction } from '../types';
-import type { CommandContract } from './contracts';
-import type { CommandHandlerFn } from './types';
+import type { CommandContract, CommandHandlerContract } from './contracts';
 
 export class CommandSubject<TResult> {
-  #operationLifecycle = new OperationLifecycle<TResult>();
+  #operation = new Operation<TResult>();
 
   async execute<TRequest extends CommandContract>(
     command: TRequest,
-    handlerFn: CommandHandlerFn<TRequest, TResult>
+    handlerFn: CommandHandlerContract<TRequest, TResult>['execute']
   ): Promise<TResult> {
-    return this.#operationLifecycle.execute<TRequest, TResult>(
-      command,
-      handlerFn
-    );
+    return this.#operation.execute<TRequest, TResult>(command, handlerFn);
   }
 
   subscribe(onStateChange: VoidFunction) {
-    return this.#operationLifecycle.subscribe(onStateChange);
+    return this.#operation.subscribe(onStateChange);
   }
 
   get state() {
-    return this.#operationLifecycle.state;
+    return this.#operation.state;
   }
 }

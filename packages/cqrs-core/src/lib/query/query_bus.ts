@@ -4,10 +4,12 @@ import { QueryInterceptors } from './query_interceptors';
 
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
-import type { QueryContract } from './contracts';
 import type { CombinedPartialOptions } from '../types';
-import type { QueryBusContract, QueryHandlerContract } from './contracts';
-import type { QueryHandlerFn } from './types';
+import type {
+  QueryBusContract,
+  QueryContract,
+  QueryHandlerContract,
+} from './contracts';
 
 /**
  * The QueryBus is a simple event bus that allows you to register query handlers
@@ -44,10 +46,6 @@ export class QueryBus<KnownQueries extends Record<string, QueryContract>>
 
     this.execute = this.execute.bind(this);
     this.register = this.register.bind(this);
-  }
-
-  get bus() {
-    return this.#driver;
   }
 
   get interceptors() {
@@ -87,13 +85,17 @@ export class QueryBus<KnownQueries extends Record<string, QueryContract>>
     TResponse = void
   >(
     query: TQuery,
-    handler?: QueryHandlerFn<TQuery, TResponse>
+    handler: QueryHandlerContract<QueryContract, TResponse>['execute']
   ): Promise<TResponse> {
-    return this.#interceptorManager.execute<TQuery, TResponse>(
-      query,
-      handler
-        ? handler
-        : (query) => this.#driver.publish(query['queryName'], query)
+    return this.#interceptorManager.execute<TQuery, TResponse>(query, handler);
+  }
+
+  async dispatch<
+    TQuery extends KnownQueries[keyof KnownQueries],
+    TResponse = void
+  >(query: TQuery): Promise<TResponse> {
+    return this.#interceptorManager.execute<TQuery, TResponse>(query, (query) =>
+      this.#driver.publish(query['queryName'], query)
     );
   }
 }

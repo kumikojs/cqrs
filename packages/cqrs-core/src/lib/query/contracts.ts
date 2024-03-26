@@ -1,6 +1,6 @@
 import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
 import type { CombinedPartialOptions } from '../types';
-import type { QueryContext, QueryHandlerFn, QueryOptions } from './types';
+import type { QueryContext, QueryOptions } from './types';
 
 export interface QueryContract<
   TName extends string = string,
@@ -32,12 +32,24 @@ export interface QueryBusContract<
   >;
   execute<TQuery extends KnownQueries[keyof KnownQueries], TResponse = void>(
     query: TQuery,
-    handler?: QueryHandlerFn<TQuery, TResponse>
+    handler: QueryHandlerContract<QueryContract, TResponse>['execute']
   ): Promise<TResponse>;
+
   register<TQuery extends KnownQueries[keyof KnownQueries]>(
     queryName: TQuery['queryName'],
     handler:
       | QueryHandlerContract<TQuery>
       | QueryHandlerContract<TQuery>['execute']
   ): VoidFunction;
+
+  unregister<TQuery extends KnownQueries[keyof KnownQueries]>(
+    queryName: TQuery['queryName'],
+    handler:
+      | QueryHandlerContract<TQuery>
+      | QueryHandlerContract<TQuery>['execute']
+  ): void;
+
+  dispatch<TQuery extends KnownQueries[keyof KnownQueries], TResponse = void>(
+    query: TQuery
+  ): Promise<TResponse>;
 }

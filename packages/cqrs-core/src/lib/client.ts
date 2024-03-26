@@ -3,9 +3,9 @@ import { EventBus } from './event/event_bus';
 import { Cache } from './internal/cache/cache';
 import { QueryBus } from './query/query_bus';
 
-import type { CommandContract } from './command/contracts';
+import type { CommandBusContract, CommandContract } from './command/contracts';
 import type { EventBusContract, EventContract } from './event/contracts';
-import type { QueryContract } from './query/contracts';
+import type { QueryBusContract, QueryContract } from './query/contracts';
 
 export interface ClientContract<
   KnownCommands extends Record<string, CommandContract> = Record<
@@ -21,17 +21,9 @@ export interface ClientContract<
     EventContract
   >
 > {
-  command: {
-    register: CommandBus<KnownCommands, KnownQueries>['register'];
-    dispatch: CommandBus<KnownCommands, KnownQueries>['execute'];
-    interceptors: CommandBus<KnownCommands, KnownQueries>['interceptors'];
-  };
+  command: CommandBusContract<KnownCommands, KnownQueries>;
 
-  query: {
-    register: QueryBus<KnownQueries>['register'];
-    dispatch: QueryBus<KnownQueries>['execute'];
-    interceptors: QueryBus<KnownQueries>['interceptors'];
-  };
+  query: QueryBusContract<KnownQueries>;
 
   eventBus: EventBusContract<KnownEvents>;
 
@@ -55,9 +47,9 @@ export class Client<
 {
   #eventBus: EventBusContract<KnownEvents> = new EventBus<KnownEvents>();
 
-  #commandBus: CommandBus<KnownCommands, KnownQueries>;
+  #commandBus: CommandBusContract<KnownCommands, KnownQueries>;
 
-  #queryBus: QueryBus<KnownQueries>;
+  #queryBus: QueryBusContract<KnownQueries>;
 
   #cache: Cache = new Cache();
 
@@ -67,19 +59,11 @@ export class Client<
   }
 
   get command() {
-    return {
-      register: this.#commandBus.register,
-      dispatch: this.#commandBus.execute,
-      interceptors: this.#commandBus.interceptors,
-    };
+    return this.#commandBus;
   }
 
   get query() {
-    return {
-      register: this.#queryBus.register,
-      dispatch: this.#queryBus.execute,
-      interceptors: this.#queryBus.interceptors,
-    };
+    return this.#queryBus;
   }
 
   get eventBus() {

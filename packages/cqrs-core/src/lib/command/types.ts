@@ -21,11 +21,6 @@ export type CommandWithInferredQueries<
   TQueriesName extends string[] = string[]
 > = CommandContract<TName, TPayload, TOptions & CommandOptions<TQueriesName>>;
 
-export type CommandHandlerFn<
-  T extends CommandContract = CommandContract,
-  TResponse = unknown
-> = (command: T) => Promise<TResponse>;
-
 export type InferredCommands<
   KnownCommands extends Record<string, CommandContract>,
   KnownQueries extends Record<string, QueryContract>

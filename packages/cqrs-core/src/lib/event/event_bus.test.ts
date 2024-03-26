@@ -46,7 +46,7 @@ describe('EventBus', () => {
       const spy = vitest.spyOn(console, 'log').mockImplementation(() => {
         return;
       });
-      const handler = async (event: TestEvent) => {
+      const handler = async () => {
         console.log('test');
       };
 
@@ -67,7 +67,7 @@ describe('EventBus', () => {
       });
 
       const handler = {
-        handle: async (event: TestEvent) => {
+        handle: async () => {
           console.log('test');
         },
       };
@@ -85,7 +85,7 @@ describe('EventBus', () => {
     test('should register a event handler as a class and unregister it', () => {
       const eventName = 'testEvent';
       class TestEventHandler implements EventHandlerContract<TestEvent> {
-        async handle(event: TestEvent) {
+        async handle() {
           return;
         }
       }

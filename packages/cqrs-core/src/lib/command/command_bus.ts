@@ -11,7 +11,7 @@ import type {
   CommandContract,
   CommandHandlerContract,
 } from './contracts';
-import type { CommandHandlerFn, InferredCommands } from './types';
+import type { InferredCommands } from './types';
 
 export class CommandBus<
   KnownCommands extends Record<string, CommandContract>,
@@ -20,10 +20,6 @@ export class CommandBus<
 {
   #driver: BusDriver<string> = new MemoryBusDriver();
 
-  /**
-   * The interceptor manager
-   * Which is used to apply interceptors to the command execution
-   */
   #interceptorManager: InterceptorManagerContract<
     CommandContract<
       string,
@@ -44,10 +40,8 @@ export class CommandBus<
 
     this.execute = this.execute.bind(this);
     this.register = this.register.bind(this);
-  }
-
-  get bus() {
-    return this.#driver;
+    this.unregister = this.unregister.bind(this);
+    this.dispatch = this.dispatch.bind(this);
   }
 
   get interceptors() {
@@ -82,6 +76,19 @@ export class CommandBus<
     }
   }
 
+  async dispatch<
+    TCommand extends InferredCommands<
+      KnownCommands,
+      KnownQueries
+    >[keyof InferredCommands<KnownCommands, KnownQueries>],
+    TResponse = void
+  >(command: TCommand): Promise<TResponse> {
+    return this.#interceptorManager.execute<TCommand, TResponse>(
+      command,
+      (command) => this.#driver.publish(command['commandName'], command)
+    );
+  }
+
   async execute<
     TCommand extends InferredCommands<
       KnownCommands,
@@ -90,13 +97,11 @@ export class CommandBus<
     TResponse = void
   >(
     command: TCommand,
-    handler?: CommandHandlerFn<TCommand, TResponse>
+    handler: CommandHandlerContract<CommandContract, TResponse>['execute']
   ): Promise<TResponse> {
     return this.#interceptorManager.execute<TCommand, TResponse>(
       command,
       handler
-        ? handler
-        : (command) => this.#driver.publish(command['commandName'], command)
     );
   }
 }
