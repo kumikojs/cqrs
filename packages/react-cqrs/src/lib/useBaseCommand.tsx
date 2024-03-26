@@ -28,7 +28,10 @@ export function useBaseCommand<TRequest extends CommandContract, TResponse>(
           payload,
           ...command,
         },
-        (command) => client.command.dispatch(command, handler)
+        (command) =>
+          handler
+            ? client.command.execute(command, handler)
+            : client.command.dispatch(command)
       );
     },
     [subject]

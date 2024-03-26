@@ -29,7 +29,7 @@ export function useBaseQuery<TRequest extends QueryContract, TResponse>(
           payload,
           ...query,
         },
-        (query) => client.query.dispatch(query, handler)
+        (query) => (handler ? handler(query) : client.query.dispatch(query))
       );
     },
     [subject]
