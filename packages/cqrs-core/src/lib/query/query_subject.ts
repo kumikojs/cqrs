@@ -1,87 +1,119 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ClientContract } from '../client';
+import { Client } from '../client';
 import { Operation } from '../internal/operation/operation';
 
 import type { VoidFunction } from '../types';
 import type { QueryContract, QueryHandlerContract } from './contracts';
 
 /**
- * The query subject.
+ * A facade for executing queries, subscribing to their state changes, and handling cache invalidation.
+ * Designed for UI components to interact with queries, providing a centralized mechanism for execution, state management, and automatic re-execution upon cache invalidation.
  *
- * The query subject is a class that represents a query.
- * It is used to execute a query and subscribe to its state changes.
- *
- * @template TResult The query result type.
+ * @remarks
+ * This class simplifies UI development by offering a reactive and user-friendly experience for query interaction. It encapsulates the underlying `Operation` class for state management and provides automatic re-execution logic when the query's cache entry becomes invalidated.
  */
-export class QuerySubject<TResult> {
+export class QuerySubject<TRequest extends QueryContract, TResult> {
   /**
-   * The operation instance used to execute the query.
-   * It's responsible for managing the query execution and state changes.
+   * @private
+   * The internal `Operation` instance responsible for handling query execution and state management.
    */
   #operation: Operation<TResult>;
 
   /**
-   * The last operation executed.
-   * This is used to re-execute the query when the cache is invalidated.
+   * @private
+   * Stores details of the most recently executed query, used for re-execution upon cache invalidation.
    */
-  #lastOperation: {
-    query: QueryContract;
-    handlerFn: QueryHandlerContract<any, TResult>['execute'];
-  } | null = null;
+  #lastQuery: TRequest;
 
   /**
-   * The client instance.
-   * It's used to interact with the cache.
+   * @private
+   * The handler function used for executing the query.
    */
-  #client: ClientContract;
+  #handlerFn: QueryHandlerContract<TRequest, TResult>['execute'];
 
   /**
-   * The query name.
-   * It's used to subscribe to cache invalidation events.
+   * @private
+   * The client instance, used for interacting with the cache.
    */
-  #queryName: string;
+  #client: Client;
 
-  constructor(queryName: string, client: ClientContract) {
+  /**
+   * @private
+   * The unsubscribe function for the cache invalidation subscription.
+   */
+  #cacheSubscription: VoidFunction;
+
+  /**
+   * Creates a new instance of `QuerySubject`.
+   *
+   * @param query - The query to be represented and managed.
+   * @param client - The client instance for interacting with the cache.
+   * @param handlerFn - An optional custom handler function for executing the query.
+   *                     If not provided, the default query dispatching mechanism is used.
+   */
+  constructor(
+    query: TRequest,
+    client: Client,
+    handlerFn?: QueryHandlerContract<TRequest, TResult>['execute']
+  ) {
     this.#operation = new Operation<TResult>();
     this.#client = client;
-    this.#queryName = queryName;
-  }
+    this.#lastQuery = query;
+    this.#handlerFn = handlerFn
+      ? (query) => client.query.execute(query, handlerFn)
+      : (query) => client.query.dispatch(query);
 
-  async execute<TRequest extends QueryContract>(
-    query: TRequest,
-    handlerFn: QueryHandlerContract<TRequest, TResult>['execute']
-  ): Promise<TResult> {
-    this.#lastOperation = { query, handlerFn };
-
-    return this.#operation.execute<TRequest, TResult>(query, handlerFn);
-  }
-
-  subscribe(onStateChange: VoidFunction) {
-    const subscriptions = [
-      this.#operation.subscribe(onStateChange),
-      this.#client.cache.onInvalidate(this.#queryName, () => {
-        if (this.#lastOperation) {
-          this.execute(
-            {
-              ...this.#lastOperation.query,
-              options: {
-                ...this.#lastOperation.query.options,
-                cache: {
-                  invalidate: true,
-                  ...this.#lastOperation.query.options?.cache,
-                },
-              },
+    this.#cacheSubscription = this.#client.cache.onInvalidate(
+      this.#lastQuery.queryName,
+      () => {
+        this.execute({
+          ...this.#lastQuery,
+          options: {
+            ...this.#lastQuery.options,
+            cache: {
+              invalidate: true,
+              ...(typeof this.#lastQuery.options?.cache === 'boolean'
+                ? {}
+                : this.#lastQuery.options?.cache),
             },
-            this.#lastOperation.handlerFn
-          );
-        }
-      }),
-    ];
+          },
+        });
+      }
+    );
+  }
+
+  /**
+   * Executes the query, manages its state, and handles cache invalidation.
+   *
+   * @param query - The query to be executed.
+   * @returns A promise resolving to the query's result.
+   */
+  async execute(query: TRequest): Promise<TResult> {
+    this.#lastQuery = query;
+
+    return this.#operation.execute<TRequest, TResult>(query, this.#handlerFn);
+  }
+
+  /**
+   * Subscribes to state changes of the query's execution.
+   *
+   * @param onStateChange - A callback function to be invoked whenever the query's state changes.
+   * @returns A function to unsubscribe from both state change notifications and cache invalidation events.
+   */
+  subscribe(onStateChange: VoidFunction): VoidFunction {
+    const subscription = this.#operation.subscribe(onStateChange);
+
     return () => {
-      subscriptions.forEach((unsubscribe) => unsubscribe());
+      subscription();
+      this.#cacheSubscription();
     };
   }
 
+  /**
+   * Retrieves the current state of the query's execution.
+   *
+   * @returns The current state of the query.
+   */
   get state() {
     return this.#operation.state;
   }

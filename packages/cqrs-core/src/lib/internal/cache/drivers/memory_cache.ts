@@ -2,10 +2,9 @@
 import { MemoryBusDriver } from '../../bus/drivers/memory_bus';
 import { ms } from '../../ms/ms';
 
+import type { DurationUnit, VoidFunction } from '../../../types';
 import type { BusDriver } from '../../bus/bus_driver';
-import type { DurationUnit } from '../../ms/types';
 import type { CacheDriverContract } from '../cache_driver';
-import type { VoidFunction } from '../../../types';
 
 /**
  * Cache item interface.
@@ -17,6 +16,8 @@ interface CacheItem {
   value: any;
   expiration: number;
 }
+
+type CacheNamespace<TKey> = Map<string, Map<TKey, CacheItem>>;
 
 /**
  * The MemoryCacheDriver is a simple cache driver that uses an in-memory Map to store and retrieve values.
@@ -31,7 +32,7 @@ export class MemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
    *
    * @type {Map<TKey, CacheItem>}
    */
-  #cache: Map<TKey, CacheItem> = new Map();
+  #cache: CacheNamespace<TKey> = new Map();
 
   /**
    * The event emitter.
@@ -47,18 +48,19 @@ export class MemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
    * Get a value from the cache.
    *
    * @template TValue - The type of value to get.
+   * @param {string} ns - The namespace to get the value from.
    * @param {TKey} key - The key to get the value for.
    * @returns {TValue | undefined} The value from the cache, or undefined if not found.
    */
-  get<TValue>(key: TKey): TValue | undefined {
-    const item = this.#cache.get(key);
+  get<TValue>(ns: string, key: TKey): TValue | undefined {
+    const cache = this.#cache.get(ns);
+    if (!cache) return undefined;
 
-    if (!item) {
-      return undefined;
-    }
+    const item = cache.get(key);
+    if (!item) return undefined;
 
     if (this.#hasExpired(item)) {
-      this.#cache.delete(key);
+      this.invalidate(ns, key);
       return undefined;
     }
 
@@ -73,10 +75,16 @@ export class MemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
    * @param {TValue} value - The value to set.
    * @param {DurationUnit} [ttl] - The time-to-live for the value.
    */
-  set<TValue>(key: TKey, value: TValue, ttl?: DurationUnit): void {
+  set<TValue>(ns: string, key: TKey, value: TValue, ttl?: DurationUnit): void {
+    const cache = this.#cache.get(ns) ?? new Map();
     const expiration = ttl ? Date.now() + ms(ttl) : Infinity;
 
-    this.#cache.set(key, { value, expiration });
+    cache.set(key, {
+      value,
+      expiration,
+    });
+
+    this.#cache.set(ns, cache);
   }
 
   /**
@@ -84,9 +92,19 @@ export class MemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
    *
    * @param {TKey} key - The key to delete.
    */
-  delete(key: TKey): void {
-    console.log('Deleting key:', key);
-    this.#cache.delete(key);
+  delete(ns: string, key?: TKey): void {
+    const cache = this.#cache.get(ns);
+    if (!cache) return;
+
+    if (key) {
+      cache.delete(key);
+
+      if (cache.size === 0) {
+        this.#cache.delete(ns);
+      }
+    } else {
+      this.#cache.delete(ns);
+    }
   }
 
   /**
@@ -94,10 +112,11 @@ export class MemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
    *
    * @param {TKey} key - The key to invalidate.
    */
-  invalidate(key: TKey): void {
-    console.log('Invalidating key:', key);
-    this.delete(key);
-    this.#emitInvalidate(key);
+  invalidate(ns: string, key?: TKey): void {
+    if (this.#cache.has(ns)) {
+      this.delete(ns, key);
+      this.#emitInvalidate(ns, key);
+    }
   }
 
   /**
@@ -107,21 +126,16 @@ export class MemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
    * @param {(key: TKey) => void} handler - The handler to call when the key is invalidated.
    * @returns {VoidFunction} A function to unsubscribe from the event.
    */
-  onInvalidate(key: TKey, handler: (key: TKey) => void): VoidFunction {
-    this.#emitter.subscribe(`invalidate:${key}`, handler);
+  onInvalidate(ns: string, handler: (key: TKey) => void): VoidFunction {
+    this.#emitter.subscribe(`invalidate:${ns}`, handler);
 
     return () => {
-      this.#emitter.unsubscribe(`invalidate:${key}`, handler);
+      this.#emitter.unsubscribe(`invalidate:${ns}`, handler);
     };
   }
 
-  /**
-   * Emit a cache invalidation event.
-   *
-   * @param key - The key to invalidate.
-   */
-  #emitInvalidate(key: TKey) {
-    this.#emitter.publish(`invalidate:${key}`, key);
+  #emitInvalidate(ns: string, key?: TKey): void {
+    this.#emitter.publish(`invalidate:${ns}`, key);
   }
 
   #hasExpired = (item: CacheItem) => Date.now() > item.expiration;

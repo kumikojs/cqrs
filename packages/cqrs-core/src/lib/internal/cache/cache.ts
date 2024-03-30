@@ -35,7 +35,7 @@ export class Cache {
    *
    * @returns {MemoryCacheDriver<string>}
    */
-  get inMemoryCache() {
+  get inMemoryCache(): MemoryCacheDriver<string> {
     return this.#inMemoryCache;
   }
 
@@ -44,7 +44,7 @@ export class Cache {
    *
    * @returns {LocalStorageCacheDriver<string>}
    */
-  get localStorageCache() {
+  get localStorageCache(): LocalStorageCacheDriver<string> {
     return this.#localStorageCache;
   }
 
@@ -53,7 +53,7 @@ export class Cache {
    *
    * @param {string} key - The key to invalidate.
    */
-  invalidate(key: string) {
+  invalidate(key: string): void {
     this.#inMemoryCache.invalidate(key);
     this.#localStorageCache.invalidate(key);
   }
@@ -64,7 +64,7 @@ export class Cache {
    * @param {string} key - The key to clear.
    * @unused This method is not used in the codebase and may be removed in the future.
    */
-  clear(key: string) {
+  clear(key: string): void {
     this.#inMemoryCache.delete(key);
     this.#localStorageCache.delete(key);
   }

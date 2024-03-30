@@ -3,15 +3,15 @@ import { Cache } from '../../internal/cache/cache';
 import { Strategy } from './base_strategy';
 
 import type { CacheDriverContract } from '../../internal/cache/cache_driver';
-import type { DurationUnit } from '../../internal/ms/types';
-import type { AsyncFunction } from '../../types';
+import type { AsyncFunction, DurationUnit } from '../../types';
 
 /**
- * The cache options.
+ * Configuration options for tailoring cache behavior.
  */
 export type CacheOptions = {
   /**
-   * The time to live (TTL) for the cache.
+   * Specifies the duration for which cached values remain valid before expiration.
+   * Defaults to '30s'.
    *
    * @default '30s'
    * @see {@link DurationUnit}
@@ -19,51 +19,75 @@ export type CacheOptions = {
   ttl: DurationUnit;
 
   /**
-   * Persist the cache.
+   * Determines whether cached values are stored persistently in local storage (true),
+   * or in memory for the current session (false).
+   * Defaults to false (in-memory).
    *
-   * If set to `true`, the cache will be stored in the local storage.
-   * Otherwise, the cache will be stored in memory.
-   *
-   * @type {boolean}
+   * @type boolean
    * @default false
    */
   persist: boolean;
 
   /**
-   * Invalidate the cache.
+   * Controls whether to invalidate existing cached values before executing the task.
+   * Defaults to false, preserving cached values until expiration.
    *
-   * @type {boolean}
+   * @type boolean
    * @default false
    */
   invalidate?: boolean;
 
   /**
-   * Serialize the request before caching.
-   * The serialized request is used as the cache key.
+   * Serializes a request into a namespace and key pair for cache lookup and storage.
    *
-   * @param {any} request - The request to serialize.
-   * @returns {string} The serialized request.
+   * @param request - The request to serialize.
+   * @returns An object containing a `ns` (namespace) and `key` property for cache operations.
    */
-  serialize: (request: any) => string;
+  serialize: (request: any) => { ns: string; key: string };
 };
 
 /**
- * The cache strategy.
- * This strategy caches the results of a task.
+ * A strategy that optimizes task execution by caching results, reducing redundant computations and enhancing performance.
+ *
+ * @example
+ * ```ts
+ * import { CacheStrategy } from '@stoik/cqrs-core';
+ *
+ * const cache = new Cache();
+ * const strategy = new CacheStrategy(cache);
+ *
+ * let counter = 0;
+ *
+ * const task = async () => {
+ *    counter += 1;
+ *    return counter;
+ * };
+ *
+ * const result1 = await strategy.execute('key', task);
+ * const result2 = await strategy.execute('key', task);
+ *
+ * console.log(result1); // 1
+ * console.log(result2); // 1
+ * ```
  */
 export class CacheStrategy extends Strategy<CacheOptions> {
   /**
-   * The default options for the cache strategy.
+   * Default configuration options for the CacheStrategy.
+   * @private
+   * @static
    */
   static #defaultOptions: CacheOptions = {
     ttl: '30s',
     persist: false,
     invalidate: false,
-    serialize: (request) => JSON.stringify(request),
+    serialize: (request) => ({
+      ns: 'default',
+      key: JSON.stringify(request),
+    }),
   };
 
   /**
-   * The cache driver.
+   * @private The underlying cache driver responsible for storing and retrieving cached values.
    */
   #cache: CacheDriverContract<string>;
 
@@ -79,39 +103,39 @@ export class CacheStrategy extends Strategy<CacheOptions> {
   }
 
   /**
-   * Execute the task with caching.
+   * Executes a task with caching optimization.
    *
-   * If the cache is invalidated or the value is not found in the cache,
-   * the task is executed and the result is cached.
-   * Otherwise, the cached value is returned.
+   * Prioritizes retrieving results from the cache if available,
+   * executing the task only when necessary and storing the result for future reuse.
    *
-   * @template TRequest - The type of request.
-   * @template TTask - The type of task.
-   * @template TResult - The type of result.
-   * @param {TRequest} request - The request to execute the task with.
-   * @param {TTask} task - The task to execute.
-   * @returns {Promise<TResult>} The result of the task.
+   * @template TRequest - The type of request data used for the task.
+   * @template TTask - The type of the task to be executed, constrained to be an asynchronous function.
+   * @template TResult - The expected type of the result produced by the task execution.
+   *
+   * @param request - The request data to be passed to the task.
+   * @param task - The async function representing the task to be executed.
+   * @returns A promise that resolves with the result of the task execution,
+   *          either retrieved from the cache or obtained by executing the task.
    */
-  public async execute<
+  async execute<
     TRequest,
     TTask extends AsyncFunction,
     TResult = ReturnType<TTask>
   >(request: TRequest, task: TTask): Promise<TResult> {
-    const key = `cache_id:${this.options.serialize?.(request)}`;
+    const { ns, key } = this.options.serialize(request);
 
     if (this.options.invalidate) {
-      this.#cache.delete(key);
+      this.#cache.delete(ns);
     }
 
-    const cachedValue = await this.#cache.get<TResult>(key);
+    const cachedValue = await this.#cache.get<TResult>(ns, key);
 
     if (cachedValue !== undefined) {
       return cachedValue;
     }
 
     const result = await task(request);
-
-    this.#cache.set(key, result, this.options.ttl);
+    this.#cache.set(ns, key, result, this.options.ttl);
 
     return result;
   }

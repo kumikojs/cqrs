@@ -5,7 +5,14 @@ describe('CacheStrategy', () => {
   let cacheStrategy: CacheStrategy;
 
   test('should cache and retrieve values correctly', async () => {
-    cacheStrategy = new CacheStrategy(new Cache());
+    cacheStrategy = new CacheStrategy(new Cache(), {
+      serialize: (request) => {
+        return {
+          ns: 'default',
+          key: JSON.stringify(request),
+        };
+      },
+    });
 
     const request = { key: 'value' };
     const task = vitest.fn().mockResolvedValue('result');

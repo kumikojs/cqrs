@@ -1,10 +1,9 @@
 import { MemoryBusDriver } from '../../bus/drivers/memory_bus';
 import { ms } from '../../ms/ms';
 
+import type { DurationUnit, VoidFunction } from '../../../types';
 import type { BusDriver } from '../../bus/bus_driver';
-import type { DurationUnit } from '../../ms/types';
 import type { CacheDriverContract } from '../cache_driver';
-import type { VoidFunction } from '../../../types';
 
 /**
  * The LocalStorageCacheDriver is a simple cache driver that uses the LocalStorage API
@@ -14,6 +13,12 @@ import type { VoidFunction } from '../../../types';
  * @template TKey - The type of key to use.
  * @implements CacheDriverContract<TKey> - The cache driver contract.
  */
+
+interface CacheItem {
+  value: any;
+  expiration: number;
+}
+
 export class LocalStorageCacheDriver<TKey extends string>
   implements CacheDriverContract<TKey>
 {
@@ -50,21 +55,13 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
-  /**
-   * Get a value from the cache.
-   *
-   * @template TValue - The type of value to get.
-   * @param {TKey} key - The key to get the value for.
-   * @returns {TValue | undefined} The value from the cache, or undefined if not found.
-   */
-  get<TValue>(key: TKey): TValue | undefined {
+  get<TValue>(ns: string, key: TKey): TValue | undefined {
+    const item = this.#storage.getItem(`${ns}:${key}`);
+    console.log('item', item);
+    console.log('storage', this.#storage);
+    if (!item) return undefined;
+
     try {
-      const item = this.#storage.getItem(key.toString());
-
-      if (!item) {
-        return undefined;
-      }
-
       const { value, expiration } = JSON.parse(item);
 
       if (expiration && this.#hasExpired(expiration)) {
@@ -79,71 +76,58 @@ export class LocalStorageCacheDriver<TKey extends string>
     }
   }
 
-  /**
-   * Set a value in the cache.
-   *
-   * @template TValue - The type of value to set.
-   * @param {TKey} key - The key to set the value for.
-   * @param {TValue} value - The value to set.
-   * @param {DurationUnit} [ttl] - The time-to-live for the value.
-   */
-  set<TValue>(key: TKey, value: TValue, ttl?: DurationUnit): void {
-    try {
-      const expiration = ttl ? Date.now() + ms(ttl) : Infinity;
+  set<TValue>(ns: string, key: TKey, value: TValue, ttl?: DurationUnit): void {
+    const expiration = ttl ? Date.now() + ms(ttl) : Infinity;
+    this.#storage.setItem(
+      `${ns}:${key}`,
+      JSON.stringify({ value, expiration })
+    );
 
-      this.#storage.setItem(
-        key.toString(),
-        JSON.stringify({ value, expiration })
-      );
-    } catch (error) {
-      console.error('Error while setting item in LocalStorage:', error);
+    console.log('storage', this.#storage);
+  }
+
+  delete(ns: string, key?: TKey): void {
+    if (key) {
+      this.#storage.removeItem(`${ns}:${key}`);
+    } else {
+      for (let i = 0; i < this.#storage.length; i++) {
+        const key = this.#storage.key(i);
+        if (key?.startsWith(`${ns}:`)) {
+          this.#storage.removeItem(key);
+        }
+      }
     }
   }
 
-  /**
-   * Delete a key from the cache.
-   *
-   * @param {TKey} key - The key to delete.
-   */
-  delete(key: TKey): void {
-    try {
-      this.#storage.removeItem(key.toString());
-    } catch (error) {
-      console.error('Error while deleting item from LocalStorage:', error);
+  #hasNamespace(ns: string): boolean {
+    for (let i = 0; i < this.#storage.length; i++) {
+      const key = this.#storage.key(i);
+      if (key?.startsWith(`${ns}:`)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  invalidate(ns: string, key?: TKey): void {
+    if (this.#hasNamespace(ns)) {
+      this.delete(ns, key);
+      this.#emitInvalidate(ns, key);
     }
   }
 
-  /**
-   * Invalidate a key in the cache.
-   *
-   * @param {TKey} key - The key to invalidate.
-   */
-  invalidate(key: TKey): void {
-    this.delete(key);
-    this.#emitInvalidate(key);
-  }
-
-  /**
-   * Subscribe to an invalidate event.
-   *
-   * @param {TKey} key - The key to subscribe to.
-   * @param {(key: TKey) => void} handler - The handler to call when the key is invalidated.
-   * @returns {VoidFunction} A function to unsubscribe from the event.
-   */
-  onInvalidate(key: TKey, handler: (key: TKey) => void): VoidFunction {
-    this.#emitter.subscribe(`invalidate:${key}`, handler);
+  onInvalidate(ns: string, handler: (key: TKey) => void): VoidFunction {
+    this.#emitter.subscribe(`invalidate:${ns}`, handler);
 
     return () => {
-      this.#emitter.unsubscribe(`invalidate:${key}`, handler);
+      this.#emitter.unsubscribe(`invalidate:${ns}`, handler);
     };
   }
 
-  /**
-   * Emit an invalidate event.
-   */
-  #emitInvalidate(key: TKey) {
-    this.#emitter.publish(`invalidate:${key}`, key);
+  #emitInvalidate(ns: string, key?: TKey): void {
+    this.#emitter.publish(`invalidate:${ns}`, key);
   }
 
-  #hasExpired = (expiration: number) => Date.now() > expiration;
+  #hasExpired = (item: CacheItem) => Date.now() > item.expiration;
 }

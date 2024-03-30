@@ -4,47 +4,78 @@ import { Strategy } from './base_strategy';
 import type { AsyncFunction } from '../../types';
 
 /**
- * The options for the deduplication strategy.
+ * Configuration options for customizing request deduplication behavior.
  */
 export type DeduplicationOptions = {
   /**
-   * The function to serialize the request.
-   * It should return a string that represents the key used when caching the request.
+   * Serializes a request into a unique string representation for deduplication purposes.
+   *
+   * @param request - The request to serialize.
+   * @returns A string key used for tracking pending requests.
    */
   serialize: (request: any) => string;
 };
 
 /**
- * The deduplication strategy.
- * This strategy will deduplicate the requests.
- * If the same request is made while the previous request is still pending, the previous request will be returned.
+ * A strategy that optimizes task execution by eliminating redundant requests,
+ * ensuring only one execution occurs for a given unique request.
+ *
+ *  @example
+ * ```ts
+ * let counter = 0;
+ * const task = async () => {
+ *    counter += 1;
+ *    return counter;
+ * };
+ *
+ * const serialize = (request: any) => JSON.stringify(request);
+ * const strategy = new DeduplicationStrategy({ serialize });
+ *
+ * const results = await Promise.all([
+ *    strategy.execute({ id: 1 }, task),
+ *    strategy.execute({ id: 1 }, task),
+ *    strategy.execute({ id: 1 }, task),
+ *    strategy.execute({ id: 2 }, task),
+ *    strategy.execute({ id: 2 }, task),
+ *    strategy.execute({ id: 3 }, task),
+ * ]);
+ *
+ * console.log(results); // [1, 1, 1, 2, 2, 3]
+ * ```
  */
 export class DeduplicationStrategy extends Strategy<DeduplicationOptions> {
   /**
-   * The pending tasks.
-   * This is a map of the task key to the task promise.
+   * Stores a mapping of pending task keys to their respective Promises,
+   * preventing multiple executions for identical requests.
+   * @private
    */
   #pendingTasks = new Map<string, Promise<any>>();
 
-  public constructor(options: DeduplicationOptions) {
+  /**
+   * Creates an instance of the deduplication strategy.
+   *
+   * @param options - The options for the deduplication strategy.
+   */
+  constructor(options: DeduplicationOptions) {
     super(options);
   }
 
   /**
-   * Execute the task with deduplication.
+   * Executes a task with deduplication logic.
    *
-   * If the same request is made while the previous request is still pending,
-   * the previous request will be returned.
-   * Otherwise, the task will be executed and the result will be returned.
+   * Checks for pending requests with matching keys and returns the existing
+   * Promise if found, ensuring only a single execution per unique request.
    *
-   * @template TRequest - The type of request.
-   * @template TTask - The type of task.
-   * @template TResult - The type of result.
-   * @param {TRequest} request - The request to execute the task with.
-   * @param {TTask} task - The task to execute.
-   * @returns {Promise<TResult>} The result of the task.
+   * @template TRequest - The type of request data used for the task.
+   * @template TTask - The type of the task to be executed, constrained to be an async function.
+   * @template TResult - The expected type of the result produced by the task execution.
+   *
+   * @param request - The request data to be passed to the task.
+   * @param task - The async function representing the task to be executed.
+   * @returns A promise that resolves with the result of the task execution,
+   *          ensuring only a single execution for identical requests.
    */
-  public async execute<
+  async execute<
     TRequest,
     TTask extends AsyncFunction,
     TResult = ReturnType<TTask>
@@ -52,11 +83,10 @@ export class DeduplicationStrategy extends Strategy<DeduplicationOptions> {
     const taskKey = this.options.serialize(request);
 
     if (this.#pendingTasks.has(taskKey)) {
-      return this.#pendingTasks.get(taskKey);
+      return this.#pendingTasks.get(taskKey) as Promise<TResult>;
     }
 
     const taskPromise = task(request);
-
     this.#pendingTasks.set(taskKey, taskPromise);
 
     try {
