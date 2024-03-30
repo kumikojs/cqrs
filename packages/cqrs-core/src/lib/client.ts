@@ -3,9 +3,9 @@ import { EventBus } from './event/event_bus';
 import { Cache } from './internal/cache/cache';
 import { QueryBus } from './query/query_bus';
 
-import type { CommandContract } from './command/contracts';
-import type { EventContract } from './event/contracts';
-import type { QueryContract } from './query/contracts';
+import type { CommandContract } from './command/command_contracts';
+import type { EventContract } from './event/event_contracts';
+import type { QueryContract } from './query/query_contracts';
 
 /**
  * **Client Class**

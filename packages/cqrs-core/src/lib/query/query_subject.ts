@@ -3,7 +3,7 @@ import { Client } from '../client';
 import { Operation } from '../internal/operation/operation';
 
 import type { VoidFunction } from '../types';
-import type { QueryContract, QueryHandlerContract } from './contracts';
+import type { QueryContract, QueryHandlerContract } from './query_contracts';
 
 /**
  * A facade for executing queries, subscribing to their state changes, and handling cache invalidation.

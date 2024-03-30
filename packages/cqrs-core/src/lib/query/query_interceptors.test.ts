@@ -3,7 +3,7 @@ import { Cache } from '../internal/cache/cache';
 import { QueryInterceptors } from './query_interceptors';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
-import type { QueryContract } from './contracts';
+import type { QueryContract } from './query_contracts';
 
 describe('QueryInterceptors', () => {
   let cache: Cache;

@@ -1,4 +1,4 @@
-import type { CommandOptions } from './types';
+import type { CommandOptions } from './command_types';
 
 /**
  * Interface defining the structure of a command.

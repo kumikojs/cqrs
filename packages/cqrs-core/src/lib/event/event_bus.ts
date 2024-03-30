@@ -2,7 +2,7 @@ import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
 
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { VoidFunction } from '../types';
-import type { EventContract, EventHandlerContract } from './contracts';
+import type { EventContract, EventHandlerContract } from './event_contracts';
 
 /**
  * The `EventBus` class provides a simple mechanism for managing event subscriptions and publishing events within your application.

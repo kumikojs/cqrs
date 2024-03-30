@@ -5,7 +5,7 @@ import { QueryInterceptors } from './query_interceptors';
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
 import type { CombinedPartialOptions } from '../types';
-import type { QueryContract, QueryHandlerContract } from './contracts';
+import type { QueryContract, QueryHandlerContract } from './query_contracts';
 
 /**
  * The `QueryBus` class acts as a central coordinator for managing query execution and facilitates cross-cutting concerns through interceptors.

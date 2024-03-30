@@ -2,7 +2,7 @@ import { StateMachine } from './internal/state_machine';
 import { Stepper } from './internal/stepper';
 import { EventBus } from '../event/event_bus';
 
-import type { EventContract } from '../event/contracts';
+import type { EventContract } from '../event/event_contracts';
 
 /**
  * Represents a single unit of work within a saga execution flow.

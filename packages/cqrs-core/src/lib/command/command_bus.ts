@@ -4,10 +4,13 @@ import { CommandInterceptors } from './command_interceptors';
 
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
-import type { QueryContract } from '../query/contracts';
+import type { QueryContract } from '../query/query_contracts';
 import type { CombinedPartialOptions } from '../types';
-import type { CommandContract, CommandHandlerContract } from './contracts';
-import type { InferredCommands } from './types';
+import type {
+  CommandContract,
+  CommandHandlerContract,
+} from './command_contracts';
+import type { InferredCommands } from './command_types';
 
 /**
  * A central hub for registering and executing commands, facilitating cross-cutting concerns through interceptors.

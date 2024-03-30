@@ -2,7 +2,7 @@
 import { Client } from '../client';
 import { QuerySubject } from './query_subject';
 
-import type { QueryContract } from './contracts';
+import type { QueryContract } from './query_contracts';
 
 describe('QuerySubject', () => {
   type TestQuery = QueryContract<'test', { id: string }>;

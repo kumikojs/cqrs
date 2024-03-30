@@ -1,7 +1,10 @@
 import { Operation } from '../internal/operation/operation';
 
 import type { VoidFunction } from '../types';
-import type { CommandContract, CommandHandlerContract } from './contracts';
+import type {
+  CommandContract,
+  CommandHandlerContract,
+} from './command_contracts';
 
 /**
  * A facade for executing commands and subscribing to their execution state changes.

@@ -1,4 +1,4 @@
-import type { QueryContext, QueryOptions } from './types';
+import type { QueryContext, QueryOptions } from './query_types';
 
 /**
  * Interface defining the structure of a query within the application domain.

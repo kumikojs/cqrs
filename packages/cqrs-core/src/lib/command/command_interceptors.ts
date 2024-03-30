@@ -3,7 +3,7 @@ import { ResilienceInterceptorsBuilder } from '../resilience/resilience_intercep
 
 import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
 import type { CombinedPartialOptions } from '../types';
-import type { CommandContract } from './contracts';
+import type { CommandContract } from './command_contracts';
 
 /**
  * Constructs a collection of interceptors for a command bus, enhancing its functionality with resilience and query invalidation.

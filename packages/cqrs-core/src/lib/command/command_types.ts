@@ -1,6 +1,6 @@
-import type { QueryContract } from '../query/contracts';
+import type { QueryContract } from '../query/query_contracts';
 import { ResilienceOptions } from '../resilience/resilience_interceptors_builder';
-import type { CommandContract } from './contracts';
+import type { CommandContract } from './command_contracts';
 
 /**
  * Options for configuring command execution, including resilience strategies and query dependencies.

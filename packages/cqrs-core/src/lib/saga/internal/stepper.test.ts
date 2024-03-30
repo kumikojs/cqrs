@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Stepper } from './stepper';
 
-import type { EventContract } from '../../event/contracts';
+import type { EventContract } from '../../event/event_contracts';
 
 describe('Stepper', () => {
   let executor: Stepper;
