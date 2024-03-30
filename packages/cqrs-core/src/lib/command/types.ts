@@ -1,67 +1,38 @@
-/**
- * @module command
- */
-import type { CommandContract } from './contracts';
 import type { QueryContract } from '../query/contracts';
-import type { FallbackOptions } from '../resilience/strategies/fallback_strategy';
-import type { RetryOptions } from '../resilience/strategies/retry_strategy';
-import type { ThrottleOptions } from '../resilience/strategies/throttle_strategy';
-import type { TimeoutOptions } from '../resilience/strategies/timeout_strategy';
+import { ResilienceOptions } from '../resilience/resilience_interceptors_builder';
+import type { CommandContract } from './contracts';
 
 /**
- * A set of options that can be applied to a command.
+ * Options for configuring command execution, including resilience strategies and query dependencies.
  *
- * @template TQueriesName - The names of the queries that the command depends on.
- * @remarks This type is used to infer the queries that a command depends on.
- * @see CommandWithInferredQueries
+ * @template TQueriesName - Array of string literals representing names of queries the command depends on.
+ *
+ * @remarks
+ * This type provides flexibility in defining optional command configurations for resilience, managing query dependencies, and enabling automatic invalidation of dependent queries after command execution. *
+ * - Leverages {@link ResilienceOptions} for resilience-related options (excluding cache).
+ * - Integrates with {@link CommandWithInferredQueries} to enable advanced command configuration.
  */
-export type CommandOptions<TQueriesName extends string[] = string[]> = Partial<{
-  /**
-   * The retry options for the command.
-   *
-   * @see RetryOptions for more information. {@link RetryOptions}
-   */
-  retry: RetryOptions;
+export type CommandOptions<TQueriesName extends string[] = string[]> = Partial<
+  Omit<ResilienceOptions, 'cache'> & {
+    /**
+     * Names of queries that this command impacts, potentially rendering their results stale after execution.
+     */
+    queries: TQueriesName;
 
-  /**
-   * The timeout options for the command.
-   *
-   * @see TimeoutOptions for more information. {@link TimeoutOptions}
-   */
-  timeout: TimeoutOptions['timeout'];
-
-  /**
-   * The throttle options for the command.
-   *
-   * @see ThrottleOptions for more information. {@link ThrottleOptions}
-   */
-  throttle: Omit<ThrottleOptions, 'serialize'>;
-
-  /**
-   * The fallback options for the command.
-   *
-   * @see FallbackOptions for more information. {@link FallbackOptions}
-   */
-  fallback: FallbackOptions['fallback'];
-
-  /**
-   * The names of the queries that the command depends on.
-   */
-  queries: TQueriesName;
-
-  /**
-   * Whether to invalidate the queries that the command depends on.
-   */
-  invalidateQueries: boolean;
-}>;
+    /**
+     * Flag indicating whether to automatically invalidate results of dependent queries after command execution.
+     */
+    invalidateQueries: boolean;
+  }
+>;
 
 /**
- * A command with inferred queries.
+ * Augments a {@link CommandContract} with inferred queries and associated options for managing dependencies and invalidation.
  *
- * @template TName - The name of the command.
- * @template TPayload - The payload type of the command.
- * @template TOptions - The options type of the command.
- * @template TQueriesName - The names of the queries that the command depends on.
+ * @template TName - Name of the command.
+ * @template TPayload - Payload type of the command.
+ * @template TOptions - Original options type of the command.
+ * @template TQueriesName - Names of the queries that the command depends on.
  */
 export type CommandWithInferredQueries<
   TName extends string = string,
@@ -71,10 +42,10 @@ export type CommandWithInferredQueries<
 > = CommandContract<TName, TPayload, TOptions & CommandOptions<TQueriesName>>;
 
 /**
- * A record of inferred commands.
+ * A record of commands with inferred queries, constructed from known command and query types.
  *
- * @template KnownCommands - A record of known command types.
- * @template KnownQueries - A record of known query types.
+ * @template KnownCommands - Record of known command types.
+ * @template KnownQueries - Record of known query types.
  */
 export type InferredCommands<
   KnownCommands extends Record<string, CommandContract>,

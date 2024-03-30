@@ -2,11 +2,9 @@
 import { EventBus } from '../event/event_bus';
 import { Saga } from './saga';
 
-import type { EventBusContract } from '../event/contracts';
-
 describe('Saga', () => {
   let saga: Saga;
-  let eventBus: EventBusContract;
+  let eventBus: EventBus;
 
   beforeEach(() => {
     eventBus = new EventBus();

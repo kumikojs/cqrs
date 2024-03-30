@@ -5,26 +5,60 @@ import { QueryInterceptors } from './query_interceptors';
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
 import type { CombinedPartialOptions } from '../types';
-import type {
-  QueryBusContract,
-  QueryContract,
-  QueryHandlerContract,
-} from './contracts';
+import type { QueryContract, QueryHandlerContract } from './contracts';
 
 /**
- * The QueryBus is a simple event bus that allows you to register query handlers
- * and execute them.
+ * The `QueryBus` class acts as a central coordinator for managing query execution and facilitates cross-cutting concerns through interceptors.
+ *
+ * @remarks
+ * - It provides mechanisms to register and execute queries.
+ * - It applies interceptors to handle concerns like caching, logging, and authorization.
+ * - It leverages a driver for managing query subscriptions and publishing.
+ *
+ * @template KnownQueries - A record type representing known query types for type inference.
+ *                         Keys are query names (strings), and values are the corresponding {@link QueryContract} types.
+ * @example
+ * ```typescript
+ * import { type QueryContract, QueryBus } from '@stoik/cqrs-core';
+ *
+ * type User = { id: number; name: string; };
+ * type GetUserQuery = QueryContract<'user.get', { id: number; }>;
+ * type GetUsersQuery = QueryContract<'users.get', never>;
+ *
+ * type KnownQueries = {
+ *  'user.get': GetUserQuery;
+ *  'users.get': GetUsersQuery;
+ * };
+ *
+ * const bus = new QueryBus<KnownQueries>();
+ *
+ * // Register a handler for the 'user.get' query
+ * bus.register<GetUserQuery>('user.get', async (query) => {
+ *   return { id: query.payload.id, name: 'John Doe' };
+ * });
+ *
+ * // Dispatch the query and retrieve the result
+ * const user = await bus.dispatch<GetUserQuery, User>({ queryName: 'user.get', payload: { id: 1 } });
+ * console.log(user); // Output: { id: 1, name: 'John Doe' }
+ * ```
  */
-export class QueryBus<KnownQueries extends Record<string, QueryContract>>
-  implements QueryBusContract<KnownQueries>
-{
+export class QueryBus<
+  KnownQueries extends Record<string, QueryContract> = Record<
+    string,
+    QueryContract
+  >
+> {
+  /**
+   * @private
+   * The underlying bus driver managing subscriptions and publishing of queries.
+   */
   #driver: BusDriver<string> = new MemoryBusDriver({
     maxHandlersPerChannel: 1,
   });
 
   /**
-   * The interceptor manager
-   * Which is used to apply interceptors to the query execution
+   * @private
+   * The interceptor manager responsible for applying interceptors to query execution.
    */
   #interceptorManager: InterceptorManagerContract<
     QueryContract<
@@ -34,6 +68,11 @@ export class QueryBus<KnownQueries extends Record<string, QueryContract>>
     >
   >;
 
+  /**
+   * Constructs a QueryBus instance.
+   *
+   * @param cache - The cache instance to be used for data storage and retrieval.
+   */
   constructor(cache: Cache) {
     this.#interceptorManager = new QueryInterceptors<
       QueryContract<
@@ -46,12 +85,13 @@ export class QueryBus<KnownQueries extends Record<string, QueryContract>>
 
     this.execute = this.execute.bind(this);
     this.register = this.register.bind(this);
+    this.unregister = this.unregister.bind(this);
+    this.dispatch = this.dispatch.bind(this);
   }
 
   /**
    * The interceptor manager responsible for managing cross-cutting concerns for queries.
-   *
-   * @see InterceptorManagerContract - {@link InterceptorManagerContract}
+   * Refer to the {@link InterceptorManagerContract} interface for details.
    */
   get interceptors() {
     return this.#interceptorManager;
@@ -60,9 +100,11 @@ export class QueryBus<KnownQueries extends Record<string, QueryContract>>
   /**
    * Registers a query handler to the query bus.
    *
-   * @template TQuery - The type of query the handler handles.
+   * @template TQuery - The type of query the handler handles, inferred from the `KnownQueries` record.
    * @param queryName - The name of the query the handler is associated with.
    * @param handler - The query handler to register.
+   *                   It can be a function implementing the {@link QueryHandlerContract} interface
+   *                   or the `execute` method of the interface.
    * @returns An unregistration function to remove the handler from the bus.
    */
   register<TQuery extends KnownQueries[keyof KnownQueries]>(
@@ -81,9 +123,11 @@ export class QueryBus<KnownQueries extends Record<string, QueryContract>>
   /**
    * Unregisters a query handler from the query bus.
    *
-   * @template TQuery - The type of query the handler handles.
+   * @template TQuery - The type of query the handler handles, inferred from the `KnownQueries` record.
    * @param queryName - The name of the query the handler is associated with.
    * @param handler - The query handler to unregister.
+   *                   It can be a function implementing the {@link QueryHandlerContract} interface
+   *                   or the `execute` method of the interface.
    */
   unregister<TQuery extends KnownQueries[keyof KnownQueries]>(
     queryName: TQuery['queryName'],
@@ -99,15 +143,16 @@ export class QueryBus<KnownQueries extends Record<string, QueryContract>>
   /**
    * Executes a query using the query bus's interceptor pipeline.
    *
-   * @template TQuery - The inferred type of the query to execute.
+   * @template TQuery - The inferred type of the query to execute (derived from `KnownQueries`).
    * @template TResponse - The expected response type from the query execution.
    * @param query - The query to execute.
-   * @param handler - An optional custom handler for executing the query, overriding registered handlers.
+   * @param handler - A custom handler for executing the query, overriding registered handlers.
+   *                   This can be a function implementing the {@link QueryHandlerContract} interface's `execute` method.
    * @returns A promise resolving to the result of the query execution.
    */
   async execute<
     TQuery extends KnownQueries[keyof KnownQueries],
-    TResponse = void
+    TResponse = unknown
   >(
     query: TQuery,
     handler: QueryHandlerContract<QueryContract, TResponse>['execute']
@@ -118,16 +163,16 @@ export class QueryBus<KnownQueries extends Record<string, QueryContract>>
   /**
    * Dispatches a query using the query bus's interceptor pipeline.
    *
-   * @template TQuery - The inferred type of the query to execute.
+   * @template TQuery - The inferred type of the query to execute (derived from `KnownQueries`).
    * @template TResponse - The expected response type from the query execution.
    * @param query - The query to execute.
    * @returns A promise resolving to the result of the query execution.
    */
   async dispatch<
     TQuery extends KnownQueries[keyof KnownQueries],
-    TResponse = void
+    TResponse = unknown
   >(query: TQuery): Promise<TResponse> {
-    return this.#interceptorManager.execute<TQuery, TResponse>(query, (query) =>
+    return this.execute<TQuery, TResponse>(query, (query) =>
       this.#driver.publish(query['queryName'], query)
     );
   }

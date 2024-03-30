@@ -1,19 +1,18 @@
 import { ms } from '../../internal/ms/ms';
 import { Strategy } from './base_strategy';
 
-import type { DurationUnit } from '../../internal/ms/types';
-import type { AsyncFunction } from '../../types';
+import type { AsyncFunction, DurationUnit } from '../../types';
 
 /**
- * The timeout options.
+ * Configuration options for defining the timeout behavior of the strategy.
  */
 export type TimeoutOptions = {
   /**
    * The time to wait before timing out the task.
    *
    * @default '30s'
-   * @see {@link TTL}
-   * @type {TTL}
+   * @see {@link DurationUnit}
+   * @type {DurationUnit}
    * @example
    * '500ms' // 500 milliseconds
    * '30s' // 30 seconds
@@ -23,7 +22,7 @@ export type TimeoutOptions = {
 };
 
 /**
- * The timeout exception.
+ * A custom exception thrown when a task execution exceeds the configured timeout.
  */
 export class TimeoutException extends Error {
   public constructor(timeout: number) {
@@ -32,32 +31,57 @@ export class TimeoutException extends Error {
 }
 
 /**
- * The timeout strategy.
- * This strategy will timeout the task after a specified duration.
+ * A strategy designed to enforce a timeout limit on task execution.
+ * If the task takes longer than the specified timeout, a `TimeoutException` is thrown.
+ *
+ * @example
+ * ```ts
+ * const strategy = new TimeoutStrategy({ timeout: '1s' });
+ * const task = () => new Promise((resolve) => setTimeout(() => resolve('done'), 2000));
+ *
+ * try {
+ *    const result = await strategy.execute({}, task);
+ * } catch (error) {
+ *    console.error(error); // Task timed out after 1000ms
+ * }
+ * ```
  */
 export class TimeoutStrategy extends Strategy<TimeoutOptions> {
+  /**
+   * Default options for the TimeoutStrategy.
+   * @private
+   * @static
+   */
   static #defaultOptions: TimeoutOptions = {
     timeout: '30s',
   };
 
+  /**
+   * Creates an instance of the timeout strategy.
+   *
+   * @param options - The options for the timeout strategy.
+   */
   public constructor(options?: Partial<TimeoutOptions>) {
     super({
-      ...TimeoutStrategy.#defaultOptions,
-      ...options,
+      timeout: options?.timeout ?? TimeoutStrategy.#defaultOptions.timeout,
     });
   }
 
   /**
-   * Execute the task with a timeout.
+   * Executes the provided task with a timeout constraint.
    *
-   * If the task takes longer than the timeout, a timeout exception will be thrown.
+   * This method wraps the provided task within a Promise and sets a timer with the
+   * configured timeout duration. If the task execution doesn't complete within the
+   * timeout window, a `TimeoutException` is thrown, rejecting the promise. Otherwise,
+   * the task's result is resolved through the promise. Finally, the timer is cleared
+   * to prevent memory leaks.
    *
-   * @template TRequest - The type of request.
-   * @template TTask - The type of task.
-   * @template TResult - The type of result.
-   * @param {TRequest} request - The request to execute the task with.
-   * @param {TTask} task - The task to execute.
-   * @returns {Promise<TResult>} The result of the task.
+   * @template TRequest - The type of request object used for throttling identification.
+   * @template TTask - The type of the task to be executed. Must be an asynchronous function.
+   * @template TResult - The return type of the provided task (`TTask`).
+   * @param request - The request object used for throttling identification (ignored in TimeoutStrategy).
+   * @param task - The asynchronous task to be executed.
+   * @returns A promise that resolves to the result of the executed task (`TResult`) or rejects with a `TimeoutException` if the task timed out.
    */
   public async execute<
     TRequest,

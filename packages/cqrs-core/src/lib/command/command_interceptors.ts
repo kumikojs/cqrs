@@ -1,6 +1,3 @@
-/**
- * @module command
- */
 import { Cache } from '../internal/cache/cache';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 
@@ -9,10 +6,19 @@ import type { CombinedPartialOptions } from '../types';
 import type { CommandContract } from './contracts';
 
 /**
- * Command interceptors class is used to build interceptors for the command bus.
+ * Constructs a collection of interceptors for a command bus, enhancing its functionality with resilience and query invalidation.
  *
  * @template TCommand - The type of command the handler accepts, extending {@link CommandContract}.
  * @template KnownCommands - The known commands in the system.
+ *
+ * @remarks
+ * This class is designed to be used as a mixin with a command bus class or as a standalone utility for building interceptors.
+ *
+ * @example
+ * ```typescript
+ * const commandInterceptors = new CommandInterceptors<MyCommand>(cache);
+ * const interceptorManager = commandInterceptors.buildInterceptors();
+ * ```
  */
 export class CommandInterceptors<
   TCommand extends CommandContract<
@@ -23,17 +29,22 @@ export class CommandInterceptors<
   KnownCommands extends Record<string, CommandContract>
 > {
   /**
-   * The cache instance.
+   * @private
+   * The cache instance used for data storage and retrieval.
    */
   #cache: Cache;
 
   /**
-   * Resilience interceptors builder.
-   *
-   * This builder is used to build resilience interceptors for the command bus.
+   * @private
+   * A builder for creating resilience interceptors.
    */
   #resilienceInterceptorsBuilder: ResilienceInterceptorsBuilder<TCommand>;
 
+  /**
+   * Constructs a `CommandInterceptors` instance.
+   *
+   * @param cache - The cache instance to be used.
+   */
   constructor(cache: Cache) {
     this.#cache = cache;
     this.#resilienceInterceptorsBuilder =
@@ -47,9 +58,9 @@ export class CommandInterceptors<
   }
 
   /**
-   * Build interceptors for the command bus.
+   * Creates a collection of interceptors for the command bus, including resilience and query invalidation interceptors.
    *
-   * @returns The interceptor manager.
+   * @returns The built interceptor manager.
    */
   buildInterceptors(): InterceptorManagerContract<TCommand> {
     const interceptorManager = this.#resilienceInterceptorsBuilder
@@ -66,9 +77,10 @@ export class CommandInterceptors<
   }
 
   /**
-   * Add an interceptor that invalidates queries after the command is executed.
+   * @private
+   * Adds an interceptor that invalidates specified queries after a command's execution.
    *
-   * @param interceptorManager - The interceptor manager.
+   * @param interceptorManager - The interceptor manager to which the interceptor is added.
    */
   #addInvalidatingQueriesInterceptor(
     interceptorManager: InterceptorManagerContract<TCommand>

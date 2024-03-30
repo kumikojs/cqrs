@@ -1,6 +1,3 @@
-/**
- * @module command
- */
 import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
 import { Cache } from '../internal/cache/cache';
 import { CommandInterceptors } from './command_interceptors';
@@ -9,20 +6,18 @@ import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
 import type { QueryContract } from '../query/contracts';
 import type { CombinedPartialOptions } from '../types';
-import type {
-  CommandBusContract,
-  CommandContract,
-  CommandHandlerContract,
-} from './contracts';
+import type { CommandContract, CommandHandlerContract } from './contracts';
 import type { InferredCommands } from './types';
 
 /**
- * The CommandBus is a simple event bus that allows you to register command handlers
- * and execute them.
+ * A central hub for registering and executing commands, facilitating cross-cutting concerns through interceptors.
+ *
+ * @remarks
+ * This class enables a decoupled architecture where commands can be handled asynchronously, promoting testability and maintainability.
+ * It leverages a cache for storing and retrieving data, as well as interceptors to handle resilience, query invalidation, and other cross-cutting concerns.
  *
  * @template KnownCommands - A record of known command types for inference purposes.
  * @template KnownQueries - A record of known query types for inference purposes.
- * @implements CommandBusContract - The command bus contract. {@link CommandBusContract}
  * @example
  * ```ts
  * import { type CommandContract, CommandBus } from '@stoik/cqrs-core';
@@ -49,19 +44,24 @@ import type { InferredCommands } from './types';
  * ```
  */
 export class CommandBus<
-  KnownCommands extends Record<string, CommandContract>,
-  KnownQueries extends Record<string, QueryContract>
-> implements CommandBusContract<KnownCommands, KnownQueries>
-{
+  KnownCommands extends Record<string, CommandContract> = Record<
+    string,
+    CommandContract
+  >,
+  KnownQueries extends Record<string, QueryContract> = Record<
+    string,
+    QueryContract
+  >
+> {
   /**
-   * The underlying bus driver.
-   * This driver is responsible for managing the subscriptions and publishing of commands.
+   * @private
+   * The underlying bus driver responsible for managing subscriptions and publishing of commands.
    */
   #driver: BusDriver<string> = new MemoryBusDriver();
 
   /**
-   * The interceptor manager.
-   * This manager is responsible for applying interceptors to the command execution pipeline.
+   * @private
+   * The interceptor manager responsible for applying interceptors to the command execution pipeline.
    */
   #interceptorManager: InterceptorManagerContract<
     CommandContract<
@@ -71,6 +71,11 @@ export class CommandBus<
     >
   >;
 
+  /**
+   * Constructs a CommandBus instance.
+   *
+   * @param cache - The cache instance to be used for data storage and retrieval.
+   */
   constructor(cache: Cache) {
     this.#interceptorManager = new CommandInterceptors<
       CommandContract<
@@ -89,81 +94,66 @@ export class CommandBus<
   }
 
   /**
-   * Get the interceptor manager.
-   *
-   * @returns The interceptor manager. {@link InterceptorManagerContract}
+   * The interceptor manager responsible for managing cross-cutting concerns for commands.
+   * Refer to the {@link InterceptorManagerContract} interface for details.
    */
   get interceptors() {
     return this.#interceptorManager;
   }
 
   /**
-   * Register a command handler to the command bus.
+   * Registers a command handler to the command bus.
    *
-   * @template TCommand - The type of command the handler handles.
+   * @template TCommand - The type of command the handler handles, inferred from the `KnownCommands` record.
    * @param commandName - The name of the command the handler is associated with.
    * @param handler - The command handler to register.
+   *                   It can be a function implementing the {@link CommandHandlerContract} interface
+   *                   or the `execute` method of the interface.
    * @returns An unregistration function to remove the handler from the bus.
    */
   register<TCommand extends KnownCommands[keyof KnownCommands]>(
-    queryName: TCommand['commandName'],
+    commandName: TCommand['commandName'],
     handler:
       | CommandHandlerContract<TCommand>
       | CommandHandlerContract<TCommand>['execute']
   ): VoidFunction {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
-    this.#driver.subscribe(queryName, handlerFn);
+    this.#driver.subscribe(commandName, handlerFn);
 
-    return () => this.unregister(queryName, handler);
+    return () => this.unregister(commandName, handler);
   }
 
   /**
-   * Unregister a command handler from the command bus.
+   * Unregisters a command handler from the command bus.
    *
-   * @template TCommand - The type of command the handler handles.
+   * @template TCommand - The type of query the handler handles, inferred from the `KnownCommands` record.
    * @param commandName - The name of the command the handler is associated with.
    * @param handler - The command handler to unregister.
+   *                   It can be a function implementing the {@link CommandHandlerContract} interface
+   *                   or the `execute` method of the interface.
    */
   unregister<TCommand extends KnownCommands[keyof KnownCommands]>(
-    queryName: TCommand['commandName'],
+    commandName: TCommand['commandName'],
     handler:
       | CommandHandlerContract<TCommand>
       | CommandHandlerContract<TCommand>['execute']
   ) {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
-    this.#driver.unsubscribe(queryName, handlerFn);
+    this.#driver.unsubscribe(commandName, handlerFn);
   }
 
   /**
-   * Dispatch a command to the command bus.
+   * Executes a command using the command bus's interceptor pipeline, applying middleware-like functionality.
    *
-   * @template TCommand - The inferred type of the command to execute.
+   * @template TCommand - The inferred type of the command to execute (derived from `InferredCommands`).
    * @template TResponse - The expected response type from the command execution.
+   *                       For commands, this is often `void` as they primarily trigger actions.
    * @param command - The command to execute.
-   * @returns A promise resolving to the result of the command execution.
-   */
-  async dispatch<
-    TCommand extends InferredCommands<
-      KnownCommands,
-      KnownQueries
-    >[keyof InferredCommands<KnownCommands, KnownQueries>],
-    TResponse = void
-  >(command: TCommand): Promise<TResponse> {
-    return this.#interceptorManager.execute<TCommand, TResponse>(
-      command,
-      (command) => this.#driver.publish(command['commandName'], command)
-    );
-  }
-
-  /**
-   * Execute a command using the command bus's interceptor pipeline.
-   *
-   * @template TCommand - The inferred type of the command to execute.
-   * @template TResponse - The expected response type from the command execution.
-   * @param command - The command to execute.
-   * @returns A promise resolving to the result of the command execution.
+   * @param handler - A custom handler for executing the command, overriding registered handlers.
+   *                   This can be a function implementing the `CommandHandlerContract` interface's `execute` method.
+   * @returns A promise resolving to the result of the command execution (often `void` for commands).
    */
   async execute<
     TCommand extends InferredCommands<
@@ -173,11 +163,32 @@ export class CommandBus<
     TResponse = void
   >(
     command: TCommand,
-    handler: CommandHandlerContract<CommandContract, TResponse>['execute']
+    handler: CommandHandlerContract<CommandContract>['execute']
   ): Promise<TResponse> {
-    return this.#interceptorManager.execute<TCommand, TResponse>(
+    return await this.#interceptorManager.execute<TCommand, TResponse>(
       command,
       handler
+    );
+  }
+
+  /**
+   * Dispatches a command to the command bus for execution, initiating its processing pipeline.
+   *
+   * @template TCommand - The inferred type of the command to execute (derived from `InferredCommands`).
+   * @template TResponse - The expected response type from the command execution.
+   *                       For commands, this is often `void` as they primarily trigger actions.
+   * @param command - The command to execute.
+   * @returns A promise resolving to the result of the command execution (often `void` for commands).
+   */
+  async dispatch<
+    TCommand extends InferredCommands<
+      KnownCommands,
+      KnownQueries
+    >[keyof InferredCommands<KnownCommands, KnownQueries>],
+    TResponse = void
+  >(command: TCommand): Promise<TResponse> {
+    return this.execute<TCommand, TResponse>(command, (command) =>
+      this.#driver.publish(command['commandName'], command)
     );
   }
 }

@@ -1,92 +1,62 @@
 import { StateMachine } from './internal/state_machine';
 import { Stepper } from './internal/stepper';
+import { EventBus } from '../event/event_bus';
 
-import type { EventBusContract, EventContract } from '../event/contracts';
+import type { EventContract } from '../event/contracts';
 
 /**
- * A step is a single unit of work that can be executed as part of a saga.
- * It can also have a compensation step that is executed if the step fails.
+ * Represents a single unit of work within a saga execution flow.
+ *
+ * A `Step` defines both the primary execution logic and an optional compensation step to handle failures.
  */
 export type Step = {
   /**
-   * The step to execute.
-   * This is the main function that will be executed as part of the saga.
-   * It should contain the main logic of the step.
+   * The core function of the step, containing the essential logic to be executed as part of the saga.
    *
-   * @param request - The request data for the step.
+   * @param request - The request data passed to the step for processing.
+   * @returns A Promise that resolves upon successful step execution.
    */
   execute: <TRequest>(request: TRequest) => Promise<void>;
 
   /**
-   * The optional compensation step to execute.
-   * This is the function that will be executed if the step fails.
-   * It should contain the logic to undo the work done by the main step.
+   * An optional compensation function to be invoked if the `execute` step encounters an error.
+   * This function's purpose is to undo the work performed by the primary step, ensuring data consistency.
    *
-   * @param request - The request data for the step.
+   * @param request - The same request data used by the `execute` step.
+   * @returns A Promise that resolves upon successful compensation execution (if applicable).
    */
   compensate?: <TRequest>(request: TRequest) => Promise<void>;
 };
 
 /**
- * The saga contract.
+ * A saga coordinates a sequence of steps triggered in response to specific events.
+ * If any step within the saga fails, the entire saga is rolled back by executing the compensation steps of preceding steps.
  */
-interface SagaContract {
-  /**
-   * Run the saga on a specific event.
-   *
-   * @param eventName - The name of the event to run the saga on.
-   * @param steps - The steps to run as part of the saga.
-   */
-  runOn(eventName: EventContract['eventName'], steps: Step[]): void;
+export class Saga {
+  /** @private The event bus used for event subscription. */
+  #eventBus: EventBus;
 
-  /**
-   * Run the saga.
-   *
-   * @param data - The data to run the saga with.
-   */
-  run<T>(data: T): void;
-
-  /**
-   * Add a step to the saga.
-   *
-   * @param step - The step to add to the saga.
-   * @returns The saga instance.
-   */
-  addStep(step: Step): this;
-
-  /**
-   * Add multiple steps to the saga.
-   *
-   * @param steps - The steps to add to the saga.
-   * @returns The saga instance.
-   */
-  addSteps(...steps: Step[]): this;
-}
-
-/**
- * The saga class.
- *
- * This class is responsible for running a saga.
- * A saga is a sequence of steps that are executed in response to an event.
- * If any step fails, the saga will be rolled back by executing the compensation steps.
- *
- * @implements SagaContract - The saga contract. {@link SagaContract}
- */
-export class Saga implements SagaContract {
-  #eventBus: EventBusContract;
+  /** @private The internal state machine for tracking saga execution state. */
   #stateMachine: StateMachine = new StateMachine();
+
+  /** @private The stepper instance responsible for managing step execution and compensation. */
   #stepper: Stepper = new Stepper();
 
-  constructor(eventBus: EventBusContract) {
+  /**
+   * Creates a new Saga instance.
+   *
+   * @param eventBus - The event bus to use for event subscription.
+   */
+  constructor(eventBus: EventBus) {
     this.#eventBus = eventBus;
   }
 
   /**
-   * Run the saga on a specific event.
+   * Attaches the saga to a specific event emitted by the event bus.
    *
-   * @param eventName - The name of the event to run the saga on.
-   * @param steps - The steps to run as part of the saga.
-   * @returns A function to unsubscribe from the event.
+   * @param eventName - The name of the event that triggers saga execution.
+   * @param steps - An array of `Step` objects defining the saga's execution flow.
+   * @returns A function to unsubscribe from the attached event listener.
    */
   public runOn(eventName: EventContract['eventName']) {
     return this.#eventBus.on(eventName, async (event: EventContract) => {
@@ -95,9 +65,10 @@ export class Saga implements SagaContract {
   }
 
   /**
-   * Run the saga.
+   * Executes the saga with the provided data.
    *
-   * @param data - The data to run the saga with.
+   * @param data - The data used for processing within the saga's steps.
+   * @returns A Promise that resolves upon successful saga completion or rejects with an error if any step fails.
    */
   public async run<T>(data: T) {
     this.#stateMachine.transition({ type: 'run' });
@@ -109,15 +80,15 @@ export class Saga implements SagaContract {
       this.#stateMachine.transition({ type: 'error' });
       await this.#stepper.compensate(data);
       this.#stateMachine.transition({ type: 'compensate' });
-      throw error;
+      throw error; // Re-throw the error for external handling
     }
   }
 
   /**
-   * Add a step to the saga.
+   * Adds a single step to the saga's execution flow.
    *
-   * @param step - The step to add to the saga.
-   * @returns The saga instance.
+   * @param step - The `Step` object to be incorporated into the saga.
+   * @returns The `Saga` instance itself, allowing for method chaining.
    */
   addStep(step: Step) {
     this.#stepper.add(step);
@@ -126,10 +97,10 @@ export class Saga implements SagaContract {
   }
 
   /**
-   * Add multiple steps to the saga.
+   * Adds multiple steps to the saga's execution flow in a single call.
    *
-   * @param steps - The steps to add to the saga.
-   * @returns The saga instance.
+   * @param steps - An array of `Step` objects representing the steps to be added.
+   * @returns The `Saga` instance itself, allowing for method chaining.
    */
   addSteps(...steps: Step[]) {
     this.#stepper.add(...steps);
@@ -138,9 +109,9 @@ export class Saga implements SagaContract {
   }
 
   /**
-   * Get the current state of the saga.
+   * Retrieves the current state of the saga's internal state machine.
    *
-   * @returns The current state of the saga.
+   * @returns The current state of the `StateMachine` instance.
    */
   public get state() {
     return this.#stateMachine.state;

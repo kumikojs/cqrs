@@ -4,12 +4,13 @@
 import type { Nullable } from '../types';
 
 /**
- * The event contract defines the structure of an event.
+ * Interface defining the structure of an event.
+ * Represents an occurrence or happening within the application domain.
  *
- * @template TName - The name of the event.
- * @template TPayload - The optional payload data associated with the event.
+ * @template TName - The unique name of the event, typically a string literal.
+ * @template TPayload - The optional payload data associated with the event, providing additional context or information.
  * @example
- * ```ts
+ * ```typescript
  * import type { EventContract } from '@stoik/cqrs-core';
  *
  * type UserCreatedEvent = EventContract<'user.created', { id: number; name: string; }>;
@@ -20,37 +21,39 @@ export interface EventContract<
   TPayload = unknown
 > {
   /**
-   * The unique name of the event.
+   * The unique name of the event that serves as an identifier.
    */
   eventName: TName;
 
   /**
-   * The optional payload data associated with the event.
+   * The optional payload data associated with the event, potentially containing details about the occurrence.
    */
   payload?: Nullable<TPayload>;
 }
 
 /**
- * The event handler contract defines the structure of an event handler.
+ * Interface defining the contract for an event handler function or class.
+ * Represents a function or class responsible for handling a specific event type.
  *
- * @template TEvent - The type of event the handler accepts, extending {@link EventContract}.
+ * @template TEvent - The type of event the handler accepts, extending the {@link EventContract} interface.
  * @example
- * ```ts
+ * ```typescript
  * import type { EventContract, EventHandlerContract } from '@stoik/cqrs-core';
  *
  * type UserCreatedEvent = EventContract<'user.created', { id: number; name: string; }>;
- * type UserUpdatedEvent = EventContract<'user.updated', { id: number; name: string; }>;
  *
+ * // Function-based handler
  * const userCreatedHandler: EventHandlerContract<UserCreatedEvent> = {
- *  async handle(event) {
- *    console.log('User created:', event.payload);
- *  },
+ *   async handle(event) {
+ *     console.log('User created:', event.payload);
+ *   },
  * };
  *
+ * // Class-based handler
  * class UserUpdatedHandler implements EventHandlerContract<UserUpdatedEvent> {
- *  async handle(event) {
- *    console.log('User updated:', event.payload);
- *  }
+ *   async handle(event) {
+ *     console.log('User updated:', event.payload);
+ *   }
  * }
  * ```
  */
@@ -61,82 +64,7 @@ export interface EventHandlerContract<
    * Handles the given event.
    *
    * @param event - The event to handle.
+   * @returns A promise resolving to `void` as event handling typically doesn't return a specific value.
    */
   handle(event: TEvent): Promise<void>;
-}
-
-/**
- * The event bus contract defines the structure of an event bus.
- *
- * @template KnownEvents - A record of known event types.
- * @example
- * ```ts
- * import { type EventContract, EventBus } from '@stoik/cqrs-core';
- *
- * type UserCreatedEvent = EventContract<'user.created', { id: number; name: string; }>;
- * type UserUpdatedEvent = EventContract<'user.updated', { id: number; name: string; }>;
- *
- * type KnownEvents = {
- *  'user.created': UserCreatedEvent;
- *  'user.updated': UserUpdatedEvent;
- * };
- * const bus = new EventBus<KnownEvents>();
- *
- * bus.on('user.created', async (event) => {
- *  console.log('User created:', event);
- * });
- *
- * bus.emit({
- *  eventName: 'user.created',
- *  payload: {
- *    id: 1,
- *    name: 'John Doe',
- *  },
- * });
- * ```
- */
-export interface EventBusContract<
-  KnownEvents extends Record<string, EventContract> = Record<
-    string,
-    EventContract
-  >
-> {
-  /**
-   * Subscribe to an event.
-   *
-   * @template TEvent - The type of event to subscribe to.
-   * @param eventName - The name of the event to subscribe to.
-   * @param handler - The event handler to subscribe.
-   * @returns A function to unsubscribe from the event.
-   */
-  on<TEvent extends KnownEvents[keyof KnownEvents]>(
-    eventName: TEvent['eventName'],
-    handler:
-      | EventHandlerContract<TEvent>
-      | EventHandlerContract<TEvent>['handle']
-  ): VoidFunction;
-
-  /**
-   * Unsubscribe from an event.
-   *
-   * @template TEvent - The type of event to unsubscribe from.
-   * @param eventName - The name of the event to unsubscribe from.
-   * @param handler - The event handler to unsubscribe.
-   */
-  off<TEvent extends KnownEvents[keyof KnownEvents]>(
-    eventName: TEvent['eventName'],
-    handler:
-      | EventHandlerContract<TEvent>
-      | EventHandlerContract<TEvent>['handle']
-  ): void;
-
-  /**
-   * Emit an event.
-   *
-   * @template TEvent - The type of event to emit.
-   * @param event - The event to emit.
-   */
-  emit<TEvent extends KnownEvents[keyof KnownEvents]>(
-    event: TEvent
-  ): Promise<void>;
 }

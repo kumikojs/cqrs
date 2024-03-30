@@ -1,4 +1,4 @@
-import type { DurationUnit } from './types';
+import type { DurationUnit } from '../../types';
 
 const toMilliseconds = (value: number, unit: string): number => {
   switch (unit) {

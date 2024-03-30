@@ -14,23 +14,20 @@ import type { ThrottleOptions } from './strategies/throttle_strategy';
 import type { TimeoutOptions } from './strategies/timeout_strategy';
 
 /**
- * The resilience strategies builder.
+ * A builder for creating instances of various resilience strategies to handle
+ * potential issues and improve the robustness of asynchronous operations.
  */
 export type ResilienceStrategiesBuilder = {
   /**
-   * Create a cache strategy.
+   * Creates a CacheStrategy instance for caching task results.
    *
-   * This strategy caches the results of a task.
-   *
-   * @param {Partial<CacheOptions>} options - The cache options.
-   * @returns {CacheStrategy} The cache strategy.
+   * @param options - Partial configuration options for the CacheStrategy.
+   * @returns A newly constructed CacheStrategy instance.
    */
   cache: (options: Partial<CacheOptions>) => CacheStrategy;
 
   /**
-   * Create a retry strategy.
-   *
-   * This strategy retries the task on failure.
+   * Creates a retry strategy for retries the task on failure.
    *
    * @param {Partial<RetryOptions>} options - The retry options.
    * @returns {RetryStrategy} The retry strategy.
@@ -38,9 +35,7 @@ export type ResilienceStrategiesBuilder = {
   retry: (options: Partial<RetryOptions>) => RetryStrategy;
 
   /**
-   * Create a throttle strategy.
-   *
-   * This strategy throttles the task.
+   * Creates a throttle strategy for throttling the task.
    *
    * @param {Partial<ThrottleOptions>} options - The throttle options.
    * @returns {ThrottleStrategy} The throttle strategy.
@@ -48,9 +43,7 @@ export type ResilienceStrategiesBuilder = {
   throttle: (options: Partial<ThrottleOptions>) => ThrottleStrategy;
 
   /**
-   * Create a timeout strategy.
-   *
-   * This strategy will timeout the task after a specified duration.
+   * Creates a timeout strategy for timing out the task after a specified duration.
    *
    * @param {Partial<TimeoutOptions>} options - The timeout options.
    * @returns {TimeoutStrategy} The timeout strategy.
@@ -58,9 +51,7 @@ export type ResilienceStrategiesBuilder = {
   timeout: (options: Partial<TimeoutOptions>) => TimeoutStrategy;
 
   /**
-   * Create a deduplication strategy.
-   *
-   * This strategy deduplicates the task.
+   * Creates a deduplication strategy for deduplicating the task.
    *
    * @param {Partial<DeduplicationOptions>} options - The deduplication options.
    * @returns {DeduplicationStrategy} The deduplication strategy.
@@ -68,9 +59,7 @@ export type ResilienceStrategiesBuilder = {
   deduplication: (options: DeduplicationOptions) => DeduplicationStrategy;
 
   /**
-   * Create a fallback strategy.
-   *
-   * This strategy falls back to a default value on failure.
+   * Creates a fallback strategy for falling back to a default value on failure.
    *
    * @param {Partial<FallbackOptions>} options - The fallback options.
    * @returns {FallbackStrategy} The fallback strategy.
@@ -79,10 +68,11 @@ export type ResilienceStrategiesBuilder = {
 };
 
 /**
- * Create a resilience strategies builder.
+ * A factory function that creates a ResilienceStrategiesBuilder instance,
+ * providing a centralized way to construct various resilience strategies.
  *
- * @param {Cache} cache - The cache.
- * @returns {ResilienceStrategiesBuilder} The resilience strategies builder.
+ * @param cache - The Cache implementation to be used by strategies that require caching.
+ * @returns A new ResilienceStrategiesBuilder instance.
  */
 export const createResilienceStrategiesBuilder = (
   cache: Cache

@@ -1,54 +1,19 @@
-import type { CacheOptions } from '../resilience/strategies/cache_strategy';
-import type { FallbackOptions } from '../resilience/strategies/fallback_strategy';
-import type { RetryOptions } from '../resilience/strategies/retry_strategy';
-import type { ThrottleOptions } from '../resilience/strategies/throttle_strategy';
-import type { TimeoutOptions } from '../resilience/strategies/timeout_strategy';
+import { ResilienceOptions } from '../resilience/resilience_interceptors_builder';
 
 /**
- * The context for the query.
+ * The context for a query, primarily used for cancellation.
  */
-export type QueryContext = {
+export interface QueryContext {
   /**
-   * The signal used to abort the query.
+   * The signal for aborting the query.
    *
-   * @remarks This signal can be passed from tiers libraries like `@tanstack/query`.
+   * @remarks Integrates with libraries like `@tanstack/react-query` for cancellation mechanisms.
    */
   signal?: AbortSignal;
-};
+}
 
-export type QueryOptions = Partial<{
-  /**
-   * The retry options for the query.
-   *
-   * @see RetryOptions for more information. {@link RetryOptions}
-   */
-  retry: RetryOptions;
-
-  /**
-   * The cache options for the query.
-   *
-   * @see CacheOptions for more information. {@link CacheOptions}
-   */
-  cache: Omit<CacheOptions, 'serialize'>;
-
-  /**
-   * The timeout options for the query.
-   *
-   * @see TimeoutOptions for more information. {@link TimeoutOptions}
-   */
-  timeout: TimeoutOptions['timeout'];
-
-  /**
-   * The throttle options for the query.
-   *
-   * @see ThrottleOptions for more information. {@link ThrottleOptions}
-   */
-  throttle: Omit<ThrottleOptions, 'serialize'>;
-
-  /**
-   * The fallback options for the query.
-   *
-   * @see FallbackOptions for more information. {@link FallbackOptions}
-   */
-  fallback: FallbackOptions['fallback'];
-}>;
+/**
+ * Options for configuring a query's behavior and resilience.
+ * (Refer to {@link ResilienceOptions} for more information.)
+ */
+export type QueryOptions = ResilienceOptions;

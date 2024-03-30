@@ -1,32 +1,42 @@
 import type { AsyncFunction } from '../../types';
 
 /**
- * The base strategy.
- * This is the base class for all strategies.
+ * The fundamental building block for defining task execution strategies.
+ * This abstract class serves as the foundation for all concrete strategy implementations.
  *
- * @template TOptions - The strategy options.
+ * @template TOptions - The type representing the options configurable for the strategy.
  */
 export abstract class Strategy<TOptions> {
   /**
-   * The options for the strategy.
+   * Options that govern the behavior and execution details of the strategy.
+   * @protected
    */
   protected options: TOptions;
 
-  public constructor(options: TOptions) {
+  /**
+   * Constructs a new `Strategy` instance, initializing it with the provided options.
+   *
+   * @param options - The options to configure the strategy's behavior.
+   */
+  constructor(options: TOptions) {
     this.options = options;
   }
 
   /**
-   * Execute the task.
+   * The core method responsible for executing a task using the defined strategy.
    *
-   * @template TRequest - The type of request.
-   * @template TTask - The type of task.
-   * @template TResult - The type of result.
-   * @param {TRequest} request - The request to execute the task with.
-   * @param {TTask} task - The task to execute.
-   * @returns {Promise<TResult>} The result of the task.
+   * @template TRequest - The type of the request data used for task execution.
+   * @template TTask - The type of the task to be executed, constrained to be an asynchronous function.
+   * @template TResult - The type representing the expected result of the task execution.
+   *                   Defaults to the return type inferred from the `TTask` type.
+   *
+   * @param request - The request data to be passed to the task during execution.
+   * @param task - The asynchronous function representing the actual task to be executed.
+   * @returns A promise that resolves with the result of the task execution.
+   *
+   * @abstract This method must be implemented by concrete strategy subclasses to provide their specific execution logic.
    */
-  public abstract execute<
+  abstract execute<
     TRequest,
     TTask extends AsyncFunction,
     TResult = ReturnType<TTask>

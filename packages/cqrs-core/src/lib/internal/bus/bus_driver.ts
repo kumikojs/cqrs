@@ -20,7 +20,9 @@ export interface BusDriver<TChanel> {
   publish<TRequest, TResponse>(
     channel: TChanel,
     request: TRequest
-  ): Promise<TResponse | void>;
+  ): Promise<TResponse>;
+  publish<TRequest>(channel: TChanel, request: TRequest): Promise<void>;
+
   subscribe<TRequest>(channel: TChanel, handler: BusHandler<TRequest>): void;
   unsubscribe<TRequest>(channel: TChanel, handler: BusHandler<TRequest>): void;
 }
