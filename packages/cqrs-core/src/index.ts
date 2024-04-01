@@ -2,6 +2,9 @@ export * from './lib/client';
 
 export type { DurationUnit } from './lib/types';
 
+// TODO: Move outside internal folder
+export { BusException } from './lib/internal/bus/bus_options';
+
 export * from './lib/command/command_bus';
 export * from './lib/command/command_subject';
 export type * from './lib/command/command_contracts';
