@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { BusHandler } from './bus_handler';
 
 /**
  * The bus driver interface.
@@ -7,7 +7,7 @@
  * @internal
  * @template TChannel - The type of channel to use.
  */
-export interface BusDriver<TChanel> {
+export interface BusDriver<TChannel> {
   /**
    * Publish a request to the bus.
    *
@@ -18,24 +18,11 @@ export interface BusDriver<TChanel> {
    * @returns {Promise<TResponse | void>} The response from the handler.
    */
   publish<TRequest, TResponse>(
-    channel: TChanel,
+    channel: TChannel,
     request: TRequest
   ): Promise<TResponse>;
-  publish<TRequest>(channel: TChanel, request: TRequest): Promise<void>;
+  publish<TRequest>(channel: TChannel, request: TRequest): Promise<void>;
 
-  subscribe<TRequest>(channel: TChanel, handler: BusHandler<TRequest>): void;
-  unsubscribe<TRequest>(channel: TChanel, handler: BusHandler<TRequest>): void;
+  subscribe<TRequest>(channel: TChannel, handler: BusHandler<TRequest>): void;
+  unsubscribe<TRequest>(channel: TChannel, handler: BusHandler<TRequest>): void;
 }
-
-/**
- * The bus handler type.
- *
- * @typedef BusHandler
- * @template TRequest - The type of request the handler handles.
- * @template TResponse - The type of response from the handler.
- * @param {TRequest} request - The request to handle.
- * @returns {Promise<TResponse>} The response from the handler.
- */
-export type BusHandler<TRequest, TResponse = any> = (
-  request: TRequest
-) => Awaited<TResponse>;

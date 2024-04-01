@@ -1,30 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { BusDriver, BusHandler } from '../bus_driver';
-
-/**
- * The options for the MemoryBusDriver
- *
- * @typedef BusOptions
- * @property {number} maxHandlersPerChannel - The maximum number of handlers per channel.
- * @property {'soft' | 'hard'} mode - The mode of the bus.
- */
-type BusOptions = {
-  /**
-   * The maximum number of handlers per channel.
-   *
-   * @type {number}
-   * @default 1
-   */
-  maxHandlersPerChannel: number;
-
-  /**
-   * The mode of the bus.
-   *
-   * @type {'soft' | 'hard'}
-   * @default 'hard'
-   */
-  mode: 'soft' | 'hard';
-};
+import { BusOptions, BusOptionsManager } from '../bus_options';
+import type { BusDriver } from '../bus_driver';
+import type { BusHandler } from '../bus_handler';
 
 /**
  * The MemoryBusDriver is a simple in-memory bus driver that allows you to publish
@@ -42,18 +19,14 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
   #subscriptions: Map<TChannel, BusHandler<any>[]> = new Map();
 
   /**
-   * The options for the MemoryBusDriver
+   * The options manager.
    *
-   * @type {BusOptions}
+   * @type {BusOptionsManager<TChannel>}
    */
-  #options: BusOptions;
+  #optionsManager: BusOptionsManager<TChannel>;
 
   constructor(options?: Partial<BusOptions>) {
-    this.#options = {
-      maxHandlersPerChannel: 1,
-      mode: 'hard',
-      ...options,
-    };
+    this.#optionsManager = new BusOptionsManager<TChannel>(options);
   }
 
   /**
@@ -69,15 +42,9 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
     channel: TChannel,
     request: TRequest
   ): Promise<TResponse | void> {
-    const handlers = this.#subscriptions.get(channel);
+    const handlers = this.#subscriptions.get(channel) || [];
 
-    if (!handlers) {
-      if (this.#options.mode === 'soft') {
-        return;
-      }
-
-      throw new Error(`No handler for channel: ${channel}`);
-    }
+    this.#optionsManager.requireAtLeastOneHandler(channel, handlers.length);
 
     const responses = await Promise.all(
       handlers.map((handler) => handler(request))
@@ -96,15 +63,7 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
   subscribe<TRequest>(channel: TChannel, handler: BusHandler<TRequest>): void {
     const handlers = this.#subscriptions.get(channel) || [];
 
-    if (handlers.length >= this.#options.maxHandlersPerChannel) {
-      if (this.#options.mode === 'soft') {
-        return;
-      }
-
-      throw new Error(
-        `Max handler per channel: ${this.#options.maxHandlersPerChannel}`
-      );
-    }
+    this.#optionsManager.verifyHandlerLimit(channel, handlers.length);
 
     handlers.push(handler);
     this.#subscriptions.set(channel, handlers);
@@ -124,26 +83,18 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
     const handlers = this.#subscriptions.get(channel);
 
     if (!handlers) {
-      if (this.#options.mode === 'soft') {
-        return;
-      }
-
-      throw new Error(`No handler for channel: ${channel}`);
+      this.#optionsManager.throwError('NO_HANDLER_FOUND', channel);
+      return;
     }
 
-    if (handler) {
-      const index = handlers.indexOf(handler);
+    const index = handlers.indexOf(handler);
 
-      if (index === -1) {
-        if (this.#options.mode === 'soft') {
-          return;
-        }
-
-        throw new Error(`Handler not found for channel: ${channel}`);
-      }
-
-      handlers.splice(index, 1);
+    if (index === -1) {
+      this.#optionsManager.throwError('NO_HANDLER_FOUND', channel);
+      return;
     }
+
+    handlers.splice(index, 1);
 
     if (handlers.length === 0) {
       this.#subscriptions.delete(channel);

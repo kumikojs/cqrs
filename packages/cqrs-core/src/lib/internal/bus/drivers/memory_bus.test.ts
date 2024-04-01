@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { BusException } from '../bus_options';
 import { MemoryBusDriver } from './memory_bus';
 
 describe('MemoryBusDriver', () => {
@@ -8,17 +8,20 @@ describe('MemoryBusDriver', () => {
     it('should allow only one handler per channel', async () => {
       const bus = new MemoryBusDriver<string>({ maxHandlersPerChannel: 1 });
 
-      bus.subscribe('channel', async () => {});
-      expect(() => bus.subscribe('channel', async () => {})).toThrowError(
-        'Max handler per channel: 1'
+      bus.subscribe('channel', vitest.fn());
+      expect(() => bus.subscribe('channel', vitest.fn())).toThrowError(
+        new BusException('MAX_HANDLERS_PER_CHANNEL', {
+          message: 'Limit of 1 handler(s) per channel reached.',
+          channel: 'channel',
+        })
       );
     });
 
     it('should allow multiple handlers per channel', async () => {
       const bus = new MemoryBusDriver<string>({ maxHandlersPerChannel: 2 });
 
-      bus.subscribe('channel', async () => {});
-      bus.subscribe('channel', async () => {});
+      bus.subscribe('channel', vitest.fn());
+      bus.subscribe('channel', vitest.fn());
     });
   });
 
@@ -27,7 +30,10 @@ describe('MemoryBusDriver', () => {
       const bus = new MemoryBusDriver<string>({ mode: 'hard' });
 
       expect(() => bus.publish('channel', {})).rejects.toThrowError(
-        'No handler for channel: channel'
+        new BusException('NO_HANDLER_FOUND', {
+          message: 'No handler found for this channel.',
+          channel: 'channel',
+        })
       );
     });
 
@@ -40,19 +46,28 @@ describe('MemoryBusDriver', () => {
     it('should throw an error if handler is not found', async () => {
       const bus = new MemoryBusDriver<string>({ mode: 'hard' });
 
-      bus.subscribe('channel', async () => {});
+      bus.subscribe('channel', async () => {
+        return;
+      });
 
-      expect(() => bus.unsubscribe('channel', async () => {})).toThrowError(
-        'Handler not found for channel: channel'
+      expect(() =>
+        bus.unsubscribe('channel', async () => {
+          return;
+        })
+      ).toThrowError(
+        new BusException('NO_HANDLER_FOUND', {
+          message: 'No handler found for this channel.',
+          channel: 'channel',
+        })
       );
     });
 
     it('should not throw an error if handler is not found', async () => {
       const bus = new MemoryBusDriver<string>({ mode: 'soft' });
 
-      bus.subscribe('channel', async () => {});
+      bus.subscribe('channel', vitest.fn());
 
-      expect(() => bus.unsubscribe('channel', async () => {})).not.toThrow();
+      expect(() => bus.unsubscribe('channel', vitest.fn())).not.toThrow();
     });
   });
 
