@@ -3,7 +3,7 @@ import { ms } from '../../ms/ms';
 
 import type { DurationUnit, VoidFunction } from '../../../types';
 import type { BusDriver } from '../../bus/bus_driver';
-import type { CacheDriverContract } from '../cache_driver';
+import type { CacheDriver } from '../cache_driver';
 
 /**
  * The LocalStorageCacheDriver is a simple cache driver that uses the LocalStorage API
@@ -11,16 +11,16 @@ import type { CacheDriverContract } from '../cache_driver';
  * It also emits cache invalidation events when a key is invalidated.
  *
  * @template TKey - The type of key to use.
- * @implements CacheDriverContract<TKey> - The cache driver contract.
+ * @implements CacheDriver<TKey> - The cache driver contract.
  */
 
 interface CacheItem {
-  value: any;
+  value: unknown;
   expiration: number;
 }
 
 export class LocalStorageCacheDriver<TKey extends string>
-  implements CacheDriverContract<TKey>
+  implements CacheDriver<TKey>
 {
   /**
    * The LocalStorage API.
@@ -57,8 +57,6 @@ export class LocalStorageCacheDriver<TKey extends string>
 
   get<TValue>(ns: string, key: TKey): TValue | undefined {
     const item = this.#storage.getItem(`${ns}:${key}`);
-    console.log('item', item);
-    console.log('storage', this.#storage);
     if (!item) return undefined;
 
     try {
@@ -82,8 +80,6 @@ export class LocalStorageCacheDriver<TKey extends string>
       `${ns}:${key}`,
       JSON.stringify({ value, expiration })
     );
-
-    console.log('storage', this.#storage);
   }
 
   delete(ns: string, key?: TKey): void {

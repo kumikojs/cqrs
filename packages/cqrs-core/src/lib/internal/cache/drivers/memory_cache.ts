@@ -4,7 +4,7 @@ import { ms } from '../../ms/ms';
 
 import type { DurationUnit, VoidFunction } from '../../../types';
 import type { BusDriver } from '../../bus/bus_driver';
-import type { CacheDriverContract } from '../cache_driver';
+import type { CacheDriver } from '../cache_driver';
 
 /**
  * Cache item interface.
@@ -24,9 +24,9 @@ type CacheNamespace<TKey> = Map<string, Map<TKey, CacheItem>>;
  * It also emits cache invalidation events when a key is invalidated.
  *
  * @template TKey - The type of key to use.
- * @implements CacheDriverContract<TKey> - The cache driver contract.
+ * @implements CacheDriver<TKey> - The cache driver contract.
  */
-export class MemoryCacheDriver<TKey> implements CacheDriverContract<TKey> {
+export class MemoryCacheDriver<TKey> implements CacheDriver<TKey> {
   /**
    * The cache map.
    *

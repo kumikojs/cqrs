@@ -7,7 +7,7 @@ import type { DurationUnit, VoidFunction } from '../../types';
  * @internal
  * @template TKey - The type of the cache key.
  */
-export interface CacheDriverContract<TKey> {
+export interface CacheDriver<TKey> {
   /**
    * Get a value from the cache.
    *
