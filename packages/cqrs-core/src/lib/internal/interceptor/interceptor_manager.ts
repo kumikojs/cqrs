@@ -3,8 +3,8 @@
 import type {
   InterceptorContract,
   InterceptorManagerContract,
-} from './contracts';
-import type { Interceptor, InterceptorHandler } from './types';
+} from './interceptor_contracts';
+import type { Interceptor, InterceptorHandler } from './interceptor_types';
 
 /**
  * The InterceptorManager is a simple class that allows you to register

@@ -4,7 +4,7 @@ import { InterceptorManager } from './interceptor_manager';
 import type {
   InterceptorContract,
   InterceptorManagerContract,
-} from './contracts';
+} from './interceptor_contracts';
 
 const mockInterceptor: InterceptorContract<any> = {
   handle: async (request, next) => {

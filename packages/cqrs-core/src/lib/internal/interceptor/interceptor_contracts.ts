@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Interceptor, InterceptorHandler } from './types';
+import type { Interceptor, InterceptorHandler } from './interceptor_types';
 
 /**
  * Contract for the Interceptor.
