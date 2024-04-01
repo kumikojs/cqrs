@@ -1,7 +1,7 @@
 import { Cache } from '../internal/cache/cache';
 import { CommandInterceptors } from './command_interceptors';
 
-import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
+import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CommandContract } from './command_contracts';
 
 describe('CommandInterceptors', () => {

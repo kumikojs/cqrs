@@ -1,7 +1,7 @@
 import { Cache } from '../internal/cache/cache';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 
-import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
+import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CombinedPartialOptions } from '../types';
 import type { CommandContract } from './command_contracts';
 

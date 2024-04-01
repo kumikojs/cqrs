@@ -1,3 +1,4 @@
+import { BusException } from '../internal/bus/bus_options';
 import { EventBus } from './event_bus';
 
 interface UserCreatedEvent {
@@ -71,7 +72,12 @@ describe('EventBus', () => {
         eventName: 'user.created',
         payload: { id: 3, name: 'Bob Smith' },
       })
-    ).rejects.toThrowError('No handler for channel: user.created');
+    ).rejects.toThrowError(
+      new BusException('NO_HANDLER_FOUND', {
+        message: 'No handler found for this channel.',
+        channel: 'user.created',
+      })
+    );
 
     expect(mockHandler).not.toHaveBeenCalled();
   });

@@ -3,7 +3,7 @@ import { Cache } from '../internal/cache/cache';
 import { CommandInterceptors } from './command_interceptors';
 
 import type { BusDriver } from '../internal/bus/bus_driver';
-import type { InterceptorManagerContract } from '../internal/interceptor/contracts';
+import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { QueryContract } from '../query/query_contracts';
 import type { CombinedPartialOptions } from '../types';
 import type {
