@@ -1,9 +1,9 @@
-import type { CacheDriverContract } from '../../internal/cache/cache_driver';
+import type { CacheDriver } from '../../internal/cache/cache_driver';
 import { Cache } from '../../internal/cache/cache';
 import { ThrottleException, ThrottleStrategy } from './throttle_strategy';
 
 describe('ThrottleStrategy', () => {
-  let cache: CacheDriverContract<string>;
+  let cache: CacheDriver<string>;
 
   beforeEach(() => {
     cache = new Cache().inMemoryCache;

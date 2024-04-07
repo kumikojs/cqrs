@@ -20,27 +20,46 @@ export type DeduplicationOptions = {
  * A strategy that optimizes task execution by eliminating redundant requests,
  * ensuring only one execution occurs for a given unique request.
  *
- *  @example
- * ```ts
- * let counter = 0;
- * const task = async () => {
- *    counter += 1;
- *    return counter;
- * };
+ * This strategy utilizes a serialization function to convert the request object
+ * into a unique string identifier. Requests with identical identifiers are considered
+ * duplicates and only the first execution is carried out. Subsequent requests
+ * with the same identifier will wait for the first execution to complete and
+ * then return the same result.
  *
- * const serialize = (request: any) => JSON.stringify(request);
+ * @example
+ * ```typescript
+ * // Define a serialization function that converts the request object to a string
+ * const serialize = (request: { id: number }) => JSON.stringify(request);
+ *
+ * // Create a new DeduplicationStrategy instance with the custom serialization function
  * const strategy = new DeduplicationStrategy({ serialize });
  *
- * const results = await Promise.all([
- *    strategy.execute({ id: 1 }, task),
- *    strategy.execute({ id: 1 }, task),
- *    strategy.execute({ id: 1 }, task),
- *    strategy.execute({ id: 2 }, task),
- *    strategy.execute({ id: 2 }, task),
- *    strategy.execute({ id: 3 }, task),
- * ]);
+ * // Define a function that fetches a user by ID using the strategy
+ * const fetchUser = async (id: number) => {
+ *   // Execute the task using the strategy, passing the request object (containing the ID)
+ *   // and the actual fetching function (fetch)
+ *   return strategy.execute({ id }, fetch);
+ * };
  *
- * console.log(results); // [1, 1, 1, 2, 2, 3]
+ * // Simulate concurrent requests from different components
+ * const startTime = new Date('2024-03-31T22:00:00');
+ * console.log(`Running at ${startTime.toLocaleTimeString()}`);
+ *
+ * // Run fetchUser with ID 1 (first component)
+ * const promise1 = fetchUser(1);
+ *
+ * // Simulate a slight delay for the second component (10 seconds)
+ * setTimeout(async () => {
+ *   console.log(`Running at ${(new Date()).toLocaleTimeString()}`);
+ *   const promise2 = await fetchUser(1); // waits for the first execution
+ *   console.log('Result from second component:', promise2);
+ * }, 10000);
+ *
+ * // Wait for both promises to finish
+ * const result1 = await promise1;
+ * console.log('Result from first component:', result1);
+ *
+ * // Both components will receive the same result (1) since the request was deduplicated.
  * ```
  */
 export class DeduplicationStrategy extends Strategy<DeduplicationOptions> {

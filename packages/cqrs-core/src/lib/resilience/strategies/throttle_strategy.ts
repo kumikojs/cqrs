@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Strategy } from './base_strategy';
 
-import type { CacheDriverContract } from '../../internal/cache/cache_driver';
+import type { CacheDriver } from '../../internal/cache/cache_driver';
 import type { AsyncFunction, DurationUnit } from '../../types';
 
 /**
@@ -117,7 +117,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
   /**
    * @private The underlying cache driver responsible for storing and retrieving throttle-related data.
    */
-  #cache: CacheDriverContract<string>;
+  #cache: CacheDriver<string>;
 
   /**
    * Creates a new instance of the ThrottleStrategy.
@@ -125,10 +125,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
    * @param cache - The cache driver used for storing throttling data.
    * @param options - Optional configuration options to override defaults.
    */
-  constructor(
-    cache: CacheDriverContract<string>,
-    options?: Partial<ThrottleOptions>
-  ) {
+  constructor(cache: CacheDriver<string>, options?: Partial<ThrottleOptions>) {
     super({
       ...ThrottleStrategy.#options,
       ...options,
