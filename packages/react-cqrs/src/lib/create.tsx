@@ -4,34 +4,27 @@ import { useBaseEvent } from './useBaseEvent';
 import { useBaseQuery } from './useBaseQuery';
 
 import type {
-  CommandContract,
+  BaseModule,
+  Combined,
   CommandHandlerContract,
-  EventContract,
+  ComputeCommands,
+  ComputeEvents,
+  ComputeQueries,
   EventHandlerContract,
   InferredCommands,
-  QueryContract,
   QueryHandlerContract,
 } from '@stoik/cqrs-core';
 
-export function create<
-  KnownCommands extends Record<string, CommandContract> = Record<
-    string,
-    CommandContract
-  >,
-  KnownQueries extends Record<string, QueryContract> = Record<
-    string,
-    QueryContract
-  >,
-  KnownEvents extends Record<string, EventContract> = Record<
-    string,
-    EventContract
-  >
->() {
-  const client = new Client<KnownCommands, KnownQueries, KnownEvents>();
+export function create<Modules extends BaseModule[] = BaseModule[]>() {
+  type KnownCommands = ComputeCommands<Combined<Modules>>;
+  type KnownQueries = ComputeQueries<Combined<Modules>>;
+  type KnownEvents = ComputeEvents<Combined<Modules>>;
+
+  const client = new Client<Modules>();
 
   return {
     client,
-    useCommand: <TResponse = void,>(
+    useCommand: (
       command: InferredCommands<
         KnownCommands,
         KnownQueries
@@ -40,16 +33,14 @@ export function create<
         InferredCommands<KnownCommands, KnownQueries>[keyof InferredCommands<
           KnownCommands,
           KnownQueries
-        >],
-        TResponse
+        >]
       >['execute']
     ) =>
       useBaseCommand<
         InferredCommands<KnownCommands, KnownQueries>[keyof InferredCommands<
           KnownCommands,
           KnownQueries
-        >],
-        TResponse
+        >]
       >(client, command, handler),
 
     useQuery: <TResponse,>(
