@@ -7,6 +7,8 @@ import type {
 } from './command_contracts';
 
 /**
+ * ** CommandSubject Class **
+ *
  * A facade for executing commands and subscribing to their execution state changes.
  * Designed for UI components to interact with commands, providing both execution and state management functionalities.
  *

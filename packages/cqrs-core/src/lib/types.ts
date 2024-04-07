@@ -28,6 +28,18 @@ export type AnyFunction = (...args: any[]) => any;
  */
 export type AsyncFunction<R = any> = (...args: any[]) => Promise<R>;
 
+/**
+ * **UnionToIntersection<U>** (helper type)
+ *
+ * This internal helper type calculates the intersection type of a union.
+ *
+ * @template U - The union type for which to find the intersection.
+ */
+export type UnionToIntersection<U> = (
+  U extends unknown ? (k: U) => void : never
+) extends (k: infer I) => void
+  ? I
+  : never;
 // #endregion snippet: types
 
 // #region snippet: combinedPartialOptions
@@ -43,20 +55,6 @@ type ExtractedOptions<T> = T extends {
   options?: infer O;
 }
   ? O
-  : never;
-
-/**
- * **UnionToIntersection<U>** (helper type)
- *
- * This internal helper type calculates the intersection type of a union.
- * It's a utility type used within `CombinedPartialOptions`.
- *
- * @template U - The union type for which to find the intersection.
- */
-type UnionToIntersection<U> = (
-  U extends unknown ? (k: U) => void : never
-) extends (k: infer I) => void
-  ? I
   : never;
 
 /**

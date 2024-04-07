@@ -1,6 +1,3 @@
-/**
- * @module event
- */
 import type { Nullable } from '../types';
 
 /**

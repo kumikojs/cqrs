@@ -6,11 +6,22 @@ import type { VoidFunction } from '../types';
 import type { QueryContract, QueryHandlerContract } from './query_contracts';
 
 /**
- * A facade for executing queries, subscribing to their state changes, and handling cache invalidation.
- * Designed for UI components to interact with queries, providing a centralized mechanism for execution, state management, and automatic re-execution upon cache invalidation.
+ * **QuerySubject Class**
+ *
+ * A facade for executing queries, subscribing to their state changes, and managing cache invalidation.
+ * This class simplifies UI component interaction with queries by providing a centralized mechanism for:
+ * - Execution: Triggering query execution.
+ * - State Management: Tracking the current state of the query execution (loading, success, error).
+ * - Automatic Re-execution: Re-executing the query upon cache invalidation.
+ *
+ * **Benefits:**
+ * - Simplifies UI development by offering a reactive and user-friendly experience for query interaction.
+ * - Encapsulates the underlying `Operation` class for state management.
+ * - Provides automatic re-execution logic when the query's cache entry becomes invalidated.
  *
  * @remarks
- * This class simplifies UI development by offering a reactive and user-friendly experience for query interaction. It encapsulates the underlying `Operation` class for state management and provides automatic re-execution logic when the query's cache entry becomes invalidated.
+ * This class is designed for UI components to interact with queries. It abstracts away complex details
+ * of query execution and cache management, allowing developers to focus on rendering data and handling state changes.
  */
 export class QuerySubject<TRequest extends QueryContract, TResult> {
   /**
@@ -38,12 +49,6 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
   #client: Client;
 
   /**
-   * @private
-   * The unsubscribe function for the cache invalidation subscription.
-   */
-  #cacheSubscription: VoidFunction;
-
-  /**
    * Creates a new instance of `QuerySubject`.
    *
    * @param query - The query to be represented and managed.
@@ -62,24 +67,6 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
     this.#handlerFn = handlerFn
       ? (query) => client.query.execute(query, handlerFn)
       : (query) => client.query.dispatch(query);
-
-    this.#cacheSubscription = this.#client.cache.onInvalidate(
-      this.#lastQuery.queryName,
-      () => {
-        this.execute({
-          ...this.#lastQuery,
-          options: {
-            ...this.#lastQuery.options,
-            cache: {
-              invalidate: true,
-              ...(typeof this.#lastQuery.options?.cache === 'boolean'
-                ? {}
-                : this.#lastQuery.options?.cache),
-            },
-          },
-        });
-      }
-    );
   }
 
   /**
@@ -90,6 +77,7 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
    */
   async execute(query: TRequest): Promise<TResult> {
     this.#lastQuery = query;
+    console.log('QuerySubject: executing query', query);
 
     return this.#operation.execute<TRequest, TResult>(query, this.#handlerFn);
   }
@@ -101,11 +89,14 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
    * @returns A function to unsubscribe from both state change notifications and cache invalidation events.
    */
   subscribe(onStateChange: VoidFunction): VoidFunction {
-    const subscription = this.#operation.subscribe(onStateChange);
+    const unsubscription = this.#operation.subscribe(onStateChange);
+    const cacheUnsubscription = this.#onCacheInvalidation();
 
     return () => {
-      subscription();
-      this.#cacheSubscription();
+      unsubscription();
+      cacheUnsubscription();
+
+      this.#client.cache.inMemoryCache.delete(this.#lastQuery.queryName);
     };
   }
 
@@ -116,5 +107,26 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
    */
   get state() {
     return this.#operation.state;
+  }
+
+  /**
+   * @private
+   * Subscribes to cache invalidation events for the query.
+   */
+  #onCacheInvalidation() {
+    return this.#client.cache.onInvalidate(this.#lastQuery.queryName, () => {
+      this.execute({
+        ...this.#lastQuery,
+        options: {
+          ...this.#lastQuery.options,
+          cache: {
+            invalidate: true,
+            ...(typeof this.#lastQuery.options?.cache === 'boolean'
+              ? {}
+              : this.#lastQuery.options?.cache),
+          },
+        },
+      });
+    });
   }
 }

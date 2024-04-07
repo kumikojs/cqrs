@@ -166,11 +166,13 @@ export class CommandBus<
     TResponse = void
   >(
     command: TCommand,
-    handler: CommandHandlerContract<CommandContract>['execute']
+    handler:
+      | CommandHandlerContract<TCommand>
+      | CommandHandlerContract<TCommand>['execute']
   ): Promise<TResponse> {
     return await this.#interceptorManager.execute<TCommand, TResponse>(
       command,
-      handler
+      typeof handler === 'function' ? handler : handler.execute
     );
   }
 

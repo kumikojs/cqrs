@@ -3,6 +3,13 @@ import { EventBus } from './event/event_bus';
 import { Cache } from './internal/cache/cache';
 import { QueryBus } from './query/query_bus';
 
+import type {
+  BaseModule,
+  Combined,
+  ComputeCommands,
+  ComputeEvents,
+  ComputeQueries,
+} from './client_types';
 import type { CommandContract } from './command/command_contracts';
 import type { EventContract } from './event/event_contracts';
 import type { QueryContract } from './query/query_contracts';
@@ -24,7 +31,8 @@ import type { QueryContract } from './query/query_contracts';
  * ```ts
  * import { Client } from '@stoik/cqrs-core';
  * import type { CommandContract, QueryContract, EventContract } from '@stoik/cqrs-core';
- *
+ * import { CommandContract } from '@stoik/react-cqrs';
+
  * // Define the commands
  * type CreateUserCommand = CommandContract<"user.create", { name: string; email: string; }>;
  *
@@ -52,17 +60,15 @@ import type { QueryContract } from './query/query_contracts';
  * ```
  */
 export class Client<
-  KnownCommands extends Record<string, CommandContract> = Record<
-    string,
-    CommandContract
+  Modules extends BaseModule[] = BaseModule[],
+  KnownCommands extends Record<string, CommandContract> = ComputeCommands<
+    Combined<Modules>
   >,
-  KnownQueries extends Record<string, QueryContract> = Record<
-    string,
-    QueryContract
+  KnownQueries extends Record<string, QueryContract> = ComputeQueries<
+    Combined<Modules>
   >,
-  KnownEvents extends Record<string, EventContract> = Record<
-    string,
-    EventContract
+  KnownEvents extends Record<string, EventContract> = ComputeEvents<
+    Combined<Modules>
   >
 > {
   /**
