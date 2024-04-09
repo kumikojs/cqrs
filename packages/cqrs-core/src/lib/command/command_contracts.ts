@@ -1,4 +1,3 @@
-import { EventContract } from '../event/event_contracts';
 import type { CommandOptions } from './command_types';
 
 /**

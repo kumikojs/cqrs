@@ -1,4 +1,3 @@
-import { EventBus } from '../event/event_bus';
 import { EventContract, EventEmitter } from '../event/event_contracts';
 import type { QueryContract } from '../query/query_contracts';
 import { ResilienceOptions } from '../resilience/resilience_interceptors_builder';

@@ -3,7 +3,7 @@ import { Cache } from '../internal/cache/cache';
 import { CommandInterceptors } from './command_interceptors';
 
 import { EventBus } from '../event/event_bus';
-import { EventContract, EventEmitter } from '../event/event_contracts';
+import { EventContract } from '../event/event_contracts';
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { QueryContract } from '../query/query_contracts';
