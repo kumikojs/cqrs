@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Client } from '../client';
 import { Operation } from '../internal/operation/operation';
 
 import type { VoidFunction } from '../types';
@@ -23,6 +25,29 @@ export class CommandSubject {
    */
   #operation = new Operation<void>();
 
+  #handlerFn: (command: CommandContract) => Promise<void>;
+
+  #client: Client;
+
+  /**
+   * Creates a new instance of `CommandSubject`.
+   *
+   * @param client - The client instance for interacting with the cache.
+   */
+  constructor(
+    client: Client,
+    handlerFn?:
+      | CommandHandlerContract<CommandContract>['execute']
+      | CommandHandlerContract<CommandContract>
+  ) {
+    this.#client = client;
+    this.#handlerFn = handlerFn
+      ? (command: CommandContract<string, any, any>) =>
+          client.command.execute(command, handlerFn)
+      : (command: CommandContract<string, any, any>) =>
+          client.command.dispatch(command);
+  }
+
   /**
    * Executes a command and invokes the provided handler function to handle the result.
    *
@@ -32,10 +57,9 @@ export class CommandSubject {
    * @returns A promise resolving to the result of the command execution, which is typically `void` for commands.
    */
   async execute<TRequest extends CommandContract>(
-    command: TRequest,
-    handlerFn: CommandHandlerContract<TRequest>['execute']
+    command: TRequest
   ): Promise<void> {
-    return this.#operation.execute<TRequest>(command, handlerFn);
+    return this.#operation.execute<TRequest>(command, this.#handlerFn);
   }
 
   /**

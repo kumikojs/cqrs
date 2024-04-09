@@ -127,8 +127,6 @@ describe('QuerySubject', () => {
         queryName: 'test',
       });
 
-      console.log(querySubject.state);
-
       expect(querySubject.state.isFulfilled).toBeTruthy();
     });
   });

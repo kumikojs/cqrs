@@ -1,6 +1,11 @@
+import { EventBus } from '../event/event_bus';
+import { EventContract, EventEmitter } from '../event/event_contracts';
 import type { QueryContract } from '../query/query_contracts';
 import { ResilienceOptions } from '../resilience/resilience_interceptors_builder';
-import type { CommandContract } from './command_contracts';
+import type {
+  CommandContract,
+  CommandHandlerContract,
+} from './command_contracts';
 
 /**
  * Options for configuring command execution, including resilience strategies and query dependencies.
@@ -58,3 +63,29 @@ export type InferredCommands<
     KnownQueries[keyof KnownQueries]['queryName'][]
   >;
 };
+
+/**
+ * Context object provided to command handlers for executing commands.
+ *
+ * @template KnownEvents - Record of known event types.
+ */
+type CommandContext<KnownEvents extends Record<string, EventContract>> = {
+  emit: EventEmitter<KnownEvents>['emit'];
+};
+
+/**
+ * A record of inferred command handlers, constructed from known command and event types.
+ * Represents a function or class responsible for executing a specific command type.
+ * Provides a context object with access to the event bus for publishing events.
+ *
+ * @template KnownCommands - Record of known command types.
+ * @template KnownEvents - Record of known event types.
+ */
+export type InferredCommandHandlers<
+  TCommand extends CommandContract,
+  TResponse = void,
+  KnownEvents extends Record<string, EventContract> = Record<
+    string,
+    EventContract
+  >
+> = CommandHandlerContract<TCommand, TResponse, CommandContext<KnownEvents>>;

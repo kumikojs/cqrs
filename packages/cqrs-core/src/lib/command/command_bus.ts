@@ -2,6 +2,8 @@ import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
 import { Cache } from '../internal/cache/cache';
 import { CommandInterceptors } from './command_interceptors';
 
+import { EventBus } from '../event/event_bus';
+import { EventContract, EventEmitter } from '../event/event_contracts';
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { QueryContract } from '../query/query_contracts';
@@ -10,7 +12,10 @@ import type {
   CommandContract,
   CommandHandlerContract,
 } from './command_contracts';
-import type { InferredCommands } from './command_types';
+import type {
+  InferredCommandHandlers,
+  InferredCommands,
+} from './command_types';
 
 /**
  * A central hub for registering and executing commands, facilitating cross-cutting concerns through interceptors.
@@ -54,6 +59,10 @@ export class CommandBus<
   KnownQueries extends Record<string, QueryContract> = Record<
     string,
     QueryContract
+  >,
+  KnownEvents extends Record<string, EventContract> = Record<
+    string,
+    EventContract
   >
 > {
   /**
@@ -74,12 +83,14 @@ export class CommandBus<
     >
   >;
 
+  #emitter: EventBus<KnownEvents>;
+
   /**
    * Constructs a CommandBus instance.
    *
    * @param cache - The cache instance to be used for data storage and retrieval.
    */
-  constructor(cache: Cache) {
+  constructor(cache: Cache, emitter: EventBus) {
     this.#interceptorManager = new CommandInterceptors<
       CommandContract<
         string,
@@ -88,6 +99,8 @@ export class CommandBus<
       >,
       KnownCommands
     >(cache).buildInterceptors();
+
+    this.#emitter = emitter;
 
     // Bind methods because they can be used as callbacks and we want to keep the context.
     this.execute = this.execute.bind(this);
@@ -117,10 +130,13 @@ export class CommandBus<
   register<TCommand extends KnownCommands[keyof KnownCommands]>(
     commandName: TCommand['commandName'],
     handler:
-      | CommandHandlerContract<TCommand>
-      | CommandHandlerContract<TCommand>['execute']
+      | InferredCommandHandlers<TCommand, void, KnownEvents>
+      | InferredCommandHandlers<TCommand, void, KnownEvents>['execute']
   ): VoidFunction {
-    const handlerFn = typeof handler === 'function' ? handler : handler.execute;
+    const handlerFn = (command: TCommand) =>
+      typeof handler === 'function'
+        ? handler(command, { emit: this.#emitter.emit })
+        : handler.execute(command, { emit: this.#emitter.emit });
 
     this.#driver.subscribe(commandName, handlerFn);
 
@@ -139,8 +155,8 @@ export class CommandBus<
   unregister<TCommand extends KnownCommands[keyof KnownCommands]>(
     commandName: TCommand['commandName'],
     handler:
-      | CommandHandlerContract<TCommand>
-      | CommandHandlerContract<TCommand>['execute']
+      | InferredCommandHandlers<TCommand, void, KnownEvents>
+      | InferredCommandHandlers<TCommand, void, KnownEvents>['execute']
   ) {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -172,7 +188,10 @@ export class CommandBus<
   ): Promise<TResponse> {
     return await this.#interceptorManager.execute<TCommand, TResponse>(
       command,
-      typeof handler === 'function' ? handler : handler.execute
+      async (command) =>
+        typeof handler === 'function'
+          ? handler(command, { emit: this.#emitter.emit })
+          : handler.execute(command, { emit: this.#emitter.emit })
     );
   }
 

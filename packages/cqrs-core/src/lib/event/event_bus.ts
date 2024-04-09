@@ -2,7 +2,11 @@ import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
 
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { VoidFunction } from '../types';
-import type { EventContract, EventHandlerContract } from './event_contracts';
+import type {
+  EventEmitter,
+  EventContract,
+  EventHandlerContract,
+} from './event_contracts';
 
 /**
  * The `EventBus` class provides a simple mechanism for managing event subscriptions and publishing events within your application.
@@ -43,7 +47,8 @@ export class EventBus<
     string,
     EventContract
   >
-> {
+> implements EventEmitter<KnownEvents>
+{
   /**
    * The underlying bus driver instance responsible for handling event subscriptions and publishing.
    * The driver (`MemoryBusDriver`) manages the subscription storage and event delivery logic.
@@ -51,6 +56,12 @@ export class EventBus<
   #driver: BusDriver<string> = new MemoryBusDriver({
     maxHandlersPerChannel: Infinity,
   });
+
+  constructor() {
+    this.on = this.on.bind(this);
+    this.off = this.off.bind(this);
+    this.emit = this.emit.bind(this);
+  }
 
   /**
    * Subscribes to a specific event type within the event bus.

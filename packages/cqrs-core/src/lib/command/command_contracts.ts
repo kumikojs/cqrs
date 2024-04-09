@@ -1,3 +1,4 @@
+import { EventContract } from '../event/event_contracts';
 import type { CommandOptions } from './command_types';
 
 /**
@@ -65,7 +66,8 @@ export interface CommandContract<
  */
 export interface CommandHandlerContract<
   TCommand extends CommandContract = CommandContract,
-  TResponse = void
+  TResponse = void,
+  TContext = unknown
 > {
   /**
    * Executes the given command.
@@ -74,5 +76,5 @@ export interface CommandHandlerContract<
    * @returns A promise resolving to the result of the command execution.
    * As commands typically modify application state or trigger actions, the return type is often `void`.
    */
-  execute(command: TCommand): Promise<TResponse>;
+  execute(command: TCommand, context: TContext): Promise<TResponse>;
 }

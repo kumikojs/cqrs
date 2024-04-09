@@ -93,9 +93,8 @@ export class Client<
    * @private
    * @type {CommandBus<KnownCommands, KnownQueries>} - {@link CommandBus}
    */
-  #commandBus: CommandBus<KnownCommands, KnownQueries> = new CommandBus(
-    this.#cache
-  );
+  #commandBus: CommandBus<KnownCommands, KnownQueries, KnownEvents> =
+    new CommandBus(this.#cache, this.#eventBus);
 
   /**
    * The query bus responsible for executing queries and returning data.
@@ -110,7 +109,7 @@ export class Client<
    *
    * @returns {CommandBus<KnownCommands, KnownQueries>} The command bus instance.
    */
-  get command(): CommandBus<KnownCommands, KnownQueries> {
+  get command(): CommandBus<KnownCommands, KnownQueries, KnownEvents> {
     return this.#commandBus;
   }
 

@@ -65,3 +65,21 @@ export interface EventHandlerContract<
    */
   handle(event: TEvent): Promise<void>;
 }
+
+// It's used inside commandbus instead of complete eventbus
+/**
+ * Interface defining the contract for an event emitter.
+ * Represents a function or class responsible
+ * for emitting events from c
+ *
+ */
+export interface EventEmitter<
+  KnownEvents extends Record<string, EventContract> = Record<
+    string,
+    EventContract
+  >
+> {
+  emit<TEvent extends KnownEvents[keyof KnownEvents]>(
+    event: TEvent
+  ): Promise<void>;
+}
