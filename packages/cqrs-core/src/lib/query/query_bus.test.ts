@@ -1,4 +1,4 @@
-import { Cache } from '../internal/cache/cache';
+import { Cache } from '../internal/cache/cache_manager';
 import { QueryBus } from './query_bus';
 
 describe('QueryBus', () => {

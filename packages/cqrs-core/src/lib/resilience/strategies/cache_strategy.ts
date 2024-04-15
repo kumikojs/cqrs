@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Cache } from '../../internal/cache/cache';
 import { Strategy } from './base_strategy';
 
-import type { CacheDriver } from '../../internal/cache/cache_driver';
+import { Cache } from '../../internal/cache/cache';
+import { JsonSerializer } from '../../internal/serializer/json_serializer';
+import { QueryCache } from '../../query/query_cache';
 import type { AsyncFunction, DurationUnit } from '../../types';
 
 /**
@@ -29,21 +30,12 @@ export type CacheOptions = {
   persist: boolean;
 
   /**
-   * Controls whether to invalidate existing cached values before executing the task.
-   * Defaults to false, preserving cached values until expiration.
-   *
-   * @type boolean
-   * @default false
-   */
-  invalidate?: boolean;
-
-  /**
    * Serializes a request into a namespace and key pair for cache lookup and storage.
    *
    * @param request - The request to serialize.
    * @returns An object containing a `ns` (namespace) and `key` property for cache operations.
    */
-  serialize: (request: any) => { ns: string; key: string };
+  serialize: (request: any) => string;
 };
 
 /**
@@ -83,6 +75,7 @@ export type CacheOptions = {
  * ```
  */
 export class CacheStrategy extends Strategy<CacheOptions> {
+  static #serializer: JsonSerializer = new JsonSerializer();
   /**
    * Default configuration options for the CacheStrategy.
    * @private
@@ -91,27 +84,27 @@ export class CacheStrategy extends Strategy<CacheOptions> {
   static #defaultOptions: CacheOptions = {
     ttl: '30s',
     persist: false,
-    invalidate: false,
-    serialize: (request) => ({
-      ns: 'default',
-      key: JSON.stringify(request),
-    }),
+    serialize: (request) => {
+      const key = CacheStrategy.#serializer.serialize(request);
+
+      if (key.isFailure()) throw new Error('Failed to serialize request data');
+
+      return key.value;
+    },
   };
 
   /**
    * @private The underlying cache driver responsible for storing and retrieving cached values.
    */
-  #cache: CacheDriver<string>;
+  #cache: Cache;
 
-  constructor(cache: Cache, options?: Partial<CacheOptions>) {
+  constructor(cache: QueryCache, options?: Partial<CacheOptions>) {
     super({
       ...CacheStrategy.#defaultOptions,
       ...options,
     });
 
-    this.#cache = this.options.persist
-      ? cache.localStorageCache
-      : cache.inMemoryCache;
+    this.#cache = this.options.persist ? cache.l2 : cache.l1;
   }
 
   /**
@@ -134,20 +127,16 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     TTask extends AsyncFunction,
     TResult = ReturnType<TTask>
   >(request: TRequest, task: TTask): Promise<TResult> {
-    const { ns, key } = this.options.serialize(request);
+    const key = this.options.serialize(request);
 
-    if (this.options.invalidate) {
-      this.#cache.delete(ns);
-    }
+    const cachedValue = this.#cache.get<TResult>(key);
 
-    const cachedValue = await this.#cache.get<TResult>(ns, key);
-
-    if (cachedValue !== undefined) {
+    if (cachedValue) {
       return cachedValue;
     }
 
     const result = await task(request);
-    this.#cache.set(ns, key, result, this.options.ttl);
+    this.#cache.set(key, result, this.options.ttl);
 
     return result;
   }

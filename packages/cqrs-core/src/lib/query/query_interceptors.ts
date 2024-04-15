@@ -1,9 +1,9 @@
-import { Cache } from '../internal/cache/cache';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
-import type { QueryContract } from './query_contracts';
 import type { CombinedPartialOptions } from '../types';
+import { QueryCache } from './query_cache';
+import type { QueryContract } from './query_contracts';
 
 /**
  * The `QueryInterceptors` class constructs a chain of interceptors specifically designed for handling queries.
@@ -32,14 +32,10 @@ export class QueryInterceptors<
    *
    * @param cache - The cache instance to be used by caching interceptors.
    */
-  constructor(cache: Cache) {
+  constructor(cache: QueryCache) {
     this.#resilienceInterceptorsBuilder =
       new ResilienceInterceptorsBuilder<TQuery>(cache, {
-        serialize: (request) =>
-          JSON.stringify({
-            queryName: request.queryName,
-            payload: request.payload,
-          }),
+        serialize: cache.getCacheKey,
       });
   }
 
@@ -51,13 +47,7 @@ export class QueryInterceptors<
   buildInterceptors(): InterceptorManagerContract<TQuery> {
     const interceptorManager = this.#resilienceInterceptorsBuilder
       .addDeduplicationInterceptor()
-      .addCacheInterceptor((query: QueryContract) => ({
-        ns: query.queryName,
-        key: JSON.stringify({
-          queryName: query.queryName,
-          payload: query.payload,
-        }),
-      }))
+      .addCacheInterceptor()
       .addFallbackInterceptor()
       .addRetryInterceptor()
       .addTimeoutInterceptor()

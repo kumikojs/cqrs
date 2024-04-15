@@ -1,9 +1,9 @@
-import { Cache } from '../internal/cache/cache';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CombinedPartialOptions } from '../types';
 import type { CommandContract } from './command_contracts';
+import { QueryCache } from '../query/query_cache';
 
 /**
  * Constructs a collection of interceptors for a command bus, enhancing its functionality with resilience and query invalidation.
@@ -30,9 +30,9 @@ export class CommandInterceptors<
 > {
   /**
    * @private
-   * The cache instance used for data storage and retrieval.
+   * The cache instance used for query invalidation.
    */
-  #cache: Cache;
+  #cache: QueryCache;
 
   /**
    * @private
@@ -45,7 +45,7 @@ export class CommandInterceptors<
    *
    * @param cache - The cache instance to be used.
    */
-  constructor(cache: Cache) {
+  constructor(cache: QueryCache) {
     this.#cache = cache;
     this.#resilienceInterceptorsBuilder =
       new ResilienceInterceptorsBuilder<TCommand>(cache, {
@@ -93,7 +93,7 @@ export class CommandInterceptors<
         const result = await next?.(command);
 
         invalidatingQueries.map((queryName) =>
-          this.#cache.invalidate(queryName)
+          this.#cache.invalidate({ queryName })
         );
 
         return result;

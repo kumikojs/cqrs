@@ -1,5 +1,5 @@
 import type { CacheDriver } from '../../internal/cache/cache_driver';
-import { Cache } from '../../internal/cache/cache';
+import { Cache } from '../../internal/cache/cache_manager';
 import { ThrottleException, ThrottleStrategy } from './throttle_strategy';
 
 describe('ThrottleStrategy', () => {

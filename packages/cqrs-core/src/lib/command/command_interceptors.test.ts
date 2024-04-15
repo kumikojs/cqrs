@@ -1,4 +1,4 @@
-import { Cache } from '../internal/cache/cache';
+import { Cache } from '../internal/cache/cache_manager';
 import { CommandInterceptors } from './command_interceptors';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';

@@ -1,6 +1,8 @@
-import { EventContract, EventEmitter } from '../event/event_contracts';
+import { QueryCache } from '../query/query_cache';
+
+import type { EventContract, EventEmitter } from '../event/event_contracts';
 import type { QueryContract } from '../query/query_contracts';
-import { ResilienceOptions } from '../resilience/resilience_interceptors_builder';
+import type { ResilienceOptions } from '../resilience/resilience_interceptors_builder';
 import type {
   CommandContract,
   CommandHandlerContract,
@@ -70,6 +72,7 @@ export type InferredCommands<
  */
 type CommandContext<KnownEvents extends Record<string, EventContract>> = {
   emit: EventEmitter<KnownEvents>['emit'];
+  cache: QueryCache;
 };
 
 /**

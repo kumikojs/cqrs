@@ -1,7 +1,10 @@
 import { CommandBus } from './command/command_bus';
 import { EventBus } from './event/event_bus';
 import { Cache } from './internal/cache/cache';
+import { LocalStorage } from './internal/storage/facades/local_storage';
+import { MemoryStorage } from './internal/storage/facades/memory_storage';
 import { QueryBus } from './query/query_bus';
+import { QueryCache } from './query/query_cache';
 
 import type {
   BaseModule,
@@ -77,7 +80,10 @@ export class Client<
    * @private
    * @type {Cache} - {@link Cache}
    */
-  #cache: Cache = new Cache();
+  #cache: QueryCache = new QueryCache(
+    new Cache(new MemoryStorage()),
+    new Cache(new LocalStorage())
+  );
 
   /**
    * The event bus used for publishing and subscribing to application events.
@@ -134,9 +140,9 @@ export class Client<
   /**
    * Provides access to the cache instance for storage and retrieval of data.
    *
-   * @returns {Cache} The cache instance.
+   * @returns {QueryCache} The cache instance.
    */
-  get cache(): Cache {
+  get cache(): QueryCache {
     return this.#cache;
   }
 }

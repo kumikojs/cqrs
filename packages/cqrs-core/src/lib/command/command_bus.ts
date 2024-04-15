@@ -1,5 +1,4 @@
 import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
-import { Cache } from '../internal/cache/cache';
 import { CommandInterceptors } from './command_interceptors';
 
 import { EventBus } from '../event/event_bus';
@@ -16,6 +15,7 @@ import type {
   InferredCommandHandlers,
   InferredCommands,
 } from './command_types';
+import { QueryCache } from '../query/query_cache';
 
 /**
  * A central hub for registering and executing commands, facilitating cross-cutting concerns through interceptors.
@@ -85,12 +85,14 @@ export class CommandBus<
 
   #emitter: EventBus<KnownEvents>;
 
+  #cache: QueryCache;
+
   /**
    * Constructs a CommandBus instance.
    *
    * @param cache - The cache instance to be used for data storage and retrieval.
    */
-  constructor(cache: Cache, emitter: EventBus) {
+  constructor(cache: QueryCache, emitter: EventBus) {
     this.#interceptorManager = new CommandInterceptors<
       CommandContract<
         string,
@@ -100,6 +102,7 @@ export class CommandBus<
       KnownCommands
     >(cache).buildInterceptors();
 
+    this.#cache = cache;
     this.#emitter = emitter;
 
     // Bind methods because they can be used as callbacks and we want to keep the context.
@@ -135,8 +138,11 @@ export class CommandBus<
   ): VoidFunction {
     const handlerFn = (command: TCommand) =>
       typeof handler === 'function'
-        ? handler(command, { emit: this.#emitter.emit })
-        : handler.execute(command, { emit: this.#emitter.emit });
+        ? handler(command, { emit: this.#emitter.emit, cache: this.#cache })
+        : handler.execute(command, {
+            emit: this.#emitter.emit,
+            cache: this.#cache,
+          });
 
     this.#driver.subscribe(commandName, handlerFn);
 

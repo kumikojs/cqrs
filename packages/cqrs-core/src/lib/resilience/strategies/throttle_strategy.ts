@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Strategy } from './base_strategy';
 
-import type { CacheDriver } from '../../internal/cache/cache_driver';
 import type { AsyncFunction, DurationUnit } from '../../types';
+import { Cache } from '../../internal/cache/cache';
 
 /**
  * Configuration options for defining throttling behavior for requests.
@@ -117,7 +117,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
   /**
    * @private The underlying cache driver responsible for storing and retrieving throttle-related data.
    */
-  #cache: CacheDriver<string>;
+  #cache: Cache;
 
   /**
    * Creates a new instance of the ThrottleStrategy.
@@ -125,7 +125,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
    * @param cache - The cache driver used for storing throttling data.
    * @param options - Optional configuration options to override defaults.
    */
-  constructor(cache: CacheDriver<string>, options?: Partial<ThrottleOptions>) {
+  constructor(cache: Cache, options?: Partial<ThrottleOptions>) {
     super({
       ...ThrottleStrategy.#options,
       ...options,
@@ -165,14 +165,12 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
     const key = this.options.serialize(request);
 
     const cachedValue = this.#cache.get<number>(
-      ThrottleStrategy.namespace,
-      key
+      `${ThrottleStrategy.namespace}:${key}`
     );
 
-    if (cachedValue === undefined) {
+    if (cachedValue === null) {
       this.#cache.set(
-        ThrottleStrategy.namespace,
-        key,
+        `${ThrottleStrategy.namespace}:${key}`,
         1,
         this.options.interval
       );
@@ -185,8 +183,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
     }
 
     this.#cache.set(
-      ThrottleStrategy.namespace,
-      key,
+      `${ThrottleStrategy.namespace}:${key}`,
       cachedValue + 1,
       this.options.interval
     );

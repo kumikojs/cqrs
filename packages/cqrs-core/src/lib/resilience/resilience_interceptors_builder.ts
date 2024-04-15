@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Cache } from '../internal/cache/cache';
 import { InterceptorManager } from '../internal/interceptor/interceptor_manager';
+import { QueryCache } from '../query/query_cache';
 import { createResilienceStrategiesBuilder } from './resilience_strategies_builder';
 
 import type { ResilienceStrategiesBuilder } from './resilience_strategies_builder';
@@ -28,7 +28,7 @@ export type ResilienceOptions = Partial<{
    *
    * @see CacheOptions for more information. {@link CacheOptions}
    */
-  cache: Omit<Partial<CacheOptions>, 'serialize' | 'invalidate'> | boolean;
+  cache: Omit<Partial<CacheOptions>, 'serialize'> | boolean;
 
   /**
    * The timeout options for the query.
@@ -114,7 +114,7 @@ export class ResilienceInterceptorsBuilder<
    *   function that generates a unique cache key for a given request.
    */
   constructor(
-    cache: Cache,
+    cache: QueryCache,
     { serialize }: { serialize: (request: T) => string }
   ) {
     this.#strategyBuilder = createResilienceStrategiesBuilder(cache);
@@ -218,7 +218,7 @@ export class ResilienceInterceptorsBuilder<
    *
    * @returns {this} The builder.
    */
-  public addCacheInterceptor(serialize: CacheOptions['serialize']): this {
+  public addCacheInterceptor(): this {
     this.#interceptorManager.use(async (command, next) => {
       if (!command.options?.cache) {
         return next?.(command);
@@ -228,7 +228,7 @@ export class ResilienceInterceptorsBuilder<
         ...(typeof command.options.cache === 'boolean'
           ? {}
           : command.options.cache),
-        serialize,
+        serialize: this.#serializer,
       });
       return strategy.execute(command, async (request) => next?.(request));
     });

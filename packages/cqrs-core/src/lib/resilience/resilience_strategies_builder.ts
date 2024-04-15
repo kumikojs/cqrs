@@ -1,4 +1,3 @@
-import { Cache } from '../internal/cache/cache';
 import { CacheStrategy } from './strategies/cache_strategy';
 import { DeduplicationStrategy } from './strategies/deduplication_strategy';
 import { FallbackStrategy } from './strategies/fallback_strategy';
@@ -12,6 +11,7 @@ import type { FallbackOptions } from './strategies/fallback_strategy';
 import type { RetryOptions } from './strategies/retry_strategy';
 import type { ThrottleOptions } from './strategies/throttle_strategy';
 import type { TimeoutOptions } from './strategies/timeout_strategy';
+import { QueryCache } from '../query/query_cache';
 
 /**
  * A builder for creating instances of various resilience strategies to handle
@@ -75,11 +75,11 @@ export type ResilienceStrategiesBuilder = {
  * @returns A new ResilienceStrategiesBuilder instance.
  */
 export const createResilienceStrategiesBuilder = (
-  cache: Cache
+  cache: QueryCache
 ): ResilienceStrategiesBuilder => ({
   cache: (options) => new CacheStrategy(cache, options),
   retry: (options) => new RetryStrategy(options),
-  throttle: (options) => new ThrottleStrategy(cache.inMemoryCache, options),
+  throttle: (options) => new ThrottleStrategy(cache.l1, options),
   timeout: (options) => new TimeoutStrategy(options),
   deduplication: (options) => new DeduplicationStrategy(options),
   fallback: (options) => new FallbackStrategy(options),

@@ -1,11 +1,11 @@
 import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
-import { Cache } from '../internal/cache/cache';
 import { QueryInterceptors } from './query_interceptors';
 
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CombinedPartialOptions } from '../types';
 import type { QueryContract, QueryHandlerContract } from './query_contracts';
+import { QueryCache } from './query_cache';
 
 /**
  * The `QueryBus` class acts as a central coordinator for managing query execution and facilitates cross-cutting concerns through interceptors.
@@ -73,7 +73,7 @@ export class QueryBus<
    *
    * @param cache - The cache instance to be used for data storage and retrieval.
    */
-  constructor(cache: Cache) {
+  constructor(cache: QueryCache) {
     this.#interceptorManager = new QueryInterceptors<
       QueryContract<
         string,

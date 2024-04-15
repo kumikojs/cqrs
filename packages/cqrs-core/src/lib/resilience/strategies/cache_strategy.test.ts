@@ -1,18 +1,19 @@
 import { Cache } from '../../internal/cache/cache';
+import { LocalStorage } from '../../internal/storage/facades/local_storage';
+import { MemoryStorage } from '../../internal/storage/facades/memory_storage';
+import { QueryCache } from '../../query/query_cache';
 import { CacheStrategy } from './cache_strategy';
 
 describe('CacheStrategy', () => {
   let cacheStrategy: CacheStrategy;
 
   test('should cache and retrieve values correctly', async () => {
-    cacheStrategy = new CacheStrategy(new Cache(), {
-      serialize: (request) => {
-        return {
-          ns: 'default',
-          key: JSON.stringify(request),
-        };
-      },
-    });
+    cacheStrategy = new CacheStrategy(
+      new QueryCache(
+        new Cache(new MemoryStorage()),
+        new Cache(new LocalStorage())
+      )
+    );
 
     const request = { key: 'value' };
     const task = vitest.fn().mockResolvedValue('result');
@@ -28,7 +29,13 @@ describe('CacheStrategy', () => {
 
   test('should use custom TTL when provided', async () => {
     vitest.useFakeTimers();
-    cacheStrategy = new CacheStrategy(new Cache(), { ttl: 1000 });
+    cacheStrategy = new CacheStrategy(
+      new QueryCache(
+        new Cache(new MemoryStorage()),
+        new Cache(new LocalStorage())
+      ),
+      { ttl: 1000 }
+    );
     const request = { key: 'value' };
     const task = vitest.fn().mockResolvedValue('result');
 

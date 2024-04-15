@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Cache } from '../internal/cache/cache';
+import { Cache } from '../internal/cache/cache_manager';
 import { QueryInterceptors } from './query_interceptors';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';

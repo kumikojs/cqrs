@@ -5,6 +5,7 @@ const STATUS = {
   PENDING: 'pending',
   FULFILLED: 'fulfilled',
   REJECTED: 'rejected',
+  STALE: 'stale',
 } as const;
 
 type PendingResult = {
@@ -13,6 +14,7 @@ type PendingResult = {
   isIdle: false;
   isFulfilled: false;
   isRejected: false;
+  isStale: false;
 };
 
 type IdleResult = {
@@ -21,6 +23,7 @@ type IdleResult = {
   isIdle: true;
   isFulfilled: false;
   isRejected: false;
+  isStale: false;
 };
 
 type FulfilledResult = {
@@ -29,6 +32,7 @@ type FulfilledResult = {
   isIdle: false;
   isFulfilled: true;
   isRejected: false;
+  isStale: false;
 };
 
 type RejectedResult = {
@@ -37,6 +41,16 @@ type RejectedResult = {
   isIdle: false;
   isFulfilled: false;
   isRejected: true;
+  isStale: false;
+};
+
+type StaleResult = {
+  status: 'stale';
+  isPending: false;
+  isIdle: false;
+  isFulfilled: false;
+  isRejected: false;
+  isStale: true;
 };
 
 type OperationState<T> = {
@@ -53,11 +67,12 @@ type OperationState<T> = {
  * @property {boolean} isIdle - Whether the operation is idle.
  * @property {boolean} isFulfilled - Whether the operation is fulfilled.
  * @property {boolean} isRejected - Whether the operation is rejected.
+ * @property {boolean} isStale - Whether the operation is stale.
  * @property {T | undefined} response - The response of the operation.
  * @property {Error | undefined} error - The error of the operation.
  */
 export type OperationResult<T> = OperationState<T> &
-  (PendingResult | IdleResult | FulfilledResult | RejectedResult);
+  (PendingResult | IdleResult | FulfilledResult | RejectedResult | StaleResult);
 
 /**
  * Wraps an operation and provides a reactive interface for it.
@@ -73,6 +88,7 @@ export class Operation<T> extends Subject<OperationResult<T>> {
       isPending: false,
       isFulfilled: false,
       isRejected: false,
+      isStale: false,
     });
   }
 
@@ -96,6 +112,7 @@ export class Operation<T> extends Subject<OperationResult<T>> {
       isIdle: false,
       isFulfilled: false,
       isRejected: false,
+      isStale: false,
     };
 
     try {
@@ -108,6 +125,7 @@ export class Operation<T> extends Subject<OperationResult<T>> {
         isIdle: false,
         isFulfilled: true,
         isRejected: false,
+        isStale: false,
       };
 
       return response;
@@ -119,8 +137,24 @@ export class Operation<T> extends Subject<OperationResult<T>> {
         isIdle: false,
         isFulfilled: false,
         isRejected: true,
+        isStale: false,
       };
       throw error;
     }
+  }
+
+  /**
+   * Marks the operation as stale.
+   */
+  stale(value: T) {
+    this.state = {
+      status: STATUS.STALE,
+      response: value,
+      isPending: false,
+      isIdle: false,
+      isFulfilled: false,
+      isRejected: false,
+      isStale: true,
+    };
   }
 }

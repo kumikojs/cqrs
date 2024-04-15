@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Cache } from '../internal/cache/cache';
+import { Cache } from '../internal/cache/cache_manager';
 import { ResilienceInterceptorsBuilder } from './resilience_interceptors_builder';
 import { ThrottleException } from './strategies/throttle_strategy';
 import { TimeoutException } from './strategies/timeout_strategy';

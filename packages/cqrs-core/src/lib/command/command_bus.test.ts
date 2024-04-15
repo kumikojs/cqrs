@@ -1,4 +1,4 @@
-import { Cache } from '../internal/cache/cache';
+import { Cache } from '../internal/cache/cache_manager';
 import { CommandBus } from './command_bus';
 
 describe('CommandBus', () => {

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client } from '../client';
 import { Operation } from '../internal/operation/operation';
+import { SubscriptionManager } from '../internal/subscription/subscription_manager';
 
 import type { VoidFunction } from '../types';
 import type { QueryContract, QueryHandlerContract } from './query_contracts';
@@ -48,6 +49,8 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
    */
   #client: Client;
 
+  #subscriptionManager: SubscriptionManager = new SubscriptionManager();
+
   /**
    * Creates a new instance of `QuerySubject`.
    *
@@ -77,7 +80,6 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
    */
   async execute(query: TRequest): Promise<TResult> {
     this.#lastQuery = query;
-    console.log('QuerySubject: executing query', query);
 
     return this.#operation.execute<TRequest, TResult>(query, this.#handlerFn);
   }
@@ -89,14 +91,16 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
    * @returns A function to unsubscribe from both state change notifications and cache invalidation events.
    */
   subscribe(onStateChange: VoidFunction): VoidFunction {
-    const unsubscription = this.#operation.subscribe(onStateChange);
-    const cacheUnsubscription = this.#onCacheInvalidation();
-
+    this.#subscriptionManager
+      .subscribe(this.#operation.subscribe(onStateChange))
+      .subscribe(this.#onCacheInvalidation());
+    /*     const optimisticUnsubscription = this.#onOptimisticUpdate();
+     */
     return () => {
-      unsubscription();
-      cacheUnsubscription();
-
-      this.#client.cache.inMemoryCache.delete(this.#lastQuery.queryName);
+      /*       optimisticUnsubscription();
+       */
+      this.#subscriptionManager.unsubscribe();
+      this.#client.cache.l1.delete(this.#lastQuery.queryName);
     };
   }
 
@@ -114,19 +118,21 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
    * Subscribes to cache invalidation events for the query.
    */
   #onCacheInvalidation() {
-    return this.#client.cache.onInvalidate(this.#lastQuery.queryName, () => {
-      this.execute({
-        ...this.#lastQuery,
-        options: {
-          ...this.#lastQuery.options,
-          cache: {
-            invalidate: true,
-            ...(typeof this.#lastQuery.options?.cache === 'boolean'
-              ? {}
-              : this.#lastQuery.options?.cache),
-          },
-        },
-      });
+    return this.#client.cache.on('invalidated', (key: string) => {
+      if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
+
+      this.execute(this.#lastQuery);
     });
   }
+
+  /* #onOptimisticUpdate() {
+    return this.#client.cache.onOptimisticUpdate(
+      this.#lastQuery.queryName,
+      (key, value: TResult) => {
+        if (key === this.#lastQuery.queryName) {
+          this.#operation.stale(value);
+        }
+      }
+    );
+  } */
 }

@@ -1,91 +1,151 @@
-import { MemoryCacheDriver } from './drivers/memory_cache';
-import { LocalStorageCacheDriver } from './drivers/local_storage_cache';
+import { DurationUnit } from '../../types';
+import { MemoryBusDriver } from '../bus/drivers/memory_bus';
+import { CacheEntry } from './cache_entry/cache_entry';
 
-import type { VoidFunction } from '../../types';
+import type { Storage } from '../storage/storage';
 
-/**
- * The Cache class is a simple cache manager that allows you to store and retrieve
- * values from in-memory and local storage caches.
- *
- * @unstable This API is not stable and may change in the future.
- * It will also support other cache drivers like AsyncStorage and a refactorization may be needed.
- */
+export const CACHE_EVENT_TYPES = {
+  INVALIDATED: 'invalidated',
+  UPDATED: 'updated',
+  EXPIRED: 'expired',
+} as const;
+export type CacheEvent =
+  (typeof CACHE_EVENT_TYPES)[keyof typeof CACHE_EVENT_TYPES];
+
 export class Cache {
-  /**
-   * The in-memory cache driver.
-   *
-   * @type {MemoryCacheDriver<string>}
-   */
-  #inMemoryCache: MemoryCacheDriver<string>;
+  #storage: Storage;
+  #emitter: MemoryBusDriver<string> = new MemoryBusDriver({
+    maxHandlersPerChannel: Infinity,
+    mode: 'soft',
+  });
 
-  /**
-   * The local storage cache driver.
-   *
-   * @type {LocalStorageCacheDriver<string>}
-   */
-  #localStorageCache: LocalStorageCacheDriver<string>;
-
-  constructor() {
-    this.#inMemoryCache = new MemoryCacheDriver();
-    this.#localStorageCache = new LocalStorageCacheDriver();
+  constructor(storage: Storage) {
+    this.#storage = storage;
   }
 
-  /**
-   * Get the in-memory cache driver.
-   *
-   * @returns {MemoryCacheDriver<string>}
-   */
-  get inMemoryCache(): MemoryCacheDriver<string> {
-    return this.#inMemoryCache;
+  get length() {
+    return this.#storage.length;
   }
 
-  /**
-   * Get the local storage cache driver.
-   *
-   * @returns {LocalStorageCacheDriver<string>}
-   */
-  get localStorageCache(): LocalStorageCacheDriver<string> {
-    return this.#localStorageCache;
-  }
+  get<TValue>(key: string): TValue | null {
+    const item = this.#storage.getItem(key);
+    if (!item) return null;
 
-  /**
-   * Invalidate a key in both caches.
-   *
-   * @param {string} key - The key to invalidate.
-   */
-  invalidate(key: string): void {
-    this.#inMemoryCache.invalidate(key);
-    this.#localStorageCache.invalidate(key);
-  }
+    const deserialized = CacheEntry.deserialize<TValue>(key, item);
+    if (!deserialized) {
+      return null;
+    }
 
-  /**
-   * Clear a key in both caches.
-   *
-   * @param {string} key - The key to clear.
-   * @unused This method is not used in the codebase and may be removed in the future.
-   */
-  clear(key: string): void {
-    this.#inMemoryCache.delete(key);
-    this.#localStorageCache.delete(key);
-  }
-
-  /**
-   * Subscribe to cache invalidation events.
-   *
-   * @param {string} key - The key to subscribe to.
-   * @param {Function} handler - The handler to call when the key is invalidated.
-   * @returns {Function} An unsubscription function to remove the handler from the cache.
-   */
-  onInvalidate(key: string, handler: (key: string) => void): VoidFunction {
-    const memorySubscription = this.#inMemoryCache.onInvalidate(key, handler);
-    const localStorageSubscription = this.#localStorageCache.onInvalidate(
-      key,
-      handler
+    console.log(
+      'deserialized.isExpired()',
+      deserialized.hasExpired(),
+      deserialized.expiration,
+      Date.now(),
+      deserialized.expiration < Date.now(),
+      deserialized.expiration - Date.now()
     );
+    if (deserialized.hasExpired()) {
+      this.#storage.removeItem(key);
+      return null;
+    }
+
+    return deserialized.value ?? null;
+  }
+
+  expiration(key: string): number {
+    const item = this.#storage.getItem(key);
+    if (!item) return -Infinity;
+
+    const deserialized = CacheEntry.deserialize(key, item);
+    if (!deserialized) {
+      return -Infinity;
+    }
+
+    return deserialized.expiration;
+  }
+
+  set<TValue>(key: string, value: TValue, ttl?: DurationUnit): void {
+    const entry = new CacheEntry(key, value, ttl);
+    const serialized = entry.serialize();
+    if (!serialized) {
+      return;
+    }
+
+    this.#storage.setItem(key, serialized);
+  }
+
+  delete(key: string): void {
+    this.#storage.removeItem(key);
+  }
+
+  optimisticUpdate<TValue>(
+    key: string,
+    updater: (value: TValue | undefined) => TValue
+  ) {
+    const item = this.#storage.getItem(key);
+    if (!item) {
+      this.set(key, updater(undefined));
+      return;
+    }
+
+    const deserialized = CacheEntry.deserialize<TValue>(key, item);
+    if (!deserialized) {
+      this.#storage.removeItem(key);
+      return;
+    }
+
+    const value = deserialized.value;
+    this.set(key, updater(value));
+
+    this.#emit('updated', key);
+  }
+
+  clear(): void {
+    this.#storage.clear();
+  }
+
+  key(index: number): string | null {
+    return this.#storage.key(index);
+  }
+
+  on(eventName: CacheEvent, handler: (key: string) => void) {
+    this.#emitter.subscribe(eventName, handler);
 
     return () => {
-      memorySubscription();
-      localStorageSubscription();
+      this.#emitter.unsubscribe(eventName, handler);
     };
+  }
+
+  invalidate(key: string) {
+    this.#emit('invalidated', key);
+  }
+
+  clearAll() {
+    this.#storage.clear();
+  }
+
+  clearExpired() {
+    for (let i = 0; i < this.#storage.length; i++) {
+      const key = this.#storage.key(i);
+      if (!key) continue;
+
+      const item = this.#storage.getItem(key);
+      if (!item) continue;
+
+      const deserialized = CacheEntry.deserialize(key, item);
+      if (!deserialized) {
+        this.#storage.removeItem(key);
+        continue;
+      }
+
+      if (deserialized.hasExpired()) {
+        this.#storage.removeItem(key);
+        this.#emit('expired', key);
+      }
+    }
+  }
+
+  #emit(eventName: CacheEvent, key: string) {
+    this.#emitter.publish(eventName, key);
   }
 }
