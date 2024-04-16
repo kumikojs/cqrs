@@ -1,11 +1,12 @@
 import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
 import { QueryInterceptors } from './query_interceptors';
 
+import { AbortManager } from '../internal/abort_manager/abort_manager';
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CombinedPartialOptions } from '../types';
-import type { QueryContract, QueryHandlerContract } from './query_contracts';
 import { QueryCache } from './query_cache';
+import type { QueryContract, QueryHandlerContract } from './query_contracts';
 
 /**
  * The `QueryBus` class acts as a central coordinator for managing query execution and facilitates cross-cutting concerns through interceptors.
@@ -67,6 +68,12 @@ export class QueryBus<
       CombinedPartialOptions<QueryContract, KnownQueries>
     >
   >;
+
+  /**
+   * @private
+   * The abort manager responsible for managing ongoing requests and their cancellation.
+   */
+  #abortManager = new AbortManager();
 
   /**
    * Constructs a QueryBus instance.
@@ -157,7 +164,28 @@ export class QueryBus<
     query: TQuery,
     handler: QueryHandlerContract<QueryContract, TResponse>['execute']
   ): Promise<TResponse> {
-    return this.#interceptorManager.execute<TQuery, TResponse>(query, handler);
+    const signal = query.context?.signal;
+
+    return this.#abortManager.execute(
+      query['queryName'],
+      async (abortController) => {
+        const useSignal = signal ?? abortController.signal;
+
+        if (signal) {
+          /**
+           * If the query has already been provided with an abort signal,
+           * we listen for the `abort` event to propagate the cancellation.
+           */
+          signal.addEventListener('abort', () => {
+            abortController.abort();
+          });
+        }
+
+        query.context = { ...query.context, signal: useSignal };
+
+        return this.#interceptorManager.execute(query, handler);
+      }
+    );
   }
 
   /**
@@ -175,5 +203,11 @@ export class QueryBus<
     return this.execute<TQuery, TResponse>(query, (query) =>
       this.#driver.publish(query['queryName'], query)
     );
+  }
+
+  cancelQuery<TQuery extends KnownQueries[keyof KnownQueries]>(
+    queryName: TQuery['queryName']
+  ) {
+    this.#abortManager.cancelRequest(queryName);
   }
 }

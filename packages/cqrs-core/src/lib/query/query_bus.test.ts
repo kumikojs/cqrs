@@ -1,11 +1,18 @@
-import { Cache } from '../internal/cache/cache_manager';
+import { Cache } from '../internal/cache/cache';
+import { MemoryStorage } from '../internal/storage/facades/memory_storage';
 import { QueryBus } from './query_bus';
+import { QueryCache } from './query_cache';
 
 describe('QueryBus', () => {
   let bus: QueryBus;
 
   beforeEach(() => {
-    bus = new QueryBus(new Cache());
+    bus = new QueryBus(
+      new QueryCache(
+        new Cache(new MemoryStorage()),
+        new Cache(new MemoryStorage())
+      )
+    );
   });
 
   it('should be able to register a query handler', () => {
@@ -55,5 +62,44 @@ describe('QueryBus', () => {
     );
 
     expect(handler).toHaveBeenCalled();
+  });
+
+  describe('cancelQuery', () => {
+    it('should be able to cancel an ongoing query', async () => {
+      bus.register('test', async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        return 'result';
+      });
+
+      const promise = bus.dispatch({
+        queryName: 'test',
+        payload: {},
+      });
+
+      bus.cancelQuery('test');
+
+      await expect(promise).rejects.toThrow(`Request 'test' aborted`);
+    });
+
+    it('should be able to cancel an ongoing query with a signal', async () => {
+      bus.register('test', async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        return 'result';
+      });
+
+      const controller = new AbortController();
+
+      const promise = bus.dispatch({
+        queryName: 'test',
+        payload: {},
+        context: { signal: controller.signal },
+      });
+
+      controller.abort();
+
+      expect(promise).rejects.toThrow(`Request 'test' aborted`);
+    });
   });
 });
