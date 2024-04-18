@@ -36,6 +36,8 @@ export type CacheOptions = {
    * @returns An object containing a `ns` (namespace) and `key` property for cache operations.
    */
   serialize: (request: any) => string;
+
+  invalidate: boolean;
 };
 
 /**
@@ -91,6 +93,7 @@ export class CacheStrategy extends Strategy<CacheOptions> {
 
       return key.value;
     },
+    invalidate: false,
   };
 
   /**
@@ -129,10 +132,12 @@ export class CacheStrategy extends Strategy<CacheOptions> {
   >(request: TRequest, task: TTask): Promise<TResult> {
     const key = this.options.serialize(request);
 
-    const cachedValue = this.#cache.get<TResult>(key);
+    if (!this.options.invalidate) {
+      const cachedValue = this.#cache.get<TResult>(key);
 
-    if (cachedValue) {
-      return cachedValue;
+      if (cachedValue) {
+        return cachedValue;
+      }
     }
 
     const result = await task(request);

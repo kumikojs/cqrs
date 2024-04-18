@@ -47,15 +47,7 @@ export class CacheEntry<TValue> {
   }
 
   hasExpired() {
-    console.log('Date.now()', Date.now());
-    console.log('this.#expiration', this.#expiration);
-    console.log('Date.now() > this.#expiration', Date.now() > this.#expiration);
-
-    const result = Date.now() > this.#expiration;
-
-    console.log('result', result);
-
-    return result;
+    return Date.now() > this.#expiration;
   }
 
   serialize(): string | null {

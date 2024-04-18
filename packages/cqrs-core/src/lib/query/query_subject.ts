@@ -93,14 +93,11 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
   subscribe(onStateChange: VoidFunction): VoidFunction {
     this.#subscriptionManager
       .subscribe(this.#operation.subscribe(onStateChange))
-      .subscribe(this.#onCacheInvalidation());
-    /*     const optimisticUnsubscription = this.#onOptimisticUpdate();
-     */
+      .subscribe(this.#onCacheInvalidation())
+      .subscribe(this.#onOptimisticUpdate());
+
     return () => {
-      /*       optimisticUnsubscription();
-       */
       this.#subscriptionManager.unsubscribe();
-      this.#client.cache.l1.delete(this.#lastQuery.queryName);
     };
   }
 
@@ -121,18 +118,76 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
     return this.#client.cache.on('invalidated', (key: string) => {
       if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
 
-      this.execute(this.#lastQuery);
+      console.log(
+        'Cache invalidation detected for query:',
+        this.#lastQuery.queryName
+      );
+      this.execute({
+        ...this.#lastQuery,
+        options: {
+          ...this.#lastQuery.options,
+          cache: {
+            ...(typeof this.#lastQuery.options?.cache === 'boolean'
+              ? {}
+              : this.#lastQuery.options?.cache),
+            invalidate: true,
+          },
+        },
+      });
     });
   }
 
-  /* #onOptimisticUpdate() {
-    return this.#client.cache.onOptimisticUpdate(
-      this.#lastQuery.queryName,
-      (key, value: TResult) => {
-        if (key === this.#lastQuery.queryName) {
-          this.#operation.stale(value);
+  /**
+   * @private
+   * Subscribes to optimistic update events for the query.
+   */
+  #onOptimisticUpdate() {
+    const optimisticUpdateBegan = this.#client.cache.on(
+      'optimistic_update_began',
+      (key) => {
+        if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
+
+        console.log(
+          'Optimistic update detected for query:',
+          this.#lastQuery.queryName
+        );
+        /**
+         * Before updating the cache, we need to cancel the query to
+         * prevent the cache from being updated with stale data.
+         */
+        this.#client.query.cancelQuery(this.#lastQuery.queryName);
+      }
+    );
+
+    const optimisticUpdateEnded = this.#client.cache.on(
+      'optimistic_update_ended',
+      (key) => {
+        if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
+
+        console.log(
+          'Optimistic update completed for query:',
+          this.#lastQuery.queryName
+        );
+
+        const result = this.#client.cache.get<TResult>(this.#lastQuery);
+
+        if (result) {
+          console.log(
+            'Updating query state with optimistic update result:',
+            result
+          );
+          this.#operation.stale(result);
         }
       }
     );
-  } */
+
+    return () => {
+      console.log(
+        'Optimistic update cleanup for query:',
+        this.#lastQuery.queryName
+      );
+      optimisticUpdateBegan();
+      optimisticUpdateEnded();
+    };
+  }
 }

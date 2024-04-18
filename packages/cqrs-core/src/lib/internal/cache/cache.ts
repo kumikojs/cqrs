@@ -1,12 +1,13 @@
-import { DurationUnit } from '../../types';
 import { MemoryBusDriver } from '../bus/drivers/memory_bus';
 import { CacheEntry } from './cache_entry/cache_entry';
 
+import type { DurationUnit } from '../../types';
 import type { Storage } from '../storage/storage';
 
 export const CACHE_EVENT_TYPES = {
   INVALIDATED: 'invalidated',
-  UPDATED: 'updated',
+  OPTIMISTIC_UPDATE_BEGAN: 'optimistic_update_began',
+  OPTIMISTIC_UPDATE_ENDED: 'optimistic_update_ended',
   EXPIRED: 'expired',
 } as const;
 export type CacheEvent =
@@ -36,14 +37,6 @@ export class Cache {
       return null;
     }
 
-    console.log(
-      'deserialized.isExpired()',
-      deserialized.hasExpired(),
-      deserialized.expiration,
-      Date.now(),
-      deserialized.expiration < Date.now(),
-      deserialized.expiration - Date.now()
-    );
     if (deserialized.hasExpired()) {
       this.#storage.removeItem(key);
       return null;
@@ -64,6 +57,18 @@ export class Cache {
     return deserialized.expiration;
   }
 
+  ttl(key: string): DurationUnit | undefined {
+    const item = this.#storage.getItem(key);
+    if (!item) return undefined;
+
+    const deserialized = CacheEntry.deserialize(key, item);
+    if (!deserialized) {
+      return undefined;
+    }
+
+    return deserialized.ttl;
+  }
+
   set<TValue>(key: string, value: TValue, ttl?: DurationUnit): void {
     const entry = new CacheEntry(key, value, ttl);
     const serialized = entry.serialize();
@@ -76,28 +81,6 @@ export class Cache {
 
   delete(key: string): void {
     this.#storage.removeItem(key);
-  }
-
-  optimisticUpdate<TValue>(
-    key: string,
-    updater: (value: TValue | undefined) => TValue
-  ) {
-    const item = this.#storage.getItem(key);
-    if (!item) {
-      this.set(key, updater(undefined));
-      return;
-    }
-
-    const deserialized = CacheEntry.deserialize<TValue>(key, item);
-    if (!deserialized) {
-      this.#storage.removeItem(key);
-      return;
-    }
-
-    const value = deserialized.value;
-    this.set(key, updater(value));
-
-    this.#emit('updated', key);
   }
 
   clear(): void {
@@ -118,6 +101,15 @@ export class Cache {
 
   invalidate(key: string) {
     this.#emit('invalidated', key);
+  }
+
+  optimisticUpdate<TValue>(key: string, value: TValue) {
+    this.#emit('optimistic_update_began', key);
+
+    const ttl = this.ttl(key);
+    this.set(key, value, ttl);
+
+    this.#emit('optimistic_update_ended', key);
   }
 
   clearAll() {

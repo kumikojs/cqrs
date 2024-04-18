@@ -18,17 +18,31 @@ import type {
  * - Leverages {@link ResilienceOptions} for resilience-related options (excluding cache).
  * - Integrates with {@link CommandWithInferredQueries} to enable advanced command configuration.
  */
-export type CommandOptions<TQueriesName extends string[] = string[]> = Partial<
+export type CommandOptions<
+  KnownQueries extends Record<string, QueryContract> = Record<
+    string,
+    QueryContract
+  >,
+  TQueriesName extends string[] = KnownQueries[keyof KnownQueries]['queryName'][]
+> = Partial<
   Omit<ResilienceOptions, 'cache'> & {
-    /**
-     * Names of queries that this command impacts, potentially rendering their results stale after execution.
-     */
-    queries: TQueriesName;
+    invalidation?: {
+      /**
+       * Names of queries that this command impacts, potentially rendering their results stale after execution.
+       */
+      queries: TQueriesName;
 
-    /**
-     * Flag indicating whether to automatically invalidate results of dependent queries after command execution.
-     */
-    invalidateQueries: boolean;
+      /**
+       * Flag indicating whether to automatically invalidate results of dependent queries after command execution.
+       * @default true
+       */
+      enabled?: boolean;
+    };
+
+    optimisticUpdate?: {
+      query: Pick<KnownQueries[keyof KnownQueries], 'queryName' | 'payload'>;
+      update: unknown;
+    };
   }
 >;
 
@@ -44,8 +58,11 @@ export type CommandWithInferredQueries<
   TName extends string = string,
   TPayload = unknown,
   TOptions = unknown,
-  TQueriesName extends string[] = string[]
-> = CommandContract<TName, TPayload, TOptions & CommandOptions<TQueriesName>>;
+  KnownQueries extends Record<string, QueryContract> = Record<
+    string,
+    QueryContract
+  >
+> = CommandContract<TName, TPayload, TOptions & CommandOptions<KnownQueries>>;
 
 /**
  * A record of commands with inferred queries, constructed from known command and query types.
@@ -61,7 +78,7 @@ export type InferredCommands<
     CommandName,
     KnownCommands[CommandName]['payload'],
     KnownCommands[CommandName]['options'],
-    KnownQueries[keyof KnownQueries]['queryName'][]
+    KnownQueries
   >;
 };
 

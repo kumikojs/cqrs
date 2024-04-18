@@ -28,7 +28,7 @@ export type ResilienceOptions = Partial<{
    *
    * @see CacheOptions for more information. {@link CacheOptions}
    */
-  cache: Omit<Partial<CacheOptions>, 'serialize'> | boolean;
+  cache: Omit<Partial<CacheOptions>, 'serialize' | 'invalidate'> | boolean;
 
   /**
    * The timeout options for the query.

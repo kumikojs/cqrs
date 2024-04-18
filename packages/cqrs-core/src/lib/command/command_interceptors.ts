@@ -72,6 +72,7 @@ export class CommandInterceptors<
       .build();
 
     this.#addInvalidatingQueriesInterceptor(interceptorManager);
+    this.#addOptimisticUpdateInterceptor(interceptorManager);
 
     return interceptorManager;
   }
@@ -86,9 +87,13 @@ export class CommandInterceptors<
     interceptorManager: InterceptorManagerContract<TCommand>
   ) {
     interceptorManager.tap(
-      (command) => Boolean(command.options?.invalidateQueries),
+      (command) =>
+        Boolean(command.options?.invalidation?.enabled) ||
+        (Boolean(command.options?.invalidation?.queries) &&
+          command.options?.invalidation?.enabled === undefined),
       async (command, next) => {
-        const invalidatingQueries = command.options?.queries || [];
+        const invalidatingQueries =
+          command.options?.invalidation?.queries || [];
 
         const result = await next?.(command);
 
@@ -99,5 +104,24 @@ export class CommandInterceptors<
         return result;
       }
     );
+  }
+
+  #addOptimisticUpdateInterceptor(
+    interceptorManager: InterceptorManagerContract<TCommand>
+  ) {
+    interceptorManager.use(async (command, next) => {
+      if (!command.options?.optimisticUpdate) {
+        return await next?.(command);
+      }
+      const { query, update } = command.options.optimisticUpdate;
+
+      this.#cache.optimisticUpdate(query, update);
+
+      const result = await next?.(command);
+
+      this.#cache.invalidate(query);
+
+      return result;
+    });
   }
 }

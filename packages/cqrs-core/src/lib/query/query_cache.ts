@@ -41,7 +41,7 @@ export class QueryCache {
     this.#l1 = l1;
     this.#l2 = l2;
 
-    this.#scheduler = new Scheduler('15s');
+    this.#scheduler = new Scheduler('10m');
 
     this.#scheduler
       .schedule(() => {
@@ -92,9 +92,11 @@ export class QueryCache {
     const key = this.getCacheKey(query);
 
     if (this.#l1.expiration(key) > this.#l2.expiration(key)) {
+      console.log('l1', key);
       return this.#l1.get<TValue>(key);
     }
 
+    console.log('l2', key);
     return this.#l2.get<TValue>(key);
   }
 
@@ -129,8 +131,28 @@ export class QueryCache {
   }
 
   invalidate(query: QueryContract): void {
+    console.log('invalidate', query);
     this.#invalidate(this.#l1, query);
     this.#invalidate(this.#l2, query);
+  }
+
+  getCacheKey({ queryName, payload }: QueryContract): string {
+    const serializedPayload = this.#serializer.serialize(payload);
+
+    if (serializedPayload.isSuccess() && serializedPayload.value) {
+      return `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}${
+        this.#QUERY_CACHE_KEY_SUFFIX
+      }${serializedPayload.value}`;
+    }
+
+    return `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
+  }
+
+  optimisticUpdate(previousQuery: QueryContract, value: unknown) {
+    const key = this.getCacheKey(previousQuery);
+
+    this.#l1.optimisticUpdate(key, value);
+    this.#l2.optimisticUpdate(key, value);
   }
 
   #invalidate(cache: Cache, { queryName }: QueryContract): void {
@@ -144,17 +166,5 @@ export class QueryCache {
         cache.invalidate(key);
       }
     }
-  }
-
-  getCacheKey({ queryName, payload }: QueryContract): string {
-    const serializedPayload = this.#serializer.serialize(payload);
-
-    if (serializedPayload.isSuccess() && serializedPayload.value) {
-      return `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}__${
-        serializedPayload.value
-      }${this.#QUERY_CACHE_KEY_SUFFIX}`;
-    }
-
-    return `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
   }
 }

@@ -205,6 +205,12 @@ export class QueryBus<
     );
   }
 
+  /**
+   * Cancels an ongoing query execution.
+   *
+   * @template TQuery - The inferred type of the query to execute (derived from `KnownQueries`).
+   * @param queryName - The name of the query to cancel.
+   */
   cancelQuery<TQuery extends KnownQueries[keyof KnownQueries]>(
     queryName: TQuery['queryName']
   ) {
