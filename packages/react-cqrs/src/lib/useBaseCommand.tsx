@@ -7,9 +7,11 @@ import type { CommandContract, CommandHandlerContract } from '@stoik/cqrs-core';
 export function useBaseCommand<TRequest extends CommandContract>(
   client: Client,
   command: TRequest,
-  handler?: CommandHandlerContract<TRequest>['execute']
+  handler?:
+    | CommandHandlerContract<TRequest>['execute']
+    | CommandHandlerContract<TRequest>
 ) {
-  const [subject] = useState(() => new CommandSubject());
+  const [subject] = useState(() => new CommandSubject(client, handler));
 
   const result = useSyncExternalStore(
     useCallback((onStateChange) => subject.subscribe(onStateChange), [subject]),
@@ -19,16 +21,10 @@ export function useBaseCommand<TRequest extends CommandContract>(
 
   const execute = useCallback(
     (payload?: TRequest['payload']) => {
-      subject.execute(
-        {
-          payload,
-          ...command,
-        },
-        (command) =>
-          handler
-            ? client.command.execute(command, (command) => handler(command))
-            : client.command.dispatch(command)
-      );
+      subject.execute({
+        payload,
+        ...command,
+      });
     },
     [subject]
   );

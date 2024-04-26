@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { Client } from '@stoik/cqrs-core';
 import { useBaseCommand } from './useBaseCommand';
 import { useBaseEvent } from './useBaseEvent';
@@ -11,6 +13,7 @@ import type {
   ComputeEvents,
   ComputeQueries,
   EventHandlerContract,
+  ExtractQueryResponse,
   InferredCommands,
   QueryHandlerContract,
 } from '@stoik/cqrs-core';
@@ -24,37 +27,33 @@ export function create<Modules extends BaseModule[] = BaseModule[]>() {
 
   return {
     client,
-    useCommand: (
-      command: InferredCommands<
+    useCommand: <
+      TCommand extends InferredCommands<
         KnownCommands,
         KnownQueries
-      >[keyof InferredCommands<KnownCommands, KnownQueries>],
+      >[keyof InferredCommands<KnownCommands, KnownQueries>]
+    >(
+      command: TCommand,
       handler?: CommandHandlerContract<
-        InferredCommands<KnownCommands, KnownQueries>[keyof InferredCommands<
-          KnownCommands,
-          KnownQueries
-        >]
+        Extract<
+          KnownCommands[keyof KnownCommands],
+          { commandName: TCommand['commandName'] }
+        >
       >['execute']
-    ) =>
-      useBaseCommand<
-        InferredCommands<KnownCommands, KnownQueries>[keyof InferredCommands<
-          KnownCommands,
-          KnownQueries
-        >]
-      >(client, command, handler),
+      // TODO: Fix the type of the handler
+    ) => useBaseCommand(client, command, handler as any),
 
-    useQuery: <TResponse,>(
-      query: KnownQueries[keyof KnownQueries],
+    useQuery: <TQuery extends KnownQueries[keyof KnownQueries]['query']>(
+      query: TQuery,
       handler?: QueryHandlerContract<
-        KnownQueries[keyof KnownQueries],
-        TResponse
+        TQuery,
+        ExtractQueryResponse<TQuery['queryName'], KnownQueries>
       >['execute']
     ) =>
-      useBaseQuery<KnownQueries[keyof KnownQueries], TResponse>(
-        client,
-        query,
-        handler
-      ),
+      useBaseQuery<
+        TQuery,
+        ExtractQueryResponse<TQuery['queryName'], KnownQueries>
+      >(client, query, handler),
 
     useEvent: <TEvent extends KnownEvents[keyof KnownEvents]>(
       eventName: TEvent['eventName'],
