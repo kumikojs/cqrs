@@ -1,7 +1,7 @@
-import { QueryCache } from '../query/query_cache';
+import { CommandCache } from './command_cache';
 
+import type { BaseQueries } from '../query/query_types';
 import type { EventContract, EventEmitter } from '../event/event_contracts';
-import type { QueryContract } from '../query/query_contracts';
 import type { ResilienceOptions } from '../resilience/resilience_interceptors_builder';
 import type {
   CommandContract,
@@ -18,33 +18,24 @@ import type {
  * - Leverages {@link ResilienceOptions} for resilience-related options (excluding cache).
  * - Integrates with {@link CommandWithInferredQueries} to enable advanced command configuration.
  */
-export type CommandOptions<
-  KnownQueries extends Record<string, QueryContract> = Record<
-    string,
-    QueryContract
-  >,
-  TQueriesName extends string[] = KnownQueries[keyof KnownQueries]['queryName'][]
-> = Partial<
-  Omit<ResilienceOptions, 'cache'> & {
-    invalidation?: {
-      /**
-       * Names of queries that this command impacts, potentially rendering their results stale after execution.
-       */
-      queries: TQueriesName;
-
-      /**
-       * Flag indicating whether to automatically invalidate results of dependent queries after command execution.
-       * @default true
-       */
-      enabled?: boolean;
-    };
-
-    optimisticUpdate?: {
-      query: Pick<KnownQueries[keyof KnownQueries], 'queryName' | 'payload'>;
-      update: unknown;
-    };
-  }
->;
+export type CommandOptions<KnownQueries extends BaseQueries = BaseQueries> =
+  Partial<
+    Omit<ResilienceOptions, 'cache'> & {
+      invalidation?: {
+        /**
+         * Names of queries that this command impacts, potentially rendering their results stale after execution.
+         */
+        queries: (
+          | KnownQueries[keyof KnownQueries]['query']['queryName']
+          | KnownQueries[keyof KnownQueries]['query']
+        )[];
+      };
+      onMutate?: (ctx: {
+        //FIXME: This is a hack to allow to don't pass cache type to the onMutate function when using it without specifying the KnownQueries type
+        cache: Exclude<CommandCache<KnownQueries>, CommandCache>;
+      }) => void;
+    }
+  >;
 
 /**
  * Augments a {@link CommandContract} with inferred queries and associated options for managing dependencies and invalidation.
@@ -58,10 +49,7 @@ export type CommandWithInferredQueries<
   TName extends string = string,
   TPayload = unknown,
   TOptions = unknown,
-  KnownQueries extends Record<string, QueryContract> = Record<
-    string,
-    QueryContract
-  >
+  KnownQueries extends BaseQueries = BaseQueries
 > = CommandContract<TName, TPayload, TOptions & CommandOptions<KnownQueries>>;
 
 /**
@@ -72,12 +60,12 @@ export type CommandWithInferredQueries<
  */
 export type InferredCommands<
   KnownCommands extends Record<string, CommandContract>,
-  KnownQueries extends Record<string, QueryContract>
+  KnownQueries extends BaseQueries
 > = {
   [CommandName in KnownCommands[keyof KnownCommands]['commandName']]: CommandWithInferredQueries<
     CommandName,
-    KnownCommands[CommandName]['payload'],
-    KnownCommands[CommandName]['options'],
+    ExtractCommand<CommandName, KnownCommands>['payload'],
+    ExtractCommand<CommandName, KnownCommands>['options'],
     KnownQueries
   >;
 };
@@ -87,9 +75,12 @@ export type InferredCommands<
  *
  * @template KnownEvents - Record of known event types.
  */
-type CommandContext<KnownEvents extends Record<string, EventContract>> = {
+type CommandContext<
+  KnownQueries extends BaseQueries,
+  KnownEvents extends Record<string, EventContract>
+> = {
+  cache: CommandCache<KnownQueries>;
   emit: EventEmitter<KnownEvents>['emit'];
-  cache: QueryCache;
 };
 
 /**
@@ -103,8 +94,21 @@ type CommandContext<KnownEvents extends Record<string, EventContract>> = {
 export type InferredCommandHandlers<
   TCommand extends CommandContract,
   TResponse = void,
+  KnownQueries extends BaseQueries = BaseQueries,
   KnownEvents extends Record<string, EventContract> = Record<
     string,
     EventContract
   >
-> = CommandHandlerContract<TCommand, TResponse, CommandContext<KnownEvents>>;
+> = CommandHandlerContract<
+  TCommand,
+  TResponse,
+  CommandContext<KnownQueries, KnownEvents>
+>;
+
+export type ExtractCommand<
+  TCommandName,
+  KnownCommands extends Record<string, CommandContract> = Record<
+    string,
+    CommandContract
+  >
+> = Extract<KnownCommands[keyof KnownCommands], { commandName: TCommandName }>;

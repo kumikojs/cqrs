@@ -17,6 +17,7 @@ export type * from './lib/event/event_contracts';
 export * from './lib/query/query_bus';
 export type * from './lib/query/query_contracts';
 export * from './lib/query/query_subject';
+export type * from './lib/query/query_types';
 
 export * from './lib/saga/saga';
 

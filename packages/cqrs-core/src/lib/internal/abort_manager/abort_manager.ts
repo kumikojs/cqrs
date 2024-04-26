@@ -17,19 +17,30 @@ export class AbortManager {
   async execute<TResponse>(
     requestId: string,
     operation: (abortController: AbortController) => Promise<TResponse>
-  ): Promise<TResponse> {
+  ): Promise<TResponse | null> {
     const abortController = new AbortController();
 
     this.addRequest(requestId, abortController);
 
     return new Promise<TResponse>((resolve, reject) => {
       abortController.signal.addEventListener('abort', () => {
-        reject(new Error(`Request '${requestId}' aborted`));
+        reject(
+          new DOMException(`Request ${requestId} was aborted`, 'AbortError')
+        );
       });
 
       operation(abortController).then(resolve, reject);
-    }).finally(() => {
-      this.#ongoingRequests.delete(requestId);
-    });
+    })
+      .catch((e) => {
+        if (e.name === 'AbortError') {
+          console.warn(e.message);
+          return null;
+        }
+
+        throw e;
+      })
+      .finally(() => {
+        this.#ongoingRequests.delete(requestId);
+      });
   }
 }

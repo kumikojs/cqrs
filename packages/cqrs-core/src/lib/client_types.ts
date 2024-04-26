@@ -1,6 +1,6 @@
 import type { CommandContract } from './command/command_contracts';
 import type { EventContract } from './event/event_contracts';
-import type { QueryContract } from './query/query_contracts';
+import type { BaseQueries } from './query/query_types';
 import type { UnionToIntersection } from './types';
 
 /**
@@ -10,7 +10,7 @@ import type { UnionToIntersection } from './types';
  */
 export type BaseModule = {
   commands?: Record<string, CommandContract>;
-  queries?: Record<string, QueryContract>;
+  queries?: BaseQueries;
   events?: Record<string, EventContract>;
 };
 
@@ -46,24 +46,25 @@ export type ComputeCommands<T> = T extends {
   commands: infer U extends Record<string, CommandContract>;
 }
   ? U
-  : Record<string, CommandContract<string, unknown, unknown>>;
+  : Record<string, CommandContract>;
 
-/**
- * **ComputeQueries<T>**
- *
- * This type computes the query contracts from a module type `T`.
- *
- * @template T - The module type from which to extract the query contracts.
- * @returns The query contracts extracted from the module type `T`.
- */
 export type ComputeQueries<T> = T extends {
-  queries: infer U extends Record<
-    string,
-    QueryContract<string, unknown, unknown>
-  >;
+  queries: infer U extends BaseQueries;
 }
   ? U
-  : Record<string, QueryContract<string, unknown, unknown>>;
+  : BaseQueries;
+
+type ExtractResponse<T> = T extends { response: infer R } ? R : never;
+
+export type ComputeQueryResponses<T> = {
+  [K in keyof T]: ExtractResponse<T[K]>;
+};
+
+type ExtractQuery<T> = T extends { query: infer Q } ? Q : never;
+
+export type ComputeQueryContracts<T> = {
+  [K in keyof T]: ExtractQuery<T[K]>;
+};
 
 /**
  * **ComputeEvents<T>**
@@ -74,7 +75,7 @@ export type ComputeQueries<T> = T extends {
  * @returns The event contracts extracted from the module type `T`.
  */
 export type ComputeEvents<T> = T extends {
-  events: infer U extends Record<string, EventContract<string, unknown>>;
+  events: infer U extends Record<string, EventContract>;
 }
   ? U
-  : Record<string, EventContract<string, unknown>>;
+  : Record<string, EventContract>;

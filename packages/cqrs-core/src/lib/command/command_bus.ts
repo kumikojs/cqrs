@@ -1,21 +1,23 @@
+import { EventBus } from '../event/event_bus';
 import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
+import { QueryCache } from '../query/query_cache';
+import { CommandCache } from './command_cache';
 import { CommandInterceptors } from './command_interceptors';
 
-import { EventBus } from '../event/event_bus';
-import { EventContract } from '../event/event_contracts';
+import type { EventContract } from '../event/event_contracts';
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
-import type { QueryContract } from '../query/query_contracts';
+import type { BaseQueries } from '../query/query_types';
 import type { CombinedPartialOptions } from '../types';
 import type {
   CommandContract,
   CommandHandlerContract,
 } from './command_contracts';
 import type {
+  ExtractCommand,
   InferredCommandHandlers,
   InferredCommands,
 } from './command_types';
-import { QueryCache } from '../query/query_cache';
 
 /**
  * A central hub for registering and executing commands, facilitating cross-cutting concerns through interceptors.
@@ -56,10 +58,7 @@ export class CommandBus<
     string,
     CommandContract
   >,
-  KnownQueries extends Record<string, QueryContract> = Record<
-    string,
-    QueryContract
-  >,
+  KnownQueries extends BaseQueries = BaseQueries,
   KnownEvents extends Record<string, EventContract> = Record<
     string,
     EventContract
@@ -85,7 +84,7 @@ export class CommandBus<
 
   #emitter: EventBus<KnownEvents>;
 
-  #cache: QueryCache;
+  #cache: CommandCache<KnownQueries>;
 
   /**
    * Constructs a CommandBus instance.
@@ -102,7 +101,7 @@ export class CommandBus<
       KnownCommands
     >(cache).buildInterceptors();
 
-    this.#cache = cache;
+    this.#cache = new CommandCache<KnownQueries>(cache);
     this.#emitter = emitter;
 
     // Bind methods because they can be used as callbacks and we want to keep the context.
@@ -130,13 +129,25 @@ export class CommandBus<
    *                   or the `execute` method of the interface.
    * @returns An unregistration function to remove the handler from the bus.
    */
-  register<TCommand extends KnownCommands[keyof KnownCommands]>(
-    commandName: TCommand['commandName'],
+  register<
+    TCommandName extends string = KnownCommands[keyof KnownCommands]['commandName']
+  >(
+    commandName: TCommandName,
     handler:
-      | InferredCommandHandlers<TCommand, void, KnownEvents>
-      | InferredCommandHandlers<TCommand, void, KnownEvents>['execute']
+      | InferredCommandHandlers<
+          ExtractCommand<TCommandName, KnownCommands>,
+          void,
+          KnownQueries,
+          KnownEvents
+        >
+      | InferredCommandHandlers<
+          ExtractCommand<TCommandName, KnownCommands>,
+          void,
+          KnownQueries,
+          KnownEvents
+        >['execute']
   ): VoidFunction {
-    const handlerFn = (command: TCommand) =>
+    const handlerFn = (command: ExtractCommand<TCommandName, KnownCommands>) =>
       typeof handler === 'function'
         ? handler(command, { emit: this.#emitter.emit, cache: this.#cache })
         : handler.execute(command, {
@@ -158,11 +169,23 @@ export class CommandBus<
    *                   It can be a function implementing the {@link CommandHandlerContract} interface
    *                   or the `execute` method of the interface.
    */
-  unregister<TCommand extends KnownCommands[keyof KnownCommands]>(
-    commandName: TCommand['commandName'],
+  unregister<
+    TCommandName extends string = KnownCommands[keyof KnownCommands]['commandName']
+  >(
+    commandName: TCommandName,
     handler:
-      | InferredCommandHandlers<TCommand, void, KnownEvents>
-      | InferredCommandHandlers<TCommand, void, KnownEvents>['execute']
+      | InferredCommandHandlers<
+          ExtractCommand<TCommandName, KnownCommands>,
+          void,
+          KnownQueries,
+          KnownEvents
+        >
+      | InferredCommandHandlers<
+          ExtractCommand<TCommandName, KnownCommands>,
+          void,
+          KnownQueries,
+          KnownEvents
+        >['execute']
   ) {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -181,7 +204,7 @@ export class CommandBus<
    * @returns A promise resolving to the result of the command execution (often `void` for commands).
    */
   async execute<
-    TCommand extends InferredCommands<
+    TCommand extends CommandContract = InferredCommands<
       KnownCommands,
       KnownQueries
     >[keyof InferredCommands<KnownCommands, KnownQueries>],
@@ -211,7 +234,7 @@ export class CommandBus<
    * @returns A promise resolving to the result of the command execution (often `void` for commands).
    */
   async dispatch<
-    TCommand extends InferredCommands<
+    TCommand extends CommandContract = InferredCommands<
       KnownCommands,
       KnownQueries
     >[keyof InferredCommands<KnownCommands, KnownQueries>],

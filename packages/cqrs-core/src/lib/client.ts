@@ -15,7 +15,7 @@ import type {
 } from './client_types';
 import type { CommandContract } from './command/command_contracts';
 import type { EventContract } from './event/event_contracts';
-import type { QueryContract } from './query/query_contracts';
+import type { BaseQueries } from './query/query_types';
 
 /**
  * **Client Class**
@@ -64,15 +64,15 @@ import type { QueryContract } from './query/query_contracts';
  */
 export class Client<
   Modules extends BaseModule[] = BaseModule[],
-  KnownCommands extends Record<string, CommandContract> = ComputeCommands<
-    Combined<Modules>
-  >,
-  KnownQueries extends Record<string, QueryContract> = ComputeQueries<
-    Combined<Modules>
-  >,
-  KnownEvents extends Record<string, EventContract> = ComputeEvents<
-    Combined<Modules>
-  >
+  KnownCommands extends Record<string, CommandContract> =
+    | Record<string, CommandContract>
+    | ComputeCommands<Combined<Modules>>,
+  KnownQueries extends BaseQueries =
+    | BaseQueries
+    | ComputeQueries<Combined<Modules>>,
+  KnownEvents extends Record<string, EventContract> =
+    | Record<string, EventContract>
+    | ComputeEvents<Combined<Modules>>
 > {
   /**
    * The cache instance used for storing and retrieving data to improve performance.

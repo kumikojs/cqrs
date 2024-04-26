@@ -130,10 +130,19 @@ export class QueryCache {
     };
   }
 
-  invalidate(query: QueryContract): void {
-    console.log('invalidate', query);
-    this.#invalidate(this.#l1, query);
-    this.#invalidate(this.#l2, query);
+  invalidateQueries(
+    ...queries: (QueryContract | QueryContract['queryName'])[]
+  ): void {
+    for (const query of queries) {
+      this.#invalidate(
+        this.#l1,
+        typeof query === 'string' ? { queryName: query } : query
+      );
+      this.#invalidate(
+        this.#l2,
+        typeof query === 'string' ? { queryName: query } : query
+      );
+    }
   }
 
   getCacheKey({ queryName, payload }: QueryContract): string {
@@ -155,7 +164,17 @@ export class QueryCache {
     this.#l2.optimisticUpdate(key, value);
   }
 
-  #invalidate(cache: Cache, { queryName }: QueryContract): void {
+  #invalidate(cache: Cache, { queryName, payload }: QueryContract): void {
+    if (!payload) {
+      this.#invalidateAll(cache, queryName);
+      return;
+    }
+
+    const key = this.getCacheKey({ queryName, payload });
+    cache.invalidate(key);
+  }
+
+  #invalidateAll(cache: Cache, queryName: string): void {
     const prefix = `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
 
     for (let i = 0; i < cache.length; i++) {

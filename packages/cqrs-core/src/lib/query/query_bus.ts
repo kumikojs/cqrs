@@ -1,12 +1,40 @@
+import { AbortManager } from '../internal/abort_manager/abort_manager';
 import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
+import { QueryCache } from './query_cache';
 import { QueryInterceptors } from './query_interceptors';
 
-import { AbortManager } from '../internal/abort_manager/abort_manager';
+import type { ComputeQueryContracts } from '../client_types';
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CombinedPartialOptions } from '../types';
-import { QueryCache } from './query_cache';
 import type { QueryContract, QueryHandlerContract } from './query_contracts';
+import type {
+  BaseQueries,
+  ExtractQueryRequest,
+  ExtractQueryResponse,
+} from './query_types';
+
+/**
+ * **QueryHandler** is a type alias for a query handler function or object that can handle a specific query type.
+ *
+ * @template TQueryName - The name of the query to handle.
+ * @template KnownQueries - A record of known query types for inference purposes.
+ */
+type InferredQueryHandler<
+  TQueryName,
+  KnownQueries extends Record<
+    string,
+    { query: QueryContract; response: unknown }
+  > = Record<string, { query: QueryContract; response: unknown }>
+> =
+  | QueryHandlerContract<
+      ExtractQueryRequest<TQueryName, KnownQueries>,
+      ExtractQueryResponse<TQueryName, KnownQueries>
+    >
+  | QueryHandlerContract<
+      ExtractQueryRequest<TQueryName, KnownQueries>,
+      ExtractQueryResponse<TQueryName, KnownQueries>
+    >['execute'];
 
 /**
  * The `QueryBus` class acts as a central coordinator for managing query execution and facilitates cross-cutting concerns through interceptors.
@@ -44,10 +72,11 @@ import type { QueryContract, QueryHandlerContract } from './query_contracts';
  * ```
  */
 export class QueryBus<
-  KnownQueries extends Record<string, QueryContract> = Record<
+  KnownQueries extends BaseQueries = BaseQueries,
+  KnownQueriesContracts extends Record<
     string,
     QueryContract
-  >
+  > = ComputeQueryContracts<KnownQueries>
 > {
   /**
    * @private
@@ -65,7 +94,7 @@ export class QueryBus<
     QueryContract<
       string,
       unknown,
-      CombinedPartialOptions<QueryContract, KnownQueries>
+      CombinedPartialOptions<QueryContract, KnownQueriesContracts>
     >
   >;
 
@@ -85,9 +114,9 @@ export class QueryBus<
       QueryContract<
         string,
         unknown,
-        CombinedPartialOptions<QueryContract, KnownQueries>
+        CombinedPartialOptions<QueryContract, KnownQueriesContracts>
       >,
-      KnownQueries
+      KnownQueriesContracts
     >(cache).buildInterceptors();
 
     this.execute = this.execute.bind(this);
@@ -114,11 +143,11 @@ export class QueryBus<
    *                   or the `execute` method of the interface.
    * @returns An unregistration function to remove the handler from the bus.
    */
-  register<TQuery extends KnownQueries[keyof KnownQueries]>(
-    queryName: TQuery['queryName'],
-    handler:
-      | QueryHandlerContract<TQuery>
-      | QueryHandlerContract<TQuery>['execute']
+  register<
+    TQueryName extends string = KnownQueries[keyof KnownQueries]['query']['queryName']
+  >(
+    queryName: TQueryName,
+    handler: InferredQueryHandler<TQueryName, KnownQueries>
   ): VoidFunction {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -136,11 +165,11 @@ export class QueryBus<
    *                   It can be a function implementing the {@link QueryHandlerContract} interface
    *                   or the `execute` method of the interface.
    */
-  unregister<TQuery extends KnownQueries[keyof KnownQueries]>(
-    queryName: TQuery['queryName'],
-    handler:
-      | QueryHandlerContract<TQuery>
-      | QueryHandlerContract<TQuery>['execute']
+  unregister<
+    TQueryName extends string = KnownQueries[keyof KnownQueries]['query']['queryName']
+  >(
+    queryName: TQueryName,
+    handler: InferredQueryHandler<TQueryName, KnownQueries>
   ) {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -158,12 +187,15 @@ export class QueryBus<
    * @returns A promise resolving to the result of the query execution.
    */
   async execute<
-    TQuery extends KnownQueries[keyof KnownQueries],
-    TResponse = unknown
+    TQuery extends QueryContract = KnownQueries[keyof KnownQueries]['query'],
+    TResult = ExtractQueryResponse<TQuery['queryName'], KnownQueries>
   >(
     query: TQuery,
-    handler: QueryHandlerContract<QueryContract, TResponse>['execute']
-  ): Promise<TResponse> {
+    handler: QueryHandlerContract<
+      ExtractQueryRequest<TQuery['queryName'], KnownQueries>,
+      ExtractQueryResponse<TQuery['queryName'], KnownQueries>
+    >['execute']
+  ): Promise<TResult> {
     const signal = query.context?.signal;
 
     return this.#abortManager.execute(
@@ -197,10 +229,10 @@ export class QueryBus<
    * @returns A promise resolving to the result of the query execution.
    */
   async dispatch<
-    TQuery extends KnownQueries[keyof KnownQueries],
-    TResponse = unknown
-  >(query: TQuery): Promise<TResponse> {
-    return this.execute<TQuery, TResponse>(query, (query) =>
+    TQuery extends QueryContract = KnownQueries[keyof KnownQueries]['query'],
+    TResult = ExtractQueryResponse<TQuery['queryName'], KnownQueries>
+  >(query: TQuery): Promise<TResult> {
+    return this.execute<TQuery, TResult>(query, (query) =>
       this.#driver.publish(query['queryName'], query)
     );
   }
@@ -211,9 +243,9 @@ export class QueryBus<
    * @template TQuery - The inferred type of the query to execute (derived from `KnownQueries`).
    * @param queryName - The name of the query to cancel.
    */
-  cancelQuery<TQuery extends KnownQueries[keyof KnownQueries]>(
-    queryName: TQuery['queryName']
-  ) {
+  cancelQuery<
+    TQuery extends QueryContract = KnownQueriesContracts[keyof KnownQueriesContracts]
+  >(queryName: TQuery['queryName']) {
     this.#abortManager.cancelRequest(queryName);
   }
 }

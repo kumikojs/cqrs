@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CombinedPartialOptions } from '../types';
 import type { CommandContract } from './command_contracts';
 import { QueryCache } from '../query/query_cache';
+import { CommandCache } from './command_cache';
 
 /**
  * Constructs a collection of interceptors for a command bus, enhancing its functionality with resilience and query invalidation.
@@ -72,7 +74,7 @@ export class CommandInterceptors<
       .build();
 
     this.#addInvalidatingQueriesInterceptor(interceptorManager);
-    this.#addOptimisticUpdateInterceptor(interceptorManager);
+    this.#addOnMutateInterceptor(interceptorManager);
 
     return interceptorManager;
   }
@@ -87,41 +89,36 @@ export class CommandInterceptors<
     interceptorManager: InterceptorManagerContract<TCommand>
   ) {
     interceptorManager.tap(
-      (command) =>
-        Boolean(command.options?.invalidation?.enabled) ||
-        (Boolean(command.options?.invalidation?.queries) &&
-          command.options?.invalidation?.enabled === undefined),
+      (command) => Boolean(command.options?.invalidation?.queries),
       async (command, next) => {
         const invalidatingQueries =
           command.options?.invalidation?.queries || [];
 
         const result = await next?.(command);
 
-        invalidatingQueries.map((queryName) =>
-          this.#cache.invalidate({ queryName })
-        );
+        this.#cache.invalidateQueries(...invalidatingQueries);
 
         return result;
       }
     );
   }
 
-  #addOptimisticUpdateInterceptor(
+  #addOnMutateInterceptor(
     interceptorManager: InterceptorManagerContract<TCommand>
   ) {
     interceptorManager.use(async (command, next) => {
-      if (!command.options?.optimisticUpdate) {
+      if (!command.options?.onMutate) {
         return await next?.(command);
       }
-      const { query, update } = command.options.optimisticUpdate;
 
-      this.#cache.optimisticUpdate(query, update);
+      const nextResult = next ? next(command) : undefined;
 
-      const result = await next?.(command);
+      const cache = new CommandCache(this.#cache, nextResult);
 
-      this.#cache.invalidate(query);
+      //FIXME: This is a hack to get around the type issue with CommandCache
+      command.options.onMutate({ cache: cache as unknown as never });
 
-      return result;
+      return await nextResult;
     });
   }
 }
