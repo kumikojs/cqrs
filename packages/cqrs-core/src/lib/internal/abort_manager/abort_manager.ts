@@ -17,7 +17,7 @@ export class AbortManager {
   async execute<TResponse>(
     requestId: string,
     operation: (abortController: AbortController) => Promise<TResponse>
-  ): Promise<TResponse | null> {
+  ): Promise<TResponse> {
     const abortController = new AbortController();
 
     this.addRequest(requestId, abortController);
@@ -30,17 +30,8 @@ export class AbortManager {
       });
 
       operation(abortController).then(resolve, reject);
-    })
-      .catch((e) => {
-        if (e.name === 'AbortError') {
-          console.warn(e.message);
-          return null;
-        }
-
-        throw e;
-      })
-      .finally(() => {
-        this.#ongoingRequests.delete(requestId);
-      });
+    }).finally(() => {
+      this.#ongoingRequests.delete(requestId);
+    });
   }
 }
