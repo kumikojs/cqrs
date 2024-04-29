@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { Client } from '@stoik/cqrs-core';
+import { Stoik } from '@stoik/cqrs-core';
 
 import type { EventContract, EventHandlerContract } from '@stoik/cqrs-core';
 
 export const useBaseEvent = <TEvent extends EventContract>(
-  client: Client,
+  client: Stoik,
   eventName: TEvent['eventName'],
   handler: EventHandlerContract<TEvent>['handle'] | EventHandlerContract<TEvent>
 ) => {

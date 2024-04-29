@@ -1,11 +1,11 @@
 import { useCallback, useState, useSyncExternalStore } from 'react';
 
-import { CommandSubject, Client } from '@stoik/cqrs-core';
+import { CommandSubject, Stoik } from '@stoik/cqrs-core';
 
 import type { CommandContract, CommandHandlerContract } from '@stoik/cqrs-core';
 
 export function useBaseCommand<TRequest extends CommandContract>(
-  client: Client,
+  client: Stoik,
   command: TRequest,
   handler?:
     | CommandHandlerContract<TRequest>['execute']
