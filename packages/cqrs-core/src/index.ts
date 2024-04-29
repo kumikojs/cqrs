@@ -1,4 +1,4 @@
-export * from './lib/client';
+export { Client as Stoik } from './lib/client';
 export type * from './lib/client_types';
 
 export type { DurationUnit } from './lib/types';
