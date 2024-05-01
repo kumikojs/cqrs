@@ -21,7 +21,7 @@ export class CommandCache<KnownQueries extends BaseQueries = BaseQueries> {
     this.#cache.invalidateQueries(...queries);
   };
 
-  update = <
+  update = async <
     TQuery extends
       | KnownQueries[keyof KnownQueries]['query']
       | KnownQueries[keyof KnownQueries]['query']['queryName'],
@@ -43,11 +43,11 @@ export class CommandCache<KnownQueries extends BaseQueries = BaseQueries> {
       ? (query as QueryContract)
       : { queryName: query as string };
 
-    const prevData = this.#cache.get<TResponse>(queryContract);
+    const prevData = await this.#cache.get<TResponse>(queryContract);
 
     const nextData = updater(prevData);
 
-    this.#cache.optimisticUpdate(queryContract, nextData);
+    await this.#cache.optimisticUpdate(queryContract, nextData);
 
     this.#promise?.then(() => {
       this.#cache.invalidateQueries(query);

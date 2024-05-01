@@ -1,8 +1,8 @@
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
+import { QueryCache } from './query_cache';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CombinedPartialOptions } from '../types';
-import { QueryCache } from './query_cache';
 import type { QueryContract } from './query_contracts';
 
 /**

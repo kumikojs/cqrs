@@ -112,6 +112,14 @@ export class CommandBus<
   }
 
   /**
+   * Disposes of the command bus, cleaning up resources and subscriptions.
+   */
+  dispose(): void {
+    this.#driver.clear();
+    this.#interceptorManager.clear();
+  }
+
+  /**
    * The interceptor manager responsible for managing cross-cutting concerns for commands.
    * Refer to the {@link InterceptorManagerContract} interface for details.
    */

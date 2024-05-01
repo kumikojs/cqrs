@@ -24,6 +24,10 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
     this.#interceptors = [];
   }
 
+  clear(): void {
+    this.#interceptors = [];
+  }
+
   /**
    * Register an interceptor.
    *
@@ -33,7 +37,7 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
    */
   use<TRequest extends T>(
     interceptor: Interceptor<TRequest> | InterceptorContract<TRequest>
-  ) {
+  ): this {
     if (typeof interceptor === 'function') {
       this.#interceptors.push({
         handle: interceptor,

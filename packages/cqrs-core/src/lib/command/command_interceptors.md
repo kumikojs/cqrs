@@ -37,3 +37,8 @@ For more detailed information on how to implement and use command interceptors, 
 Command interceptors are a valuable tool for adding cross-cutting concerns to your command execution pipeline. By intercepting and modifying commands at various stages, you can enhance the functionality, reusability, and maintainability of your application.
 
 Remember to consult the documentation and examples specific to your CQRS framework or library for more detailed guidance on using command interceptors effectively.
+
+Point cut: relative to the command contract options: options?: TOptions & CommandOptions & Record<string, unknown>;
+
+Command options are a set of key-value pairs that can be passed to a command when it is executed. They provide a way to customize the behavior of the command and control how it is processed by the command handler and interceptors. Command options are typically used to specify additional parameters, configuration settings, or flags that affect the command execution. They can be defined as part of the command contract or passed dynamically when the command is dispatched.
+We can say that command options are a way to provide additional context or metadata to a command, allowing it to be processed in a more flexible and configurable manner. By passing options to a command, you can control its behavior, influence its outcome, and customize its processing based on specific requirements or conditions. Command options are a powerful feature that enhances the flexibility, extensibility, and reusability of commands in a CQRS architecture. It's equivalent to AOP pointcut in the CQRS world.

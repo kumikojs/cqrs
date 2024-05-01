@@ -9,7 +9,15 @@ export class SubscriptionManager {
     return this;
   }
 
-  unsubscribe() {
+  unsubscribe(subscription: VoidFunction) {
+    this.#subscriptions = this.#subscriptions.filter(
+      (sub) => sub !== subscription
+    );
+
+    return this;
+  }
+
+  unsubscribeAll() {
     for (const subscription of this.#subscriptions) {
       subscription();
     }

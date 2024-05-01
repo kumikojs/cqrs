@@ -3,6 +3,9 @@ import { JsonSerializer } from '../../serializer/json_serializer';
 
 import type { DurationUnit } from '../../../types';
 
+/**
+ * Represents the data structure for a cache entry.
+ */
 type CacheEntryData<TValue> = {
   key: string;
   value: TValue | undefined;
@@ -10,6 +13,9 @@ type CacheEntryData<TValue> = {
   ttl: DurationUnit;
 };
 
+/**
+ * Represents a cache entry.
+ */
 export class CacheEntry<TValue> {
   #key: string;
   #value: TValue | undefined;
@@ -18,6 +24,13 @@ export class CacheEntry<TValue> {
 
   static #serializer: JsonSerializer = new JsonSerializer();
 
+  /**
+   * Creates a new instance of CacheEntry.
+   * @param key - The key of the cache entry.
+   * @param value - The value of the cache entry.
+   * @param ttl - The time-to-live duration of the cache entry.
+   * @param expiration - The expiration timestamp of the cache entry.
+   */
   constructor(
     key: string,
     value: TValue | undefined,
@@ -30,26 +43,46 @@ export class CacheEntry<TValue> {
     this.#expiration = expiration ?? Date.now() + ms(this.#ttl);
   }
 
+  /**
+   * Gets the key of the cache entry.
+   */
   get key() {
     return this.#key;
   }
 
+  /**
+   * Gets the value of the cache entry.
+   */
   get value() {
     return this.#value;
   }
 
+  /**
+   * Gets the expiration timestamp of the cache entry.
+   */
   get expiration() {
     return this.#expiration;
   }
 
+  /**
+   * Gets the time-to-live duration of the cache entry.
+   */
   get ttl() {
     return this.#ttl;
   }
 
+  /**
+   * Checks if the cache entry has expired.
+   * @returns True if the cache entry has expired, false otherwise.
+   */
   hasExpired() {
     return Date.now() > this.#expiration;
   }
 
+  /**
+   * Serializes the cache entry to a string.
+   * @returns The serialized cache entry string, or null if serialization fails.
+   */
   serialize(): string | null {
     const serialized = CacheEntry.#serializer.serialize({
       key: this.#key,
@@ -65,6 +98,12 @@ export class CacheEntry<TValue> {
     return serialized.value;
   }
 
+  /**
+   * Deserializes a cache entry from a string.
+   * @param key - The key of the cache entry.
+   * @param serialized - The serialized cache entry string.
+   * @returns The deserialized cache entry, or undefined if deserialization fails.
+   */
   static deserialize<TValue>(
     key: string,
     serialized: string

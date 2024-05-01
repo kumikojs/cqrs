@@ -1,6 +1,6 @@
-import { Storage } from '../storage';
+import type { SyncStorage } from '../facades/sync_storage';
 
-export class MemoryStorage implements Storage {
+export class MemoryStorageDriver implements SyncStorage {
   #storage: Record<string, string> = {};
 
   get length(): number {

@@ -63,6 +63,10 @@ export class EventBus<
     this.emit = this.emit.bind(this);
   }
 
+  dispose(): void {
+    this.#driver.clear();
+  }
+
   /**
    * Subscribes to a specific event type within the event bus.
    *

@@ -1,5 +1,5 @@
 import { Cache } from '../internal/cache/cache';
-import { MemoryStorage } from '../internal/storage/facades/memory_storage';
+import { MemoryStorageDriver } from '../internal/storage/drivers/memory_storage';
 import { QueryBus } from './query_bus';
 import { QueryCache } from './query_cache';
 
@@ -9,8 +9,8 @@ describe('QueryBus', () => {
   beforeEach(() => {
     bus = new QueryBus(
       new QueryCache(
-        new Cache(new MemoryStorage()),
-        new Cache(new MemoryStorage())
+        new Cache(new MemoryStorageDriver()),
+        new Cache(new MemoryStorageDriver())
       )
     );
   });

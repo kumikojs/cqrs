@@ -1,8 +1,5 @@
 import { CommandBus } from './command/command_bus';
 import { EventBus } from './event/event_bus';
-import { Cache } from './internal/cache/cache';
-import { LocalStorage } from './internal/storage/facades/local_storage';
-import { MemoryStorage } from './internal/storage/facades/memory_storage';
 import { QueryBus } from './query/query_bus';
 import { QueryCache } from './query/query_cache';
 
@@ -15,7 +12,16 @@ import type {
 } from './client_types';
 import type { CommandContract } from './command/command_contracts';
 import type { EventContract } from './event/event_contracts';
+import type { QueryCacheOptions } from './query/query_cache';
 import type { BaseQueries } from './query/query_types';
+import type { ThrottleOptions } from './resilience/strategies/throttle_strategy';
+import type { TimeoutOptions } from './resilience/strategies/timeout_strategy';
+
+type ClientOptions = Partial<{
+  cache: Partial<QueryCacheOptions>;
+  timeout: TimeoutOptions['timeout'];
+  throttle: Pick<ThrottleOptions, 'interval' | 'rate'>;
+}>;
 
 /**
  * **Client Class**
@@ -78,12 +84,9 @@ export class Client<
    * The cache instance used for storing and retrieving data to improve performance.
    *
    * @private
-   * @type {Cache} - {@link Cache}
+   * @type {QueryCache} - {@link Cache}
    */
-  #cache: QueryCache = new QueryCache(
-    new Cache(new MemoryStorage()),
-    new Cache(new LocalStorage())
-  );
+  #cache: QueryCache;
 
   /**
    * The event bus used for publishing and subscribing to application events.
@@ -99,8 +102,7 @@ export class Client<
    * @private
    * @type {CommandBus<KnownCommands, KnownQueries>} - {@link CommandBus}
    */
-  #commandBus: CommandBus<KnownCommands, KnownQueries, KnownEvents> =
-    new CommandBus(this.#cache, this.#eventBus);
+  #commandBus: CommandBus<KnownCommands, KnownQueries, KnownEvents>;
 
   /**
    * The query bus responsible for executing queries and returning data.
@@ -108,7 +110,24 @@ export class Client<
    * @private
    * @type {QueryBus<KnownQueries>} - {@link QueryBus}
    */
-  #queryBus: QueryBus<KnownQueries> = new QueryBus(this.#cache);
+  #queryBus: QueryBus<KnownQueries>;
+
+  constructor(options?: ClientOptions) {
+    this.#cache = new QueryCache(options?.cache);
+
+    this.#commandBus = new CommandBus(this.#cache, this.#eventBus);
+    this.#queryBus = new QueryBus(this.#cache);
+  }
+
+  /**
+   * Disposes of the client instance and releases any resources used by the client.
+   */
+  dispose(): void {
+    this.#commandBus.dispose();
+    this.#queryBus.dispose();
+    this.#eventBus.dispose();
+    this.#cache.dispose();
+  }
 
   /**
    * Provides access to the command bus for interacting with commands.

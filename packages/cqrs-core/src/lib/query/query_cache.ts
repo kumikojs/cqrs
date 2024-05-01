@@ -1,9 +1,26 @@
 import { CACHE_EVENT_TYPES, Cache, CacheEvent } from '../internal/cache/cache';
-import { Scheduler } from '../internal/scheduler/scheduler';
 import { JsonSerializer } from '../internal/serializer/json_serializer';
 import { SubscriptionManager } from '../internal/subscription/subscription_manager';
 
+import { IndexedDBAdapter } from '../internal/storage/adapters/indexed_db';
+import { MemoryStorageDriver } from '../internal/storage/drivers/memory_storage';
+import type { AsyncStorage } from '../internal/storage/facades/async_storage';
+import type { SyncStorage } from '../internal/storage/facades/sync_storage';
+import type { DurationUnit } from '../types';
 import type { QueryContract } from './query_contracts';
+
+type CacheOptions = {
+  ttl?: DurationUnit;
+  gcInterval?: DurationUnit;
+};
+
+export type QueryCacheOptions = {
+  l1?: CacheOptions;
+  l2?: CacheOptions & {
+    type?: 'local_storage' | 'indexed_db';
+    driver?: SyncStorage | AsyncStorage;
+  };
+};
 
 /**
  * A cache for storing query results.
@@ -31,24 +48,30 @@ export class QueryCache {
    */
   #l2: Cache;
 
-  #scheduler: Scheduler;
-
+  /**
+   * The subscription manager for managing cache subscriptions.
+   * It's used for invalidating cache entries when necessary.
+   */
   #subscriptionManager = new SubscriptionManager();
 
+  /**
+   * The serializer used for serializing query payloads.
+   */
   #serializer: JsonSerializer = new JsonSerializer();
 
-  constructor(l1: Cache, l2: Cache) {
-    this.#l1 = l1;
-    this.#l2 = l2;
+  constructor(options?: QueryCacheOptions) {
+    this.#l1 = createCache({
+      type: 'memory',
+      ttl: options?.l1?.ttl ?? '1m',
+      gcInterval: options?.l1?.gcInterval ?? '5m',
+    });
 
-    this.#scheduler = new Scheduler('10m');
-
-    this.#scheduler
-      .schedule(() => {
-        this.#l1.clearExpired();
-        this.#l2.clearExpired();
-      })
-      .start();
+    this.#l2 = createCache({
+      type: options?.l2?.type ?? 'indexed_db',
+      driver: options?.l2?.driver,
+      ttl: options?.l2?.ttl ?? '1m',
+      gcInterval: options?.l2?.gcInterval ?? '5m',
+    });
 
     this.#subscriptionManager
       .subscribe(
@@ -75,9 +98,10 @@ export class QueryCache {
     this.getCacheKey = this.getCacheKey.bind(this);
   }
 
-  cleanup() {
-    this.#scheduler.stop();
-    this.#subscriptionManager.unsubscribe();
+  dispose() {
+    this.#l1.dispose();
+    this.#l2.dispose();
+    this.#subscriptionManager.unsubscribeAll();
   }
 
   get l1(): Cache {
@@ -88,22 +112,50 @@ export class QueryCache {
     return this.#l2;
   }
 
-  get<TValue>(query: QueryContract): TValue | null {
-    const key = this.getCacheKey(query);
+  async get<TValue>(query: QueryContract | string): Promise<TValue | null> {
+    const key = typeof query === 'string' ? query : this.getCacheKey(query);
 
-    if (this.#l1.expiration(key) > this.#l2.expiration(key)) {
-      console.log('l1', key);
-      return this.#l1.get<TValue>(key);
+    /**
+     * Check the l1 cache first,
+     * because it's faster than the l2 cache.
+     */
+    const cachedValue = await this.#l1.get<TValue>(key);
+
+    if (cachedValue) {
+      return cachedValue;
     }
 
-    console.log('l2', key);
-    return this.#l2.get<TValue>(key);
+    const persistedValue = await this.#l2.get<TValue>(key);
+
+    /**
+     * If the value is found in the l2 cache,
+     * we store it in the l1 cache for faster access next time. (cache promotion)
+     */
+    if (persistedValue) {
+      this.#l1.set(key, persistedValue);
+    }
+
+    return persistedValue;
   }
 
-  set<TValue>(query: QueryContract, value: TValue) {
-    const key = this.getCacheKey(query);
-    this.#l1.set(key, value);
-    this.#l2.set(key, value);
+  set<TValue>(
+    query: QueryContract | string,
+    value: TValue,
+    {
+      ttl,
+      l1 = true,
+      l2 = true,
+    }: {
+      ttl?: DurationUnit;
+      l1?: boolean;
+      l2?: boolean;
+    } = {}
+  ) {
+    const key = typeof query === 'string' ? query : this.getCacheKey(query);
+
+    if (l1) this.#l1.set(key, value, ttl);
+
+    if (l2) l2 && this.#l2.set(key, value, ttl);
   }
 
   delete(query: QueryContract) {
@@ -157,11 +209,11 @@ export class QueryCache {
     return `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
   }
 
-  optimisticUpdate(previousQuery: QueryContract, value: unknown) {
+  async optimisticUpdate(previousQuery: QueryContract, value: unknown) {
     const key = this.getCacheKey(previousQuery);
 
     this.#l1.optimisticUpdate(key, value);
-    this.#l2.optimisticUpdate(key, value);
+    await this.#l2.optimisticUpdate(key, value);
   }
 
   #invalidate(cache: Cache, { queryName, payload }: QueryContract): void {
@@ -174,11 +226,12 @@ export class QueryCache {
     cache.invalidate(key);
   }
 
-  #invalidateAll(cache: Cache, queryName: string): void {
+  async #invalidateAll(cache: Cache, queryName: string): Promise<void> {
     const prefix = `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
+    const length = await cache.length();
 
-    for (let i = 0; i < cache.length; i++) {
-      const key = cache.key(i);
+    for (let i = 0; i < length; i++) {
+      const key = await cache.key(i);
       if (!key) continue;
 
       if (key.startsWith(prefix)) {
@@ -186,4 +239,30 @@ export class QueryCache {
       }
     }
   }
+}
+
+function createCache(
+  options: CacheOptions & {
+    type: 'local_storage' | 'indexed_db' | 'memory';
+    driver?: SyncStorage | AsyncStorage;
+  }
+) {
+  const driver = options?.driver ?? driverFromType(options.type);
+
+  const ttl = options?.ttl ?? '1m';
+  const gcInterval = options?.gcInterval ?? '1m';
+
+  return new Cache(driver, ttl, gcInterval);
+}
+
+function driverFromType(type: 'indexed_db' | 'local_storage' | 'memory') {
+  if (type === 'indexed_db' && typeof window !== 'undefined') {
+    return new IndexedDBAdapter('stoik', 'cache');
+  }
+
+  if (type === 'local_storage' && typeof window !== 'undefined') {
+    return window.localStorage;
+  }
+
+  return new MemoryStorageDriver();
 }

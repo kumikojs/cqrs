@@ -63,4 +63,9 @@ export interface InterceptorManagerContract<T> {
     request: TRequest,
     handler: InterceptorHandler<TRequest>
   ): Promise<TResponse>;
+
+  /**
+   * Clear all interceptors from the manager.
+   */
+  clear(): void;
 }

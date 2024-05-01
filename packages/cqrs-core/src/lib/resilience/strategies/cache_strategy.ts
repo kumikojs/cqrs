@@ -5,6 +5,8 @@ import { Cache } from '../../internal/cache/cache';
 import { JsonSerializer } from '../../internal/serializer/json_serializer';
 import { QueryCache } from '../../query/query_cache';
 import type { AsyncFunction, DurationUnit } from '../../types';
+/* import { L1Cache } from '../../internal/cache/facades/l1_cache';
+import { L2Cache } from '../../internal/cache/facades/l2_cache'; */
 
 /**
  * Configuration options for tailoring cache behavior.
@@ -14,10 +16,9 @@ export type CacheOptions = {
    * Specifies the duration for which cached values remain valid before expiration.
    * Defaults to '30s'.
    *
-   * @default '30s'
    * @see {@link DurationUnit}
    */
-  ttl: DurationUnit;
+  ttl?: DurationUnit;
 
   /**
    * Determines whether cached values are stored persistently in local storage (true),
@@ -84,8 +85,7 @@ export class CacheStrategy extends Strategy<CacheOptions> {
    * @static
    */
   static #defaultOptions: CacheOptions = {
-    ttl: '30s',
-    persist: false,
+    persist: true,
     serialize: (request) => {
       const key = CacheStrategy.#serializer.serialize(request);
 
@@ -99,7 +99,9 @@ export class CacheStrategy extends Strategy<CacheOptions> {
   /**
    * @private The underlying cache driver responsible for storing and retrieving cached values.
    */
-  #cache: Cache;
+  #cache: QueryCache;
+
+  #persist: boolean;
 
   constructor(cache: QueryCache, options?: Partial<CacheOptions>) {
     super({
@@ -107,7 +109,8 @@ export class CacheStrategy extends Strategy<CacheOptions> {
       ...options,
     });
 
-    this.#cache = this.options.persist ? cache.l2 : cache.l1;
+    this.#cache = cache;
+    this.#persist = this.options.persist;
   }
 
   /**
@@ -133,7 +136,7 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     const key = this.options.serialize(request);
 
     if (!this.options.invalidate) {
-      const cachedValue = this.#cache.get<TResult>(key);
+      const cachedValue = await this.#cache.get<TResult>(key);
 
       if (cachedValue) {
         return cachedValue;
@@ -141,7 +144,10 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     }
 
     const result = await task(request);
-    this.#cache.set(key, result, this.options.ttl);
+    this.#cache.set(key, result, {
+      ttl: this.options.ttl,
+      l2: this.#persist,
+    });
 
     return result;
   }

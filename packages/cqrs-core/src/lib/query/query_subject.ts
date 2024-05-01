@@ -97,7 +97,7 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
       .subscribe(this.#onOptimisticUpdate());
 
     return () => {
-      this.#subscriptionManager.unsubscribe();
+      this.#subscriptionManager.unsubscribeAll();
     };
   }
 
@@ -118,10 +118,6 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
     return this.#client.cache.on('invalidated', (key: string) => {
       if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
 
-      console.log(
-        'Cache invalidation detected for query:',
-        this.#lastQuery.queryName
-      );
       this.execute({
         ...this.#lastQuery,
         options: {
@@ -147,10 +143,6 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
       (key) => {
         if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
 
-        console.log(
-          'Optimistic update detected for query:',
-          this.#lastQuery.queryName
-        );
         /**
          * Before updating the cache, we need to cancel the query to
          * prevent the cache from being updated with stale data.
@@ -161,15 +153,10 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
 
     const optimisticUpdateEnded = this.#client.cache.on(
       'optimistic_update_ended',
-      (key) => {
+      async (key) => {
         if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
 
-        console.log(
-          'Optimistic update completed for query:',
-          this.#lastQuery.queryName
-        );
-
-        const result = this.#client.cache.get<TResult>(this.#lastQuery);
+        const result = await this.#client.cache.get<TResult>(this.#lastQuery);
 
         if (result) {
           console.log(
@@ -182,10 +169,6 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
     );
 
     return () => {
-      console.log(
-        'Optimistic update cleanup for query:',
-        this.#lastQuery.queryName
-      );
       optimisticUpdateBegan();
       optimisticUpdateEnded();
     };

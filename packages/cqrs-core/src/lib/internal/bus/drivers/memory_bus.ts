@@ -100,4 +100,11 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
       this.#subscriptions.delete(channel);
     }
   }
+
+  /**
+   * Clear all subscriptions.
+   */
+  clear(): void {
+    this.#subscriptions.clear();
+  }
 }

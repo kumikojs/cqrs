@@ -23,6 +23,26 @@ export interface BusDriver<TChannel> {
   ): Promise<TResponse>;
   publish<TRequest>(channel: TChannel, request: TRequest): Promise<void>;
 
+  /**
+   * Subscribe to a channel.
+   *
+   * @template TRequest - The type of request to subscribe to.
+   * @param {TChannel} channel - The channel to subscribe to.
+   * @param {BusHandler<TRequest>} handler - The handler to subscribe.
+   */
   subscribe<TRequest>(channel: TChannel, handler: BusHandler<TRequest>): void;
+
+  /**
+   * Unsubscribe from a channel.
+   *
+   * @template TRequest - The type of request to unsubscribe from.
+   * @param {TChannel} channel - The channel to unsubscribe from.
+   * @param {BusHandler<TRequest>} handler - The handler to unsubscribe.
+   */
   unsubscribe<TRequest>(channel: TChannel, handler: BusHandler<TRequest>): void;
+
+  /**
+   * Clear all subscriptions from the bus.
+   */
+  clear(): void;
 }

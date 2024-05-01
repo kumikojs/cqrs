@@ -126,6 +126,17 @@ export class QueryBus<
   }
 
   /**
+   * Disposes of the query bus instance, cleaning up resources and subscriptions.
+   * This method should be called when the query bus is no longer needed.
+   * It cancels all ongoing requests and unsubscribes all handlers.
+   */
+  dispose() {
+    this.#driver.clear();
+    this.#interceptorManager.clear();
+    this.#abortManager.cancelAllRequests();
+  }
+
+  /**
    * The interceptor manager responsible for managing cross-cutting concerns for queries.
    * Refer to the {@link InterceptorManagerContract} interface for details.
    */

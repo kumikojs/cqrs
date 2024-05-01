@@ -1,6 +1,6 @@
 import { Cache } from '../../internal/cache/cache';
-import { LocalStorage } from '../../internal/storage/facades/local_storage';
-import { MemoryStorage } from '../../internal/storage/facades/memory_storage';
+import { LocalStorage } from '../../internal/storage/adapters/local_storage';
+import { MemoryStorageDriver } from '../../internal/storage/drivers/memory_storage';
 import { QueryCache } from '../../query/query_cache';
 import { CacheStrategy } from './cache_strategy';
 
@@ -10,7 +10,7 @@ describe('CacheStrategy', () => {
   test('should cache and retrieve values correctly', async () => {
     cacheStrategy = new CacheStrategy(
       new QueryCache(
-        new Cache(new MemoryStorage()),
+        new Cache(new MemoryStorageDriver()),
         new Cache(new LocalStorage())
       )
     );
@@ -31,7 +31,7 @@ describe('CacheStrategy', () => {
     vitest.useFakeTimers();
     cacheStrategy = new CacheStrategy(
       new QueryCache(
-        new Cache(new MemoryStorage()),
+        new Cache(new MemoryStorageDriver()),
         new Cache(new LocalStorage())
       ),
       { ttl: 1000 }
