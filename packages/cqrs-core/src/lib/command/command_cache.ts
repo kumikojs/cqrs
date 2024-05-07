@@ -1,14 +1,22 @@
+import { StoikLogger } from '../logger/stoik_logger';
 import { QueryCache } from '../query/query_cache';
-import { QueryContract } from '../query/query_contracts';
 
+import type { QueryContract } from '../query/query_contracts';
 import type { BaseQueries } from '../query/query_types';
+
+type CommandCacheOptions = {
+  cache: QueryCache;
+  logger: StoikLogger;
+};
 
 export class CommandCache<KnownQueries extends BaseQueries = BaseQueries> {
   #cache: QueryCache;
   #promise?: Promise<unknown>;
+  #logger: StoikLogger;
 
-  constructor(cache: QueryCache, promise?: Promise<unknown>) {
-    this.#cache = cache;
+  constructor(options: CommandCacheOptions, promise?: Promise<unknown>) {
+    this.#cache = options.cache;
+    this.#logger = options.logger.child({ topics: ['cache', 'command'] });
     this.#promise = promise;
   }
 
@@ -42,12 +50,18 @@ export class CommandCache<KnownQueries extends BaseQueries = BaseQueries> {
     const queryContract: QueryContract = (query as QueryContract).queryName
       ? (query as QueryContract)
       : { queryName: query as string };
+    this.#logger.trace('Updating query', { query: queryContract });
 
     const prevData = await this.#cache.get<TResponse>(queryContract);
 
     const nextData = updater(prevData);
 
-    await this.#cache.optimisticUpdate(queryContract, nextData);
+    try {
+      await this.#cache.optimisticUpdate(queryContract, nextData);
+    } catch (error) {
+      this.#logger.error('Failed to update query', { query: queryContract });
+      await this.#cache.optimisticUpdate(queryContract, prevData);
+    }
 
     this.#promise?.then(() => {
       this.#cache.invalidateQueries(query);

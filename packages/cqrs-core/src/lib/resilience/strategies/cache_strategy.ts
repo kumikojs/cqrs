@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Strategy } from './base_strategy';
-
-import { Cache } from '../../internal/cache/cache';
 import { JsonSerializer } from '../../internal/serializer/json_serializer';
 import { QueryCache } from '../../query/query_cache';
+import { Strategy } from './base_strategy';
+
 import type { AsyncFunction, DurationUnit } from '../../types';
-/* import { L1Cache } from '../../internal/cache/facades/l1_cache';
-import { L2Cache } from '../../internal/cache/facades/l2_cache'; */
 
 /**
  * Configuration options for tailoring cache behavior.
@@ -38,6 +35,13 @@ export type CacheOptions = {
    */
   serialize: (request: any) => string;
 
+  /**
+   * Determines whether to invalidate cached values after retrieval.
+   * Defaults to false.
+   *
+   * @type boolean
+   * @default false
+   */
   invalidate: boolean;
 };
 
@@ -79,6 +83,7 @@ export type CacheOptions = {
  */
 export class CacheStrategy extends Strategy<CacheOptions> {
   static #serializer: JsonSerializer = new JsonSerializer();
+
   /**
    * Default configuration options for the CacheStrategy.
    * @private
@@ -144,10 +149,12 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     }
 
     const result = await task(request);
-    this.#cache.set(key, result, {
-      ttl: this.options.ttl,
-      l2: this.#persist,
-    });
+
+    await this.#cache.l1.set(key, result, this.options.ttl);
+
+    if (this.#persist) {
+      await this.#cache.l2.set(key, result, this.options.ttl);
+    }
 
     return result;
   }

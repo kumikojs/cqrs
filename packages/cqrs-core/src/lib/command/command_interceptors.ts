@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
+import { QueryCache } from '../query/query_cache';
+import { CommandCache } from './command_cache';
+import { StoikLogger } from '../logger/stoik_logger';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CombinedPartialOptions } from '../types';
 import type { CommandContract } from './command_contracts';
-import { QueryCache } from '../query/query_cache';
-import { CommandCache } from './command_cache';
 
 /**
  * Constructs a collection of interceptors for a command bus, enhancing its functionality with resilience and query invalidation.
@@ -42,21 +43,27 @@ export class CommandInterceptors<
    */
   #resilienceInterceptorsBuilder: ResilienceInterceptorsBuilder<TCommand>;
 
+  #logger: StoikLogger;
+
   /**
    * Constructs a `CommandInterceptors` instance.
    *
    * @param cache - The cache instance to be used.
    */
-  constructor(cache: QueryCache) {
+  constructor(cache: QueryCache, logger: StoikLogger) {
     this.#cache = cache;
     this.#resilienceInterceptorsBuilder =
-      new ResilienceInterceptorsBuilder<TCommand>(cache, {
+      new ResilienceInterceptorsBuilder<TCommand>(cache, logger, {
         serialize: (request) =>
           JSON.stringify({
             commandName: request.commandName,
             payload: request.payload,
           }),
       });
+
+    this.#logger = logger.child({
+      topics: ['command', 'interceptors'],
+    });
   }
 
   /**
@@ -65,6 +72,8 @@ export class CommandInterceptors<
    * @returns The built interceptor manager.
    */
   buildInterceptors(): InterceptorManagerContract<TCommand> {
+    this.#logger.info('Building command interceptors');
+
     const interceptorManager = this.#resilienceInterceptorsBuilder
       .addDeduplicationInterceptor()
       .addFallbackInterceptor()
@@ -89,6 +98,7 @@ export class CommandInterceptors<
     interceptorManager: InterceptorManagerContract<TCommand>
   ) {
     interceptorManager.tap(
+      'command.interceptors.invalidatingQueries',
       (command) => Boolean(command.options?.invalidation?.queries),
       async (command, next) => {
         const invalidatingQueries =
@@ -106,19 +116,25 @@ export class CommandInterceptors<
   #addOnMutateInterceptor(
     interceptorManager: InterceptorManagerContract<TCommand>
   ) {
-    interceptorManager.use(async (command, next) => {
-      if (!command.options?.onMutate) {
-        return await next?.(command);
+    interceptorManager.use(
+      'command.interceptors.onMutate',
+      async (command, next) => {
+        if (!command.options?.onMutate) {
+          return await next?.(command);
+        }
+
+        const nextResult = next ? next(command) : undefined;
+
+        const cache = new CommandCache(
+          { cache: this.#cache, logger: this.#logger },
+          nextResult
+        );
+
+        //FIXME: This is a hack to get around the type issue with CommandCache
+        command.options.onMutate({ cache: cache as unknown as never });
+
+        return await nextResult;
       }
-
-      const nextResult = next ? next(command) : undefined;
-
-      const cache = new CommandCache(this.#cache, nextResult);
-
-      //FIXME: This is a hack to get around the type issue with CommandCache
-      command.options.onMutate({ cache: cache as unknown as never });
-
-      return await nextResult;
-    });
+    );
   }
 }

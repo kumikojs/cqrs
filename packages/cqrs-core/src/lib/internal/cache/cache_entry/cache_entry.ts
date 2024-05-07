@@ -92,6 +92,8 @@ export class CacheEntry<TValue> {
     });
 
     if (serialized.isFailure()) {
+      console.warn(`Failed to serialize cache entry: ${this.#key}`);
+      console.error(serialized.error);
       return null;
     }
 
@@ -112,6 +114,8 @@ export class CacheEntry<TValue> {
       this.#serializer.deserialize<CacheEntryData<TValue>>(serialized);
 
     if (deserialized.isFailure()) {
+      console.warn(`Failed to deserialize cache entry: ${key}`);
+      console.error(deserialized.error);
       return undefined;
     }
 

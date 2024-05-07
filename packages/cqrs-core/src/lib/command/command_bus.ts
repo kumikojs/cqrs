@@ -1,5 +1,6 @@
 import { EventBus } from '../event/event_bus';
 import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
+import { StoikLogger } from '../logger/stoik_logger';
 import { QueryCache } from '../query/query_cache';
 import { CommandCache } from './command_cache';
 import { CommandInterceptors } from './command_interceptors';
@@ -68,7 +69,7 @@ export class CommandBus<
    * @private
    * The underlying bus driver responsible for managing subscriptions and publishing of commands.
    */
-  #driver: BusDriver<string> = new MemoryBusDriver();
+  #driver: BusDriver<string>;
 
   /**
    * @private
@@ -86,12 +87,30 @@ export class CommandBus<
 
   #cache: CommandCache<KnownQueries>;
 
+  #logger: StoikLogger;
+
   /**
    * Constructs a CommandBus instance.
    *
    * @param cache - The cache instance to be used for data storage and retrieval.
    */
-  constructor(cache: QueryCache, emitter: EventBus) {
+  constructor(cache: QueryCache, emitter: EventBus, logger: StoikLogger) {
+    this.#logger = logger.child({
+      topics: ['command'],
+    });
+
+    this.#driver = new MemoryBusDriver({
+      maxHandlersPerChannel: 1,
+      logger: this.#logger,
+    });
+
+    this.#cache = new CommandCache<KnownQueries>({
+      cache,
+      logger: this.#logger,
+    });
+
+    this.#emitter = emitter;
+
     this.#interceptorManager = new CommandInterceptors<
       CommandContract<
         string,
@@ -99,24 +118,13 @@ export class CommandBus<
         CombinedPartialOptions<CommandContract, KnownCommands>
       >,
       KnownCommands
-    >(cache).buildInterceptors();
-
-    this.#cache = new CommandCache<KnownQueries>(cache);
-    this.#emitter = emitter;
+    >(cache, this.#logger).buildInterceptors();
 
     // Bind methods because they can be used as callbacks and we want to keep the context.
     this.execute = this.execute.bind(this);
     this.register = this.register.bind(this);
     this.unregister = this.unregister.bind(this);
     this.dispatch = this.dispatch.bind(this);
-  }
-
-  /**
-   * Disposes of the command bus, cleaning up resources and subscriptions.
-   */
-  dispose(): void {
-    this.#driver.clear();
-    this.#interceptorManager.clear();
   }
 
   /**
@@ -251,5 +259,10 @@ export class CommandBus<
     return this.execute<TCommand, TResponse>(command, (command) =>
       this.#driver.publish(command['commandName'], command)
     );
+  }
+
+  disconnect(): void {
+    this.#driver.disconnect();
+    this.#interceptorManager.disconnect();
   }
 }

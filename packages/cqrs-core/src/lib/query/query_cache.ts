@@ -1,4 +1,4 @@
-import { CACHE_EVENT_TYPES, Cache, CacheEvent } from '../internal/cache/cache';
+import { Cache, CacheEvent } from '../internal/cache/cache';
 import { JsonSerializer } from '../internal/serializer/json_serializer';
 import { SubscriptionManager } from '../internal/subscription/subscription_manager';
 
@@ -75,33 +75,27 @@ export class QueryCache {
 
     this.#subscriptionManager
       .subscribe(
-        this.#l1.on(CACHE_EVENT_TYPES.INVALIDATED, (key) => {
+        this.#l1.on('invalidated', (key) => {
           this.#l1.delete(key);
         })
       )
       .subscribe(
-        this.#l2.on(CACHE_EVENT_TYPES.INVALIDATED, (key) => {
+        this.#l2.on('invalidated', (key) => {
           this.#l2.delete(key);
         })
       )
       .subscribe(
-        this.#l1.on(CACHE_EVENT_TYPES.EXPIRED, (key) => {
+        this.#l1.on('expired', (key) => {
           this.#l1.invalidate(key);
         })
       )
       .subscribe(
-        this.#l2.on(CACHE_EVENT_TYPES.EXPIRED, (key) => {
+        this.#l2.on('expired', (key) => {
           this.#l2.invalidate(key);
         })
       );
 
     this.getCacheKey = this.getCacheKey.bind(this);
-  }
-
-  dispose() {
-    this.#l1.dispose();
-    this.#l2.dispose();
-    this.#subscriptionManager.unsubscribeAll();
   }
 
   get l1(): Cache {
@@ -138,35 +132,21 @@ export class QueryCache {
     return persistedValue;
   }
 
-  set<TValue>(
-    query: QueryContract | string,
-    value: TValue,
-    {
-      ttl,
-      l1 = true,
-      l2 = true,
-    }: {
-      ttl?: DurationUnit;
-      l1?: boolean;
-      l2?: boolean;
-    } = {}
-  ) {
-    const key = typeof query === 'string' ? query : this.getCacheKey(query);
-
-    if (l1) this.#l1.set(key, value, ttl);
-
-    if (l2) l2 && this.#l2.set(key, value, ttl);
-  }
-
-  delete(query: QueryContract) {
+  set<TValue>(query: QueryContract, value: TValue, ttl?: DurationUnit) {
     const key = this.getCacheKey(query);
-    this.#l1.delete(key);
-    this.#l2.delete(key);
+
+    this.#l1.set(key, value, ttl);
+    this.#l2.set(key, value, ttl);
   }
 
-  clear() {
-    this.#l1.clear();
-    this.#l2.clear();
+  async delete(query: QueryContract) {
+    const key = this.getCacheKey(query);
+
+    await Promise.all([this.#l1.delete(key), this.#l2.delete(key)]);
+  }
+
+  async clear() {
+    await Promise.all([this.#l1.clear(), this.#l2.clear()]);
   }
 
   on(event: CacheEvent, handler: (key: string) => void) {
@@ -213,7 +193,6 @@ export class QueryCache {
     const key = this.getCacheKey(previousQuery);
 
     this.#l1.optimisticUpdate(key, value);
-    await this.#l2.optimisticUpdate(key, value);
   }
 
   #invalidate(cache: Cache, { queryName, payload }: QueryContract): void {
@@ -238,6 +217,12 @@ export class QueryCache {
         cache.invalidate(key);
       }
     }
+  }
+
+  disconnect() {
+    this.#l1.disconnect();
+    this.#l2.disconnect();
+    this.#subscriptionManager.disconnect();
   }
 }
 

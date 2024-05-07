@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { StoikLogger } from '../../logger/stoik_logger';
+
 /**
  * The options for the MemoryBusDriver
  *
@@ -23,6 +25,13 @@ export type BusOptions = {
    * @default 'hard'
    */
   mode: 'soft' | 'hard';
+
+  /**
+   * The logger instance to use.
+   *
+   * @type {Logger}
+   */
+  logger?: StoikLogger;
 };
 
 /**
@@ -68,13 +77,22 @@ export class BusException extends Error {
  */
 export class BusOptionsManager<TChannel> {
   #options: BusOptions;
+  #logger: StoikLogger | undefined;
 
-  constructor(options?: Partial<BusOptions>) {
+  constructor({ logger, ...options }: Partial<BusOptions> = {}) {
     this.#options = {
       maxHandlersPerChannel: 1,
       mode: 'hard',
       ...options,
     };
+
+    this.#logger = logger?.child({
+      topics: ['bus'],
+    });
+  }
+
+  get logger(): StoikLogger | undefined {
+    return this.#logger;
   }
 
   verifyHandlerLimit(channel: TChannel, handlerCount: number): void {
@@ -96,11 +114,16 @@ export class BusOptionsManager<TChannel> {
    * @param {TChannel} channel - The channel related to the error (optional).
    */
   throwError(key: BusErrorKeys, channel?: TChannel): void | never {
+    const message = this.#getErrorMessage(key);
+
     if (this.#options.mode === 'soft') {
+      this.#logger?.warn(message, {
+        topics: ['bus'],
+        data: { channel_name: channel },
+      });
       return;
     }
 
-    const message = this.#getErrorMessage(key);
     throw new BusException(key, {
       message,
       channel: channel ? channel : 'N/A',

@@ -56,7 +56,7 @@ export class AbortManager {
   /**
    * Cancels all ongoing requests.
    */
-  cancelAllRequests() {
+  disconnect() {
     for (const requestId of this.#ongoingRequests.keys()) {
       this.cancelRequest(requestId);
     }

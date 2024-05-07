@@ -12,6 +12,7 @@ import type { RetryOptions } from './strategies/retry_strategy';
 import type { ThrottleOptions } from './strategies/throttle_strategy';
 import type { TimeoutOptions } from './strategies/timeout_strategy';
 import { QueryCache } from '../query/query_cache';
+import { StoikLogger } from '../logger/stoik_logger';
 
 /**
  * A builder for creating instances of various resilience strategies to handle
@@ -75,11 +76,12 @@ export type ResilienceStrategiesBuilder = {
  * @returns A new ResilienceStrategiesBuilder instance.
  */
 export const createResilienceStrategiesBuilder = (
-  cache: QueryCache
+  cache: QueryCache,
+  logger: StoikLogger
 ): ResilienceStrategiesBuilder => ({
   cache: (options) => new CacheStrategy(cache, options),
   retry: (options) => new RetryStrategy(options),
-  throttle: (options) => new ThrottleStrategy(cache.l1, options),
+  throttle: (options) => new ThrottleStrategy(cache.l1, logger, options),
   timeout: (options) => new TimeoutStrategy(options),
   deduplication: (options) => new DeduplicationStrategy(options),
   fallback: (options) => new FallbackStrategy(options),

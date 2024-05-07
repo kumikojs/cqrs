@@ -1,86 +1,112 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
+import { StoikLogger } from '../../logger/stoik_logger';
 import type {
   InterceptorContract,
   InterceptorManagerContract,
 } from './interceptor_contracts';
-import type { Interceptor, InterceptorHandler } from './interceptor_types';
+import type { InterceptorHandler } from './interceptor_types';
 
-/**
- * The InterceptorManager is a simple class that allows you to register
- * and execute interceptors.
- *
- * @template T - The type of the query to intercept.
- */
 export class InterceptorManager<T> implements InterceptorManagerContract<T> {
-  /**
-   * The list of interceptors.
-   *
-   * @type {InterceptorContract<any>[]}
-   */
-  #interceptors: InterceptorContract<any>[];
+  #interceptors: InterceptorContract<any>[] = [];
+  #logger: StoikLogger;
 
-  constructor() {
-    this.#interceptors = [];
+  constructor(logger: StoikLogger) {
+    this.#logger = logger.child({ topics: ['interceptors'] });
   }
 
-  clear(): void {
-    this.#interceptors = [];
+  private registerInterceptor<TRequest extends T>(
+    name: string,
+    interceptor:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+  ): void {
+    const wrappedInterceptor = this.wrapInterceptor(name, interceptor);
+    this.#interceptors.push(wrappedInterceptor);
+    this.#logger.info(`Registered interceptor: '${name}'`);
   }
 
-  /**
-   * Register an interceptor.
-   *
-   * @template TRequest - The type of request to intercept.
-   * @param {Interceptor<TRequest> | InterceptorContract<TRequest>} interceptor - The interceptor to register.
-   * @returns {this} The current instance of the interceptor manager.
-   */
-  use<TRequest extends T>(
-    interceptor: Interceptor<TRequest> | InterceptorContract<TRequest>
-  ): this {
+  private wrapInterceptor<TRequest extends T>(
+    name: string,
+    interceptor:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+  ): InterceptorContract<TRequest> {
     if (typeof interceptor === 'function') {
-      this.#interceptors.push({
-        handle: interceptor,
-      });
-    } else {
-      this.#interceptors.push(interceptor);
+      return {
+        handle: async (request, next) => {
+          if (this.#logger.isDebugEnabled()) {
+            this.#logger.debug(`Executing interceptor '${name}'`, { request });
+          }
+          return interceptor(request, next);
+        },
+      };
     }
-
-    return this;
+    return interceptor;
   }
 
-  /**
-   * Tap into the interceptor chain.
-   *
-   * @template TRequest - The type of request to intercept.
-   * @param {function(query: TRequest): boolean} selector - The selector to determine if the interceptor should be executed.
-   * @param {Interceptor<TRequest>} interceptor - The interceptor to execute.
-   * @returns {this} The current instance of the interceptor manager.
-   */
-  tap<TRequest extends T>(
-    selector: (query: TRequest) => boolean,
-    interceptor: Interceptor<TRequest>
+  use<TRequest extends T>(
+    nameOrInterceptor:
+      | string
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle'],
+    interceptor?:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
   ): this {
-    this.use<TRequest>(async (query, next) => {
-      if (selector(query)) {
-        return interceptor(query, next);
-      }
-
-      return next?.(query);
-    });
-
+    const name =
+      typeof nameOrInterceptor === 'string'
+        ? nameOrInterceptor
+        : 'stoik.interceptors.anonymous';
+    const effectiveInterceptor = interceptor ?? nameOrInterceptor;
+    this.registerInterceptor(
+      name,
+      effectiveInterceptor as
+        | InterceptorContract<TRequest>
+        | InterceptorContract<TRequest>['handle']
+    );
     return this;
   }
 
-  /**
-   * Execute the interceptors pipeline.
-   *
-   * @template TRequest - The type of request to intercept.
-   * @template TResponse - The type of response from the handler.
-   * @param {TRequest} request - The request to intercept.
-   * @param {InterceptorHandler<TRequest>} handler - The handler to execute.
-   * @returns {Promise<TResponse>} The response from the handler.
-   */
+  tap<TRequest extends T>(
+    nameOrSelector: string | ((query: TRequest) => boolean),
+    selectorOrInterceptor:
+      | ((query: TRequest) => boolean)
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle'],
+    interceptor?:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+  ): this {
+    const name =
+      typeof nameOrSelector === 'string'
+        ? nameOrSelector
+        : 'stoik.interceptors.tap-anonymous';
+    const selector =
+      typeof nameOrSelector === 'function'
+        ? nameOrSelector
+        : (selectorOrInterceptor as (query: TRequest) => boolean);
+    const effectiveInterceptor =
+      typeof nameOrSelector === 'function'
+        ? (selectorOrInterceptor as
+            | InterceptorContract<TRequest>
+            | InterceptorContract<TRequest>['handle'])
+        : interceptor;
+
+    this.use(
+      name,
+      async (query: TRequest, next: InterceptorHandler<TRequest>) => {
+        if (selector(query)) {
+          if (typeof effectiveInterceptor === 'function') {
+            return effectiveInterceptor(query, next);
+          }
+          return effectiveInterceptor?.handle(query, next);
+        }
+        return next(query);
+      }
+    );
+    return this;
+  }
+
   async execute<TRequest, TResponse>(
     request: TRequest,
     handler: InterceptorHandler<TRequest>
@@ -90,7 +116,10 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
         interceptor.handle(ctx, next),
       async (ctx: TRequest) => handler(ctx)
     );
-
     return await composed(request);
+  }
+
+  disconnect(): void {
+    this.#interceptors = [];
   }
 }

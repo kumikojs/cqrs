@@ -97,7 +97,7 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
       .subscribe(this.#onOptimisticUpdate());
 
     return () => {
-      this.#subscriptionManager.unsubscribeAll();
+      this.#subscriptionManager.disconnect();
     };
   }
 
@@ -159,10 +159,6 @@ export class QuerySubject<TRequest extends QueryContract, TResult> {
         const result = await this.#client.cache.get<TResult>(this.#lastQuery);
 
         if (result) {
-          console.log(
-            'Updating query state with optimistic update result:',
-            result
-          );
           this.#operation.stale(result);
         }
       }

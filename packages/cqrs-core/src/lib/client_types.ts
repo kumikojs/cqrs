@@ -1,5 +1,6 @@
 import type { CommandContract } from './command/command_contracts';
 import type { EventContract } from './event/event_contracts';
+import { QueryContract } from './query/query_contracts';
 import type { BaseQueries } from './query/query_types';
 import type { UnionToIntersection } from './types';
 
@@ -13,6 +14,15 @@ export type BaseModule = {
   queries?: BaseQueries;
   events?: Record<string, EventContract>;
 };
+
+/**
+ * A list of known events. The interface must be extended in
+ * user land code or packages to register events and their
+ * types.
+ */
+export interface EventsList {
+  [event: string]: EventContract;
+}
 
 /**
  * **Module<T>**
@@ -79,3 +89,24 @@ export type ComputeEvents<T> = T extends {
 }
   ? U
   : Record<string, EventContract>;
+
+declare module './types' {
+  interface Modules {
+    modules: BaseModule[];
+  }
+
+  interface CommandsList {
+    [command: string]: CommandContract;
+  }
+
+  interface QueriesList {
+    [query: string]: {
+      query: QueryContract;
+      response: any;
+    };
+  }
+
+  interface EventsList {
+    [event: string]: EventContract;
+  }
+}

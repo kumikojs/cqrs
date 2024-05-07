@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { InterceptorManager } from '../internal/interceptor/interceptor_manager';
+import { StoikLogger } from '../logger/stoik_logger';
 import { QueryCache } from '../query/query_cache';
 import { createResilienceStrategiesBuilder } from './resilience_strategies_builder';
 
@@ -115,10 +116,11 @@ export class ResilienceInterceptorsBuilder<
    */
   constructor(
     cache: QueryCache,
+    logger: StoikLogger,
     { serialize }: { serialize: (request: T) => string }
   ) {
-    this.#strategyBuilder = createResilienceStrategiesBuilder(cache);
-    this.#interceptorManager = new InterceptorManager();
+    this.#strategyBuilder = createResilienceStrategiesBuilder(cache, logger);
+    this.#interceptorManager = new InterceptorManager(logger);
     this.#deduplicationStrategy = this.#strategyBuilder.deduplication({
       serialize,
     });
@@ -131,18 +133,21 @@ export class ResilienceInterceptorsBuilder<
    * @returns {this} The builder.
    */
   public addRetryInterceptor(): this {
-    this.#interceptorManager.use(async (command, next) => {
-      if (!command.options?.retry) {
-        return next?.(command);
-      }
+    this.#interceptorManager.use(
+      'stoik.resilience.interceptors.retry',
+      async (command, next) => {
+        if (!command.options?.retry) {
+          return next?.(command);
+        }
 
-      const strategy = this.#strategyBuilder.retry({
-        ...(typeof command.options.retry === 'boolean'
-          ? {}
-          : command.options.retry),
-      });
-      return strategy.execute(command, async (request) => next?.(request));
-    });
+        const strategy = this.#strategyBuilder.retry({
+          ...(typeof command.options.retry === 'boolean'
+            ? {}
+            : command.options.retry),
+        });
+        return strategy.execute(command, async (request) => next?.(request));
+      }
+    );
 
     return this;
   }
@@ -153,19 +158,22 @@ export class ResilienceInterceptorsBuilder<
    * @returns {this} The builder.
    */
   public addTimeoutInterceptor(): this {
-    this.#interceptorManager.use(async (command, next) => {
-      if (!command.options?.timeout) {
-        return next?.(command);
-      }
+    this.#interceptorManager.use(
+      'stoik.resilience.interceptors.timeout',
+      async (command, next) => {
+        if (!command.options?.timeout) {
+          return next?.(command);
+        }
 
-      const strategy = this.#strategyBuilder.timeout({
-        timeout:
-          typeof command.options.timeout === 'boolean'
-            ? undefined
-            : command.options.timeout,
-      });
-      return strategy.execute(command, async (request) => next?.(request));
-    });
+        const strategy = this.#strategyBuilder.timeout({
+          timeout:
+            typeof command.options.timeout === 'boolean'
+              ? undefined
+              : command.options.timeout,
+        });
+        return strategy.execute(command, async (request) => next?.(request));
+      }
+    );
 
     return this;
   }
@@ -176,19 +184,22 @@ export class ResilienceInterceptorsBuilder<
    * @returns {this} The builder.
    */
   public addThrottleInterceptor(): this {
-    this.#interceptorManager.use(async (command, next) => {
-      if (!command.options?.throttle) {
-        return next?.(command);
-      }
+    this.#interceptorManager.use(
+      'stoik.resilience.interceptors.throttle',
+      async (command, next) => {
+        if (!command.options?.throttle) {
+          return next?.(command);
+        }
 
-      const strategy = this.#strategyBuilder.throttle({
-        ...(typeof command.options.throttle === 'boolean'
-          ? {}
-          : command.options.throttle),
-        serialize: this.#serializer,
-      });
-      return strategy.execute(command, async (request) => next?.(request));
-    });
+        const strategy = this.#strategyBuilder.throttle({
+          ...(typeof command.options.throttle === 'boolean'
+            ? {}
+            : command.options.throttle),
+          serialize: this.#serializer,
+        });
+        return strategy.execute(command, async (request) => next?.(request));
+      }
+    );
 
     return this;
   }
@@ -199,16 +210,19 @@ export class ResilienceInterceptorsBuilder<
    * @returns {this} The builder.
    */
   public addFallbackInterceptor(): this {
-    this.#interceptorManager.use(async (command, next) => {
-      if (!command.options?.fallback) {
-        return next?.(command);
-      }
+    this.#interceptorManager.use(
+      'stoik.resilience.interceptors.fallback',
+      async (command, next) => {
+        if (!command.options?.fallback) {
+          return next?.(command);
+        }
 
-      const strategy = this.#strategyBuilder.fallback({
-        fallback: command.options.fallback,
-      });
-      return strategy.execute(command, async (request) => next?.(request));
-    });
+        const strategy = this.#strategyBuilder.fallback({
+          fallback: command.options.fallback,
+        });
+        return strategy.execute(command, async (request) => next?.(request));
+      }
+    );
 
     return this;
   }
@@ -219,19 +233,22 @@ export class ResilienceInterceptorsBuilder<
    * @returns {this} The builder.
    */
   public addCacheInterceptor(): this {
-    this.#interceptorManager.use(async (command, next) => {
-      if (!command.options?.cache) {
-        return next?.(command);
-      }
+    this.#interceptorManager.use(
+      'stoik.resilience.interceptors.cache',
+      async (command, next) => {
+        if (!command.options?.cache) {
+          return next?.(command);
+        }
 
-      const strategy = this.#strategyBuilder.cache({
-        ...(typeof command.options.cache === 'boolean'
-          ? {}
-          : command.options.cache),
-        serialize: this.#serializer,
-      });
-      return strategy.execute(command, async (request) => next?.(request));
-    });
+        const strategy = this.#strategyBuilder.cache({
+          ...(typeof command.options.cache === 'boolean'
+            ? {}
+            : command.options.cache),
+          serialize: this.#serializer,
+        });
+        return strategy.execute(command, async (request) => next?.(request));
+      }
+    );
 
     return this;
   }
@@ -242,11 +259,14 @@ export class ResilienceInterceptorsBuilder<
    * @returns {this} The builder.
    */
   public addDeduplicationInterceptor(): this {
-    this.#interceptorManager.use(async (command, next) => {
-      return this.#deduplicationStrategy.execute(command, async (request) =>
-        next?.(request)
-      );
-    });
+    this.#interceptorManager.use(
+      'stoik.resilience.interceptors.deduplication',
+      async (command, next) => {
+        return this.#deduplicationStrategy.execute(command, async (request) =>
+          next?.(request)
+        );
+      }
+    );
     return this;
   }
 

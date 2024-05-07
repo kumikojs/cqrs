@@ -1,5 +1,4 @@
 import { Cache } from '../../internal/cache/cache';
-import { LocalStorage } from '../../internal/storage/adapters/local_storage';
 import { MemoryStorageDriver } from '../../internal/storage/drivers/memory_storage';
 import { QueryCache } from '../../query/query_cache';
 import { CacheStrategy } from './cache_strategy';
@@ -8,12 +7,7 @@ describe('CacheStrategy', () => {
   let cacheStrategy: CacheStrategy;
 
   test('should cache and retrieve values correctly', async () => {
-    cacheStrategy = new CacheStrategy(
-      new QueryCache(
-        new Cache(new MemoryStorageDriver()),
-        new Cache(new LocalStorage())
-      )
-    );
+    cacheStrategy = new CacheStrategy(new QueryCache());
 
     const request = { key: 'value' };
     const task = vitest.fn().mockResolvedValue('result');
@@ -29,13 +23,7 @@ describe('CacheStrategy', () => {
 
   test('should use custom TTL when provided', async () => {
     vitest.useFakeTimers();
-    cacheStrategy = new CacheStrategy(
-      new QueryCache(
-        new Cache(new MemoryStorageDriver()),
-        new Cache(new LocalStorage())
-      ),
-      { ttl: 1000 }
-    );
+    cacheStrategy = new CacheStrategy(new QueryCache(), { ttl: 1000 });
     const request = { key: 'value' };
     const task = vitest.fn().mockResolvedValue('result');
 

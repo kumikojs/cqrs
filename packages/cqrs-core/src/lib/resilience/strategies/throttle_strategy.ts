@@ -3,6 +3,7 @@ import { Strategy } from './base_strategy';
 
 import type { AsyncFunction, DurationUnit } from '../../types';
 import { Cache } from '../../internal/cache/cache';
+import { StoikLogger } from '../../logger/stoik_logger';
 
 /**
  * Configuration options for defining throttling behavior for requests.
@@ -119,21 +120,33 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
    */
   #cache: Cache;
 
+  #logger: StoikLogger;
+
   /**
    * Creates a new instance of the ThrottleStrategy.
    *
    * @param cache - The cache driver used for storing throttling data.
    * @param options - Optional configuration options to override defaults.
    */
-  constructor(cache: Cache, options?: Partial<ThrottleOptions>) {
+  constructor(
+    cache: Cache,
+    logger: StoikLogger,
+    options?: Partial<ThrottleOptions>
+  ) {
     super({
       ...ThrottleStrategy.#options,
       ...options,
     });
 
+    this.#logger = logger.child({});
+
     if (this.options.rate < 1) {
-      console.error(
-        'Rate must be greater than or equal to 1. Defaulting to 5.'
+      this.#logger.error(
+        'Rate must be greater than or equal to 1. Defaulting to 5.',
+        {
+          topics: ['interceptors', 'resilience'],
+          data: { rate: this.options.rate },
+        }
       );
       this.options.rate = ThrottleStrategy.#options.rate;
     }
@@ -164,12 +177,12 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
   >(request: TRequest, task: TTask): Promise<TResult> {
     const key = this.options.serialize(request);
 
-    const cachedValue = this.#cache.get<number>(
+    const cachedValue = await this.#cache.get<number>(
       `${ThrottleStrategy.namespace}:${key}`
     );
 
     if (cachedValue === null) {
-      this.#cache.set(
+      await this.#cache.set(
         `${ThrottleStrategy.namespace}:${key}`,
         1,
         this.options.interval
@@ -182,7 +195,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
       throw new ThrottleException(this.options.rate, this.options.interval);
     }
 
-    this.#cache.set(
+    await this.#cache.set(
       `${ThrottleStrategy.namespace}:${key}`,
       cachedValue + 1,
       this.options.interval

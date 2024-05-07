@@ -42,6 +42,10 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
     channel: TChannel,
     request: TRequest
   ): Promise<TResponse | void> {
+    this.#optionsManager.logger?.trace(
+      `Publishing request to channel ${channel}`
+    );
+
     const handlers = this.#subscriptions.get(channel) || [];
 
     this.#optionsManager.requireAtLeastOneHandler(channel, handlers.length);
@@ -61,6 +65,8 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
    * @param {BusHandler<TRequest>} handler - The handler to subscribe.
    */
   subscribe<TRequest>(channel: TChannel, handler: BusHandler<TRequest>): void {
+    this.#optionsManager.logger?.trace(`Subscribing to channel ${channel}`);
+
     const handlers = this.#subscriptions.get(channel) || [];
 
     this.#optionsManager.verifyHandlerLimit(channel, handlers.length);
@@ -80,6 +86,8 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
     channel: TChannel,
     handler: BusHandler<TRequest>
   ): void {
+    this.#optionsManager.logger?.trace(`Unsubscribing from channel ${channel}`);
+
     const handlers = this.#subscriptions.get(channel);
 
     if (!handlers) {
@@ -102,9 +110,9 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
   }
 
   /**
-   * Clear all subscriptions.
+   * Clear all subscriptions from the bus.
    */
-  clear(): void {
+  disconnect(): void {
     this.#subscriptions.clear();
   }
 }

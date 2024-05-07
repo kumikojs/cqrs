@@ -13,6 +13,7 @@ import type {
   ExtractQueryRequest,
   ExtractQueryResponse,
 } from './query_types';
+import { StoikLogger } from '../logger/stoik_logger';
 
 /**
  * **QueryHandler** is a type alias for a query handler function or object that can handle a specific query type.
@@ -82,9 +83,7 @@ export class QueryBus<
    * @private
    * The underlying bus driver managing subscriptions and publishing of queries.
    */
-  #driver: BusDriver<string> = new MemoryBusDriver({
-    maxHandlersPerChannel: 1,
-  });
+  #driver: BusDriver<string>;
 
   /**
    * @private
@@ -104,12 +103,18 @@ export class QueryBus<
    */
   #abortManager = new AbortManager();
 
+  #logger: StoikLogger;
+
   /**
    * Constructs a QueryBus instance.
    *
    * @param cache - The cache instance to be used for data storage and retrieval.
    */
-  constructor(cache: QueryCache) {
+  constructor(cache: QueryCache, logger: StoikLogger) {
+    this.#logger = logger.child({
+      topics: ['query'],
+    });
+
     this.#interceptorManager = new QueryInterceptors<
       QueryContract<
         string,
@@ -117,23 +122,17 @@ export class QueryBus<
         CombinedPartialOptions<QueryContract, KnownQueriesContracts>
       >,
       KnownQueriesContracts
-    >(cache).buildInterceptors();
+    >(cache, this.#logger).buildInterceptors();
+
+    this.#driver = new MemoryBusDriver({
+      maxHandlersPerChannel: 1,
+      logger: this.#logger,
+    });
 
     this.execute = this.execute.bind(this);
     this.register = this.register.bind(this);
     this.unregister = this.unregister.bind(this);
     this.dispatch = this.dispatch.bind(this);
-  }
-
-  /**
-   * Disposes of the query bus instance, cleaning up resources and subscriptions.
-   * This method should be called when the query bus is no longer needed.
-   * It cancels all ongoing requests and unsubscribes all handlers.
-   */
-  dispose() {
-    this.#driver.clear();
-    this.#interceptorManager.clear();
-    this.#abortManager.cancelAllRequests();
   }
 
   /**
@@ -210,7 +209,7 @@ export class QueryBus<
     const signal = query.context?.signal;
 
     return this.#abortManager.execute(
-      query['queryName'],
+      query.queryName,
       async (abortController) => {
         const useSignal = signal ?? abortController.signal;
 
@@ -244,7 +243,7 @@ export class QueryBus<
     TResult = ExtractQueryResponse<TQuery['queryName'], KnownQueries>
   >(query: TQuery): Promise<TResult> {
     return this.execute<TQuery, TResult>(query, (query) =>
-      this.#driver.publish(query['queryName'], query)
+      this.#driver.publish(query.queryName, query)
     );
   }
 
@@ -258,5 +257,11 @@ export class QueryBus<
     TQuery extends QueryContract = KnownQueriesContracts[keyof KnownQueriesContracts]
   >(queryName: TQuery['queryName']) {
     this.#abortManager.cancelRequest(queryName);
+  }
+
+  disconnect() {
+    this.#driver.disconnect();
+    this.#interceptorManager.disconnect();
+    this.#abortManager.disconnect();
   }
 }

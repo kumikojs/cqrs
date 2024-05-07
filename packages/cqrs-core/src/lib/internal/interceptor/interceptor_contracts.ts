@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Interceptor, InterceptorHandler } from './interceptor_types';
+import type { InterceptorHandler } from './interceptor_types';
 
 /**
  * Contract for the Interceptor.
@@ -30,24 +30,62 @@ export interface InterceptorManagerContract<T> {
    * Add an interceptor to the manager.
    *
    * @template TRequest - The type of request to intercept.
+   * @param name - The name of the interceptor.
    * @param interceptor - The interceptor to add.
    * @returns The interceptor manager.
    */
   use<TRequest extends T>(
-    interceptor: Interceptor<TRequest> | InterceptorContract<TRequest>
+    name: string,
+    interceptor:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+  ): this;
+  use<TRequest extends T>(
+    interceptor:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+  ): this;
+  use<TRequest extends T>(
+    nameOrInterceptor:
+      | string
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle'],
+    interceptor?:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
   ): this;
 
   /**
    * Tap into the interceptor chain.
    *
    * @template TRequest - The type of request to intercept.
+   * @param name - The name of the interceptor.
    * @param selector - The selector function to determine if the interceptor should be applied.
    * @param interceptor - The interceptor to apply.
    * @returns The interceptor manager.
    */
   tap<TRequest extends T>(
     selector: (request: TRequest) => boolean,
-    interceptor: Interceptor<TRequest>
+    interceptor:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+  ): this;
+  tap<TRequest extends T>(
+    name: string,
+    selector: (request: TRequest) => boolean,
+    interceptor:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+  ): this;
+  tap<TRequest extends T>(
+    nameOrSelector: string | ((request: TRequest) => boolean),
+    interceptorOrSelector:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+      | ((request: TRequest) => boolean),
+    interceptor?:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
   ): this;
 
   /**
@@ -65,7 +103,7 @@ export interface InterceptorManagerContract<T> {
   ): Promise<TResponse>;
 
   /**
-   * Clear all interceptors from the manager.
+   * Clear all interceptors.
    */
-  clear(): void;
+  disconnect(): void;
 }

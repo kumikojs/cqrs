@@ -44,5 +44,5 @@ export interface BusDriver<TChannel> {
   /**
    * Clear all subscriptions from the bus.
    */
-  clear(): void;
+  disconnect(): void;
 }

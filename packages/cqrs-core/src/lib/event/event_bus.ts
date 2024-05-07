@@ -7,6 +7,7 @@ import type {
   EventContract,
   EventHandlerContract,
 } from './event_contracts';
+import { StoikLogger } from '../logger/stoik_logger';
 
 /**
  * The `EventBus` class provides a simple mechanism for managing event subscriptions and publishing events within your application.
@@ -53,18 +54,27 @@ export class EventBus<
    * The underlying bus driver instance responsible for handling event subscriptions and publishing.
    * The driver (`MemoryBusDriver`) manages the subscription storage and event delivery logic.
    */
-  #driver: BusDriver<string> = new MemoryBusDriver({
-    maxHandlersPerChannel: Infinity,
-  });
+  #driver: BusDriver<string>;
 
-  constructor() {
+  #logger: StoikLogger;
+
+  constructor(logger: StoikLogger) {
+    this.#logger = logger.child({
+      topics: ['event'],
+    });
+
+    this.#driver = new MemoryBusDriver({
+      maxHandlersPerChannel: Infinity,
+      logger: this.#logger,
+    });
+
     this.on = this.on.bind(this);
     this.off = this.off.bind(this);
     this.emit = this.emit.bind(this);
   }
 
-  dispose(): void {
-    this.#driver.clear();
+  disconnect(): void {
+    this.#driver.disconnect();
   }
 
   /**

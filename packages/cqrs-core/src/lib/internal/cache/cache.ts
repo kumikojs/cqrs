@@ -7,6 +7,7 @@ import type { DurationUnit } from '../../types';
 import type { AsyncStorage } from '../storage/facades/async_storage';
 import type { SyncStorage } from '../storage/facades/sync_storage';
 import { Scheduler } from '../scheduler/scheduler';
+import { StoikLogger } from '../../logger/stoik_logger';
 
 /**
  * Defines the event types for the cache.
@@ -79,7 +80,7 @@ export class Cache {
       .schedule(async () => {
         await this.clearExpired();
       })
-      .start();
+      .connect();
 
     /**
      * Clear expired items when the cache is created
@@ -88,28 +89,11 @@ export class Cache {
     this.clearExpired();
   }
 
-  dispose() {
-    this.#scheduler.stop();
-    this.#cache.close();
-    this.#emitter.clear();
+  disconnect() {
+    this.#cache.disconnect();
+    this.#emitter.disconnect();
+    this.#scheduler.disconnect();
     this.clearExpired();
-  }
-
-  /**
-   * Gets the number of items in the cache.
-   */
-  async length() {
-    /**
-     * If the cache is an async cache, we need to call the `length` method
-     */
-    if (typeof this.#cache.length === 'function') {
-      return await this.#cache.length();
-    }
-
-    /**
-     * If the cache is a sync cache, we can directly access the `length` property
-     */
-    return this.#cache.length;
   }
 
   /**
@@ -128,6 +112,7 @@ export class Cache {
 
     if (deserialized.hasExpired()) {
       await this.#cache.removeItem(key);
+
       return null;
     }
 
@@ -213,6 +198,23 @@ export class Cache {
   }
 
   /**
+   * Gets the number of items in the cache.
+   */
+  async length() {
+    /**
+     * If the cache is an async cache, we need to call the `length` method
+     */
+    if (typeof this.#cache.length === 'function') {
+      return await this.#cache.length();
+    }
+
+    /**
+     * If the cache is a sync cache, we can directly access the `length` property
+     */
+    return this.#cache.length;
+  }
+
+  /**
    * Subscribes to the specified cache event.
    * @param eventName The name of the cache event.
    * @param handler The event handler function.
@@ -243,6 +245,7 @@ export class Cache {
     this.#emit('optimistic_update_began', key);
 
     const ttl = await this.ttl(key);
+
     await this.set(key, value, ttl);
 
     this.#emit('optimistic_update_ended', key);

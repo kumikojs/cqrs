@@ -17,7 +17,7 @@ export class Scheduler {
     return this;
   }
 
-  start() {
+  connect() {
     setInterval(() => {
       this.#tasks.forEach((task) => {
         task();
@@ -27,7 +27,7 @@ export class Scheduler {
     return this;
   }
 
-  stop() {
+  disconnect() {
     clearInterval(this.#interval);
 
     return this;

@@ -14,7 +14,6 @@ export class SyncCache {
   }
 
   setItem(key: string, value: string): void {
-    console.log('setItem', key, value);
     return this.#storage.setItem(key, value);
   }
 
@@ -40,7 +39,7 @@ export class SyncCache {
     }
   }
 
-  close(): void {
+  disconnect(): void {
     if (this.#storage.close) {
       return this.#storage.close();
     }

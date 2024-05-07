@@ -4,6 +4,7 @@ import { QueryCache } from './query_cache';
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
 import type { CombinedPartialOptions } from '../types';
 import type { QueryContract } from './query_contracts';
+import { StoikLogger } from '../logger/stoik_logger';
 
 /**
  * The `QueryInterceptors` class constructs a chain of interceptors specifically designed for handling queries.
@@ -27,16 +28,20 @@ export class QueryInterceptors<
    */
   #resilienceInterceptorsBuilder: ResilienceInterceptorsBuilder<TQuery>;
 
+  #logger: StoikLogger;
+
   /**
    * Creates a new instance of `QueryInterceptors`.
    *
    * @param cache - The cache instance to be used by caching interceptors.
    */
-  constructor(cache: QueryCache) {
+  constructor(cache: QueryCache, logger: StoikLogger) {
     this.#resilienceInterceptorsBuilder =
-      new ResilienceInterceptorsBuilder<TQuery>(cache, {
+      new ResilienceInterceptorsBuilder<TQuery>(cache, logger, {
         serialize: cache.getCacheKey,
       });
+
+    this.#logger = logger.child({});
   }
 
   /**
@@ -45,6 +50,8 @@ export class QueryInterceptors<
    * @returns {InterceptorManagerContract<TQuery>} The assembled interceptor chain.
    */
   buildInterceptors(): InterceptorManagerContract<TQuery> {
+    this.#logger.info('Building query interceptors');
+
     const interceptorManager = this.#resilienceInterceptorsBuilder
       .addDeduplicationInterceptor()
       .addCacheInterceptor()

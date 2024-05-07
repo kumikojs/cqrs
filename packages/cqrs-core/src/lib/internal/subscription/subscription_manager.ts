@@ -17,7 +17,7 @@ export class SubscriptionManager {
     return this;
   }
 
-  unsubscribeAll() {
+  disconnect() {
     for (const subscription of this.#subscriptions) {
       subscription();
     }

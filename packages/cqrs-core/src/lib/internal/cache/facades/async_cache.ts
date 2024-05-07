@@ -42,7 +42,7 @@ export class AsyncCache {
     }
   }
 
-  async close(): Promise<void> {
+  async disconnect(): Promise<void> {
     if (this.#storage.close) {
       return this.#storage.close();
     }
