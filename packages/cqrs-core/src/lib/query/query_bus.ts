@@ -1,11 +1,13 @@
 import { AbortManager } from '../internal/abort_manager/abort_manager';
 import { MemoryBusDriver } from '../internal/bus/drivers/memory_bus';
+import { StoikLogger } from '../logger/stoik_logger';
 import { QueryCache } from './query_cache';
 import { QueryInterceptors } from './query_interceptors';
 
 import type { ComputeQueryContracts } from '../client_types';
 import type { BusDriver } from '../internal/bus/bus_driver';
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
+import type { ResilienceBuilderOptions } from '../resilience/resilience_interceptors_builder';
 import type { CombinedPartialOptions } from '../types';
 import type { QueryContract, QueryHandlerContract } from './query_contracts';
 import type {
@@ -13,7 +15,6 @@ import type {
   ExtractQueryRequest,
   ExtractQueryResponse,
 } from './query_types';
-import { StoikLogger } from '../logger/stoik_logger';
 
 /**
  * **QueryHandler** is a type alias for a query handler function or object that can handle a specific query type.
@@ -110,7 +111,11 @@ export class QueryBus<
    *
    * @param cache - The cache instance to be used for data storage and retrieval.
    */
-  constructor(cache: QueryCache, logger: StoikLogger) {
+  constructor(
+    cache: QueryCache,
+    logger: StoikLogger,
+    options: ResilienceBuilderOptions
+  ) {
     this.#logger = logger.child({
       topics: ['query'],
     });
@@ -122,7 +127,7 @@ export class QueryBus<
         CombinedPartialOptions<QueryContract, KnownQueriesContracts>
       >,
       KnownQueriesContracts
-    >(cache, this.#logger).buildInterceptors();
+    >(cache, this.#logger, { ...options }).buildInterceptors();
 
     this.#driver = new MemoryBusDriver({
       maxHandlersPerChannel: 1,

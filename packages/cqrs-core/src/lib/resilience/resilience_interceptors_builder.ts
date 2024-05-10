@@ -12,6 +12,13 @@ import { RetryOptions } from './strategies/retry_strategy';
 import { ThrottleOptions } from './strategies/throttle_strategy';
 import { TimeoutOptions } from './strategies/timeout_strategy';
 
+export type ResilienceBuilderOptions =
+  | Partial<{
+      timeout: TimeoutOptions['timeout'];
+      throttle: Omit<Partial<ThrottleOptions>, 'serialize'>;
+    }>
+  | undefined;
+
 /**
  * A structure representing various resilience options that can be configured
  * for a query to enhance its robustness and adaptability.
@@ -107,6 +114,8 @@ export class ResilienceInterceptorsBuilder<
    */
   #serializer: (request: T) => string;
 
+  #options: ResilienceBuilderOptions | undefined;
+
   /**
    * Initializes a new instance of the `ResilienceInterceptorsBuilder` class.
    *
@@ -117,7 +126,10 @@ export class ResilienceInterceptorsBuilder<
   constructor(
     cache: QueryCache,
     logger: StoikLogger,
-    { serialize }: { serialize: (request: T) => string }
+    {
+      serialize,
+      ...options
+    }: { serialize: (request: T) => string } & ResilienceBuilderOptions
   ) {
     this.#strategyBuilder = createResilienceStrategiesBuilder(cache, logger);
     this.#interceptorManager = new InterceptorManager(logger);
@@ -125,6 +137,7 @@ export class ResilienceInterceptorsBuilder<
       serialize,
     });
     this.#serializer = serialize;
+    this.#options = options;
   }
 
   /**
@@ -169,7 +182,7 @@ export class ResilienceInterceptorsBuilder<
           timeout:
             typeof command.options.timeout === 'boolean'
               ? undefined
-              : command.options.timeout,
+              : command.options.timeout || this.#options?.timeout,
         });
         return strategy.execute(command, async (request) => next?.(request));
       }
@@ -194,7 +207,7 @@ export class ResilienceInterceptorsBuilder<
         const strategy = this.#strategyBuilder.throttle({
           ...(typeof command.options.throttle === 'boolean'
             ? {}
-            : command.options.throttle),
+            : command.options.throttle || this.#options?.throttle),
           serialize: this.#serializer,
         });
         return strategy.execute(command, async (request) => next?.(request));

@@ -1,4 +1,7 @@
-import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
+import {
+  ResilienceBuilderOptions,
+  ResilienceInterceptorsBuilder,
+} from '../resilience/resilience_interceptors_builder';
 import { QueryCache } from './query_cache';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
@@ -35,9 +38,14 @@ export class QueryInterceptors<
    *
    * @param cache - The cache instance to be used by caching interceptors.
    */
-  constructor(cache: QueryCache, logger: StoikLogger) {
+  constructor(
+    cache: QueryCache,
+    logger: StoikLogger,
+    options: ResilienceBuilderOptions
+  ) {
     this.#resilienceInterceptorsBuilder =
       new ResilienceInterceptorsBuilder<TQuery>(cache, logger, {
+        ...options,
         serialize: cache.getCacheKey,
       });
 

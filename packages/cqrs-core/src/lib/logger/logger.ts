@@ -21,7 +21,7 @@ export interface LoggerContract {
 export type LoggerConfig<TopicsType extends Readonly<string[]>> = {
   enabled: boolean;
   level: LoggerLevel;
-  enabledTopics: TopicsType;
+  enabledTopics?: TopicsType;
   format: 'json' | 'pretty';
   logger?: LoggerContract;
   topics?: TopicsType | string[];
@@ -32,7 +32,7 @@ export type LoggerOptions<TopicsType extends Readonly<string[]>> = {
   level?: LoggerLevel;
   format?: 'json' | 'pretty';
   topics?: TopicsType | string[];
-  enabledTopics: TopicsType;
+  enabledTopics?: TopicsType;
   logger?: LoggerContract;
 };
 
@@ -45,14 +45,14 @@ export class Logger<TopicsType extends Readonly<string[]>> {
 
   #serializer = new JsonSerializer();
 
-  constructor(config: LoggerOptions<TopicsType>) {
+  constructor(config?: LoggerOptions<TopicsType>) {
     this.#config = {
-      enabled: config.enabled ?? false,
-      level: config.level ?? 'trace',
-      format: config.format ?? 'pretty',
-      enabledTopics: config.enabledTopics,
-      logger: config.logger,
-      topics: config.topics ?? [],
+      enabled: config?.enabled ?? false,
+      level: config?.level ?? 'trace',
+      format: config?.format ?? 'pretty',
+      enabledTopics: config?.enabledTopics,
+      logger: config?.logger,
+      topics: config?.topics ?? [],
     };
   }
 
@@ -163,7 +163,8 @@ export class Logger<TopicsType extends Readonly<string[]>> {
   }
 
   #isTopicEnabled(topic: string): boolean {
-    return this.#config.enabledTopics.includes(topic);
+    // If enabledTopics is not provided, all topics are enabled.
+    return this.#config.enabledTopics?.includes(topic) ?? true;
   }
 
   #isLevelEnabled(level: LoggerLevel): boolean {

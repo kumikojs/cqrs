@@ -19,14 +19,14 @@ const Topics = [
 type Topics = typeof Topics;
 type LoggerTopics = (typeof Topics)[number];
 
-export class StoikLogger extends Logger<LoggerTopics[]> {
-  constructor(config: LoggerOptions<LoggerTopics[]>) {
-    super(config);
-  }
+export type StoikLoggerOptions = Omit<LoggerOptions<LoggerTopics[]>, 'topics'>;
+
+export function logger(config?: StoikLoggerOptions): StoikLogger {
+  return new StoikLogger(config);
 }
 
-export function createStoikLogger(
-  config: LoggerOptions<LoggerTopics[]>
-): StoikLogger {
-  return new StoikLogger(config);
+export class StoikLogger extends Logger<LoggerTopics[]> {
+  constructor(config?: StoikLoggerOptions) {
+    super(config);
+  }
 }

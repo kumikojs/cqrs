@@ -5,6 +5,7 @@ import { QueryCache } from './query/query_cache';
 
 import type {
   BaseModule,
+  ClientOptions,
   Combined,
   ComputeCommands,
   ComputeEvents,
@@ -12,18 +13,8 @@ import type {
 } from './client_types';
 import type { CommandContract } from './command/command_contracts';
 import type { EventContract } from './event/event_contracts';
-import type { QueryCacheOptions } from './query/query_cache';
+import { logger, type StoikLogger } from './logger/stoik_logger';
 import type { BaseQueries } from './query/query_types';
-import type { ThrottleOptions } from './resilience/strategies/throttle_strategy';
-import type { TimeoutOptions } from './resilience/strategies/timeout_strategy';
-import { EventsList } from './types';
-import { createStoikLogger } from './logger/stoik_logger';
-
-type ClientOptions = Partial<{
-  cache: Partial<QueryCacheOptions>;
-  timeout: TimeoutOptions['timeout'];
-  throttle: Pick<ThrottleOptions, 'interval' | 'rate'>;
-}>;
 
 /**
  * **Client Class**
@@ -81,7 +72,6 @@ export class Client<
   KnownEvents extends Record<string, EventContract> =
     | Record<string, EventContract>
     | ComputeEvents<Combined<Modules>>
-    | EventsList
 > {
   /**
    * The cache instance used for storing and retrieving data to improve performance.
@@ -115,31 +105,21 @@ export class Client<
    */
   #queryBus: QueryBus<KnownQueries>;
 
-  #logger = createStoikLogger({
-    enabled: true,
-    level: 'trace',
-    enabledTopics: [
-      'command',
-      'bus',
-      'query',
-      'event',
-      'cache',
-      'interceptors',
-      'resilience',
-    ],
-    format: 'pretty',
-  });
+  #logger: StoikLogger;
 
-  constructor(options?: ClientOptions) {
+  constructor(options: ClientOptions) {
+    this.#logger = logger(options?.logger);
+
     this.#cache = new QueryCache(options?.cache);
 
     this.#eventBus = new EventBus(this.#logger);
     this.#commandBus = new CommandBus(
       this.#cache,
       this.#eventBus,
-      this.#logger
+      this.#logger,
+      options?.command
     );
-    this.#queryBus = new QueryBus(this.#cache, this.#logger);
+    this.#queryBus = new QueryBus(this.#cache, this.#logger, options?.query);
   }
 
   /**

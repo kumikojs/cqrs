@@ -19,6 +19,7 @@ import type {
   InferredCommandHandlers,
   InferredCommands,
 } from './command_types';
+import { ResilienceBuilderOptions } from '../resilience/resilience_interceptors_builder';
 
 /**
  * A central hub for registering and executing commands, facilitating cross-cutting concerns through interceptors.
@@ -94,7 +95,12 @@ export class CommandBus<
    *
    * @param cache - The cache instance to be used for data storage and retrieval.
    */
-  constructor(cache: QueryCache, emitter: EventBus, logger: StoikLogger) {
+  constructor(
+    cache: QueryCache,
+    emitter: EventBus,
+    logger: StoikLogger,
+    options: ResilienceBuilderOptions
+  ) {
     this.#logger = logger.child({
       topics: ['command'],
     });
@@ -118,7 +124,7 @@ export class CommandBus<
         CombinedPartialOptions<CommandContract, KnownCommands>
       >,
       KnownCommands
-    >(cache, this.#logger).buildInterceptors();
+    >(cache, this.#logger, options).buildInterceptors();
 
     // Bind methods because they can be used as callbacks and we want to keep the context.
     this.execute = this.execute.bind(this);

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { StoikLogger } from '../../logger/stoik_logger';
+
 import type {
   InterceptorContract,
   InterceptorManagerContract,
@@ -14,34 +15,8 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
     this.#logger = logger.child({ topics: ['interceptors'] });
   }
 
-  private registerInterceptor<TRequest extends T>(
-    name: string,
-    interceptor:
-      | InterceptorContract<TRequest>
-      | InterceptorContract<TRequest>['handle']
-  ): void {
-    const wrappedInterceptor = this.wrapInterceptor(name, interceptor);
-    this.#interceptors.push(wrappedInterceptor);
-    this.#logger.info(`Registered interceptor: '${name}'`);
-  }
-
-  private wrapInterceptor<TRequest extends T>(
-    name: string,
-    interceptor:
-      | InterceptorContract<TRequest>
-      | InterceptorContract<TRequest>['handle']
-  ): InterceptorContract<TRequest> {
-    if (typeof interceptor === 'function') {
-      return {
-        handle: async (request, next) => {
-          if (this.#logger.isDebugEnabled()) {
-            this.#logger.debug(`Executing interceptor '${name}'`, { request });
-          }
-          return interceptor(request, next);
-        },
-      };
-    }
-    return interceptor;
+  disconnect(): void {
+    this.#interceptors = [];
   }
 
   use<TRequest extends T>(
@@ -58,7 +33,7 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
         ? nameOrInterceptor
         : 'stoik.interceptors.anonymous';
     const effectiveInterceptor = interceptor ?? nameOrInterceptor;
-    this.registerInterceptor(
+    this.#registerInterceptor(
       name,
       effectiveInterceptor as
         | InterceptorContract<TRequest>
@@ -119,7 +94,32 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
     return await composed(request);
   }
 
-  disconnect(): void {
-    this.#interceptors = [];
+  #registerInterceptor<TRequest extends T>(
+    name: string,
+    interceptor:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+  ): void {
+    const wrappedInterceptor = this.#wrapInterceptor(name, interceptor);
+    this.#interceptors.push(wrappedInterceptor);
+    this.#logger.info(`Interceptor added: ${name}`);
+  }
+
+  #wrapInterceptor<TRequest extends T>(
+    name: string,
+    interceptor:
+      | InterceptorContract<TRequest>
+      | InterceptorContract<TRequest>['handle']
+  ): InterceptorContract<TRequest> {
+    if (typeof interceptor === 'function') {
+      return {
+        handle: async (request, next) => {
+          this.#logger.debug(`Executing interceptor '${name}'`, { request });
+
+          return interceptor(request, next);
+        },
+      };
+    }
+    return interceptor;
   }
 }

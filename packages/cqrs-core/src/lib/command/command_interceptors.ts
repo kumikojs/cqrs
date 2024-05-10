@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
-import { QueryCache } from '../query/query_cache';
-import { CommandCache } from './command_cache';
 import { StoikLogger } from '../logger/stoik_logger';
+import { QueryCache } from '../query/query_cache';
+import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
+import { CommandCache } from './command_cache';
 
 import type { InterceptorManagerContract } from '../internal/interceptor/interceptor_contracts';
+import type { ResilienceBuilderOptions } from '../resilience/resilience_interceptors_builder';
 import type { CombinedPartialOptions } from '../types';
 import type { CommandContract } from './command_contracts';
 
@@ -50,10 +51,15 @@ export class CommandInterceptors<
    *
    * @param cache - The cache instance to be used.
    */
-  constructor(cache: QueryCache, logger: StoikLogger) {
+  constructor(
+    cache: QueryCache,
+    logger: StoikLogger,
+    options: ResilienceBuilderOptions
+  ) {
     this.#cache = cache;
     this.#resilienceInterceptorsBuilder =
       new ResilienceInterceptorsBuilder<TCommand>(cache, logger, {
+        ...options,
         serialize: (request) =>
           JSON.stringify({
             commandName: request.commandName,

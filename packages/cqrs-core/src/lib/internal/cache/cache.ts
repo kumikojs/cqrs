@@ -1,4 +1,5 @@
 import { MemoryBusDriver } from '../bus/drivers/memory_bus';
+import { Scheduler } from '../scheduler/scheduler';
 import { CacheEntry } from './cache_entry/cache_entry';
 import { AsyncCache } from './facades/async_cache';
 import { SyncCache } from './facades/sync_cache';
@@ -6,8 +7,6 @@ import { SyncCache } from './facades/sync_cache';
 import type { DurationUnit } from '../../types';
 import type { AsyncStorage } from '../storage/facades/async_storage';
 import type { SyncStorage } from '../storage/facades/sync_storage';
-import { Scheduler } from '../scheduler/scheduler';
-import { StoikLogger } from '../../logger/stoik_logger';
 
 /**
  * Defines the event types for the cache.
