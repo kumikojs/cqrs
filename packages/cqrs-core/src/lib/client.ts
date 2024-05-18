@@ -1,28 +1,19 @@
-import { CommandBus } from './command/command_bus';
-import { EventBus } from './event/event_bus';
-import { QueryBus } from './query/query_bus';
-import { QueryCache } from './query/query_cache';
-
-import type {
-  BaseModule,
-  ClientOptions,
-  Combined,
-  ComputeCommands,
-  ComputeEvents,
-  ComputeQueries,
-} from './client_types';
-import type { CommandContract } from './command/command_contracts';
-import type { EventContract } from './event/event_contracts';
-import { logger, type StoikLogger } from './logger/stoik_logger';
-import type { BaseQueries } from './query/query_types';
+import { CommandBus } from './core/command/command_bus';
+import { EventBus } from './core/event/event_bus';
+import { QueryBus } from './core/query/query_bus';
+import { QueryCache } from './core/query/query_cache';
+import type { CommandRegistry, ExtractCommands } from './types/core/command';
+import type { EventRegistry, ExtractEvents } from './types/core/event';
+import type { BaseModule, ClientOptions, Combined } from './types/main';
+import type { ExtractQueries, QueryRegistry } from './types/core/query';
+import { StoikLogger, logger } from './utilities/logger/stoik_logger';
 
 /**
  * **Client Class**
  *
- * @remarks
  * The `Client` class serves as the primary entry point for interacting with the Stoik library.
  * It acts as a facade, providing a simplified interface to the command, query, and event buses.
- * It also facilitates communication and coordination between different parts of the application,
+ * It facilitates communication and coordination between different parts of the application,
  * playing a role similar to a mediator pattern.
  *
  * @template KnownCommands The known commands and their associated contracts.
@@ -32,29 +23,28 @@ import type { BaseQueries } from './query/query_types';
  * @example
  * ```ts
  * import { Client } from '@stoik/cqrs-core';
- * import type { CommandContract, QueryContract, EventContract } from '@stoik/cqrs-core';
- * import { CommandContract } from '@stoik/react-cqrs';
-
+ * import type { Command, QueryContract, EventContract } from '@stoik/cqrs-core';
+ *
  * // Define the commands
- * type CreateUserCommand = CommandContract<"user.create", { name: string; email: string; }>;
+ * type CreateUserCommand = Command<'user.create', { name: string; email: string; }>;
  *
  * // Define the queries
- * type GetUserQuery = QueryContract<"user.get", { id: string; }>;
+ * type GetUserQuery = QueryContract<'user.get', { id: string; }>;
  *
  * // Define the events
- * type UserCreatedEvent = EventContract<"user.created", { id: string; name: string; email: string; }>;
+ * type UserCreatedEvent = EventContract<'user.created', { id: string; name: string; email: string; }>;
  *
  * // Define the known commands, queries, and events.
  * type KnownCommands = {
- *  "user.create": CreateUserCommand;
+ *  'user.create': CreateUserCommand;
  * };
  *
  * type KnownQueries = {
- * "user.get": GetUserQuery;
+ *  'user.get': GetUserQuery;
  * };
  *
  * type KnownEvents = {
- * "user.created": UserCreatedEvent;
+ *  'user.created': UserCreatedEvent;
  * };
  *
  * // Create a new client instance.
@@ -63,51 +53,28 @@ import type { BaseQueries } from './query/query_types';
  */
 export class Client<
   Modules extends BaseModule[] = BaseModule[],
-  KnownCommands extends Record<string, CommandContract> =
-    | Record<string, CommandContract>
-    | ComputeCommands<Combined<Modules>>,
-  KnownQueries extends BaseQueries =
-    | BaseQueries
-    | ComputeQueries<Combined<Modules>>,
-  KnownEvents extends Record<string, EventContract> =
-    | Record<string, EventContract>
-    | ComputeEvents<Combined<Modules>>
+  KnownCommands extends CommandRegistry =
+    | CommandRegistry
+    | ExtractCommands<Combined<Modules>>,
+  KnownQueries extends QueryRegistry =
+    | QueryRegistry
+    | ExtractQueries<Combined<Modules>>,
+  KnownEvents extends EventRegistry =
+    | EventRegistry
+    | ExtractEvents<Combined<Modules>>
 > {
-  /**
-   * The cache instance used for storing and retrieving data to improve performance.
-   *
-   * @private
-   * @type {QueryCache} - {@link Cache}
-   */
   #cache: QueryCache;
-
-  /**
-   * The event bus used for publishing and subscribing to application events.
-   *
-   * @private
-   * @type {EventBus<KnownEvents>} - {@link EventBus}
-   */
   #eventBus: EventBus<KnownEvents>;
-
-  /**
-   * The command bus responsible for handling command execution and associated logic.
-   *
-   * @private
-   * @type {CommandBus<KnownCommands, KnownQueries>} - {@link CommandBus}
-   */
   #commandBus: CommandBus<KnownCommands, KnownQueries, KnownEvents>;
-
-  /**
-   * The query bus responsible for executing queries and returning data.
-   *
-   * @private
-   * @type {QueryBus<KnownQueries>} - {@link QueryBus}
-   */
   #queryBus: QueryBus<KnownQueries>;
-
   #logger: StoikLogger;
 
-  constructor(options: ClientOptions) {
+  /**
+   * Constructs a new `Client` instance.
+   *
+   * @param options - The options for configuring the client.
+   */
+  constructor(options?: ClientOptions) {
     this.#logger = logger(options?.logger);
 
     this.#cache = new QueryCache(options?.cache);
@@ -135,7 +102,7 @@ export class Client<
   /**
    * Provides access to the command bus for interacting with commands.
    *
-   * @returns {CommandBus<KnownCommands, KnownQueries>} The command bus instance.
+   * @returns {CommandBus<KnownCommands, KnownQueries, KnownEvents>} The command bus instance.
    */
   get command(): CommandBus<KnownCommands, KnownQueries, KnownEvents> {
     return this.#commandBus;

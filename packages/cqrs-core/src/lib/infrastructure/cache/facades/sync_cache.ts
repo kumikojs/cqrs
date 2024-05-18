@@ -1,0 +1,48 @@
+import type { Nullable } from '../../../types/helpers';
+import type { SyncStorageDriver } from '../../../types/infrastructure/storage';
+
+export class SyncCache {
+  #storage: SyncStorageDriver;
+
+  constructor(storage: SyncStorageDriver) {
+    this.#storage = storage;
+
+    this.#open();
+  }
+
+  getItem(key: string): Nullable<string> {
+    return this.#storage.getItem(key);
+  }
+
+  setItem(key: string, value: string): void {
+    return this.#storage.setItem(key, value);
+  }
+
+  removeItem(key: string): void {
+    return this.#storage.removeItem(key);
+  }
+
+  clear(): void {
+    return this.#storage.clear();
+  }
+
+  key(index: number): Nullable<string> {
+    return this.#storage.key(index);
+  }
+
+  get length(): number {
+    return this.#storage.length;
+  }
+
+  #open(): void {
+    if (this.#storage.open) {
+      return this.#storage.open();
+    }
+  }
+
+  disconnect(): void {
+    if (this.#storage.close) {
+      return this.#storage.close();
+    }
+  }
+}
