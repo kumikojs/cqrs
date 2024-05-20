@@ -2,7 +2,7 @@ import { StoikLogger } from '../../utilities/logger/stoik_logger';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 import { QueryCache } from './query_cache';
 
-import type { InterceptorManagerContract } from '../../types/main';
+import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
 import type { Query } from '../../types/core/query';
 import type { MergedPartialOptions } from '../../types/core/options/options';
 import type { ResilienceBuilderOptions } from '../../types/core/options/resilience_options';

@@ -15,7 +15,8 @@ import type {
   QueryHandlerFunction,
   QueryRegistry,
 } from '../../types/core/query';
-import type { BusDriver, InterceptorManagerContract } from '../../types/main';
+import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
+import type { BusDriver } from '../../types/infrastructure/bus';
 
 /**
  * The `QueryBus` class acts as a central coordinator for managing query execution and facilitates cross-cutting concerns through interceptors.

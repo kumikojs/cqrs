@@ -6,7 +6,7 @@ import type {
   EventHandlerOrFunction,
   EventRegistry,
 } from '../../types/core/event';
-import type { BusDriver } from '../../types/main';
+import type { BusDriver } from '../../types/infrastructure/bus';
 
 /**
  * The `EventBus` class provides a mechanism for managing event subscriptions and publishing events within your application.

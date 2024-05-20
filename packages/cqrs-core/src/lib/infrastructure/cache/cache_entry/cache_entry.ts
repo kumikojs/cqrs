@@ -1,8 +1,7 @@
 import { ms } from '../../../utilities/ms/ms';
 import { JsonSerializer } from '../../../utilities/serializer/json_serializer';
 
-import type { Nullable, Optional } from '../../../types/helpers';
-import type { DurationUnit } from '../../../types/utilities/duration_unit';
+import type { DurationUnit, Nullable, Optional } from '../../../types/helpers';
 
 /**
  * Represents the data structure for a cache entry.

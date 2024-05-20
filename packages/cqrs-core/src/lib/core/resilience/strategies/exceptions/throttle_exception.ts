@@ -1,4 +1,4 @@
-import type { DurationUnit } from '../../../../types/utilities/duration_unit';
+import type { DurationUnit } from '../../../../types/helpers';
 
 /**
  * A custom exception thrown when the request rate limit is exceeded.

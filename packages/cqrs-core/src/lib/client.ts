@@ -53,15 +53,9 @@ import { StoikLogger, logger } from './utilities/logger/stoik_logger';
  */
 export class Client<
   Modules extends BaseModule[] = BaseModule[],
-  KnownCommands extends CommandRegistry =
-    | CommandRegistry
-    | ExtractCommands<Combined<Modules>>,
-  KnownQueries extends QueryRegistry =
-    | QueryRegistry
-    | ExtractQueries<Combined<Modules>>,
-  KnownEvents extends EventRegistry =
-    | EventRegistry
-    | ExtractEvents<Combined<Modules>>
+  KnownCommands extends CommandRegistry = ExtractCommands<Combined<Modules>>,
+  KnownQueries extends QueryRegistry = ExtractQueries<Combined<Modules>>,
+  KnownEvents extends EventRegistry = ExtractEvents<Combined<Modules>>
 > {
   #cache: QueryCache;
   #eventBus: EventBus<KnownEvents>;

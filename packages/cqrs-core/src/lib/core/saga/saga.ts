@@ -2,7 +2,7 @@ import { StateMachine } from './internal/state_machine';
 import { Stepper } from './internal/stepper';
 import { EventBus } from '../event/event_bus';
 
-import type { EventContract } from '../event/event_contracts';
+import type { Event } from '../../types/core/event';
 
 /**
  * Represents a single unit of work within a saga execution flow.
@@ -58,8 +58,8 @@ export class Saga {
    * @param steps - An array of `Step` objects defining the saga's execution flow.
    * @returns A function to unsubscribe from the attached event listener.
    */
-  public runOn(eventName: EventContract['eventName']) {
-    return this.#eventBus.on(eventName, async (event: EventContract) => {
+  public runOn(eventName: Event['eventName']) {
+    return this.#eventBus.on(eventName, async (event: Event) => {
       await this.run(event);
     });
   }

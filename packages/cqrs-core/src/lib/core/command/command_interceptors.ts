@@ -8,7 +8,7 @@ import { CommandCache } from './command_cache';
 import type { Command, CommandRegistry } from '../../types/core/command';
 import type { MergedPartialOptions } from '../../types/core/options/options';
 import type { ResilienceBuilderOptions } from '../../types/core/options/resilience_options';
-import type { InterceptorManagerContract } from '../../types/main';
+import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
 
 /**
  * Constructs a collection of interceptors for a command bus, enhancing its functionality with resilience and query invalidation.

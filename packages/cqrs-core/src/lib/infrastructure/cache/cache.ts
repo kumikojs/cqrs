@@ -5,6 +5,7 @@ import { AsyncCache } from './facades/async_cache';
 import { SyncCache } from './facades/sync_cache';
 
 import type {
+  DurationUnit,
   NullablePromise,
   Optional,
   OptionalPromise,
@@ -13,7 +14,6 @@ import type {
   AsyncStorageDriver,
   SyncStorageDriver,
 } from '../../types/infrastructure/storage';
-import type { DurationUnit } from '../../types/utilities/duration_unit';
 
 /**
  * Defines the event types for the cache.

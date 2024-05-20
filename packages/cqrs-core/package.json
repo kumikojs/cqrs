@@ -4,6 +4,10 @@
   "dependencies": {
     "tslib": "^2.3.0"
   },
+  "exports": {
+    ".": "./src/index.js",
+    "./types": "./src/lib/types/main.js"
+  },
   "type": "module",
   "main": "./src/index.js",
   "typings": "./src/index.d.ts"

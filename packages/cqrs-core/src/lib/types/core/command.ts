@@ -102,19 +102,6 @@ export interface CommandRegistry {
 }
 
 /**
- * Extracts the definitions for a list of commands.
- */
-export type ExtractCommandDefinitions<Commands extends CommandRegistry> = {
-  [Key in keyof Commands]: Commands[Key] extends Command<
-    infer Name,
-    infer Payload,
-    infer Options
-  >
-    ? Command<Name, Payload, Options>
-    : never;
-};
-
-/**
  * Options for configuring command execution, including resilience strategies and query dependencies.
  *
  * @template KnownQueries - Array of string literals representing names of queries the command depends on.

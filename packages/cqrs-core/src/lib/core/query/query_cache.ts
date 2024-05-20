@@ -5,8 +5,8 @@ import { JsonSerializer } from '../../utilities/serializer/json_serializer';
 import { SubscriptionManager } from '../../utilities/subscription/subscription_manager';
 
 import type { CacheEvent } from '../../infrastructure/cache/cache';
-import type { DurationUnit } from '../../types/utilities/duration_unit';
 import type { Query } from '../../types/core/query';
+import type { DurationUnit } from '../../types/helpers';
 import type {
   AsyncStorageDriver,
   SyncStorageDriver,

@@ -1,4 +1,4 @@
-import type { AsyncFunction } from '../../../types/main';
+import type { AsyncFunction } from '../../../types/helpers';
 
 /**
  * The fundamental building block for defining task execution strategies.

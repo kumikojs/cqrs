@@ -1,4 +1,4 @@
-import type { VoidFunction } from '../../types';
+import type { VoidFunction } from '../../types/helpers';
 
 /**
  * The Observable class is a simple class that allows you to create

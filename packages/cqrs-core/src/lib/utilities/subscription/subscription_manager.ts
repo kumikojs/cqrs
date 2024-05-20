@@ -1,4 +1,4 @@
-import { VoidFunction } from '../../types';
+import type { VoidFunction } from '../../types/helpers';
 
 export class SubscriptionManager {
   #subscriptions: VoidFunction[] = [];
