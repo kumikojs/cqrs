@@ -1,29 +1,15 @@
 import { Cache } from '../../infrastructure/cache/cache';
-import { IndexedDBAdapter } from '../../infrastructure/storage/adapters/indexed_db';
 import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
 import { JsonSerializer } from '../../utilities/serializer/json_serializer';
 import { SubscriptionManager } from '../../utilities/subscription/subscription_manager';
 
 import type { CacheEvent } from '../../infrastructure/cache/cache';
-import type { Query } from '../../types/core/query';
+import type { Query, QueryCacheOptions } from '../../types/core/query';
 import type { DurationUnit } from '../../types/helpers';
 import type {
   AsyncStorageDriver,
   SyncStorageDriver,
 } from '../../types/infrastructure/storage';
-
-type CacheOptions = {
-  ttl?: DurationUnit;
-  gcInterval?: DurationUnit;
-};
-
-export type QueryCacheOptions = {
-  l1?: CacheOptions;
-  l2?: CacheOptions & {
-    type?: 'local_storage' | 'indexed_db';
-    driver?: SyncStorageDriver | AsyncStorageDriver;
-  };
-};
 
 /**
  * A cache for storing query results.
@@ -62,17 +48,16 @@ export class QueryCache {
    */
   #serializer: JsonSerializer = new JsonSerializer();
 
-  constructor(options?: QueryCacheOptions) {
+  constructor(options: QueryCacheOptions) {
     this.#l1 = createCache({
-      type: 'memory',
       ttl: options?.l1?.ttl ?? '1m',
+      driver: new MemoryStorageDriver(),
       gcInterval: options?.l1?.gcInterval ?? '5m',
     });
 
     this.#l2 = createCache({
-      type: options?.l2?.type ?? 'indexed_db',
-      driver: options?.l2?.driver,
       ttl: options?.l2?.ttl ?? '1m',
+      driver: options.l2.driver,
       gcInterval: options?.l2?.gcInterval ?? '5m',
     });
 
@@ -228,27 +213,12 @@ export class QueryCache {
 }
 
 function createCache(
-  options: CacheOptions & {
-    type: 'local_storage' | 'indexed_db' | 'memory';
-    driver?: SyncStorageDriver | AsyncStorageDriver;
+  options: QueryCacheOptions['l1'] & {
+    driver: SyncStorageDriver | AsyncStorageDriver;
   }
 ) {
-  const driver = options?.driver ?? driverFromType(options.type);
-
   const ttl = options?.ttl ?? '1m';
   const gcInterval = options?.gcInterval ?? '1m';
 
-  return new Cache(driver, ttl, gcInterval);
-}
-
-function driverFromType(type: 'indexed_db' | 'local_storage' | 'memory') {
-  if (type === 'indexed_db' && typeof window !== 'undefined') {
-    return new IndexedDBAdapter('stoik', 'cache');
-  }
-
-  if (type === 'local_storage' && typeof window !== 'undefined') {
-    return window.localStorage;
-  }
-
-  return new MemoryStorageDriver();
+  return new Cache(options.driver, ttl, gcInterval);
 }

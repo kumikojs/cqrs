@@ -1,0 +1,23 @@
+{
+  "name": "web_storage",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/web_storage/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/web_storage",
+        "main": "packages/web_storage/src/index.ts",
+        "tsConfig": "packages/web_storage/tsconfig.lib.json",
+        "assets": ["packages/web_storage/*.md"]
+      }
+    },
+    "publish": {
+      "command": "node tools/scripts/publish.mjs web_storage {args.ver} {args.tag}",
+      "dependsOn": ["build"]
+    }
+  },
+  "tags": []
+}

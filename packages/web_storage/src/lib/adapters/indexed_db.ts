@@ -1,4 +1,4 @@
-import type { AsyncStorageDriver } from '../../../types/infrastructure/storage';
+import type { AsyncStorageDriver } from '@stoik/cqrs-core/types';
 
 /**
  * Represents a storage implementation using IndexedDB.

@@ -1,3 +1,5 @@
+import type { DurationUnit } from '../helpers';
+import type { AsyncStorageDriver, SyncStorageDriver } from '../main';
 import type { OptionsContainer } from './options/options';
 import type { ResilienceOptions } from './options/resilience_options';
 
@@ -128,3 +130,25 @@ export type ExtractQueryDefinitions<Queries extends QueryRegistry> = {
 export type ExtractQueries<Type> = Type extends { queries: QueryRegistry }
   ? Type['queries']
   : QueryRegistry;
+
+/**
+ * Represents the options for the query cache.
+ *
+ * @remarks
+ * The query cache is used to store the results of queries for a specified duration.
+ * The cache is split into two levels: L1 and L2.
+ * - The L1 cache is used for fast access to the most recent query results.
+ * - The L2 cache is used for long-term storage of query results.
+ * The cache is also responsible for invalidating query results when necessary.
+ */
+export type QueryCacheOptions = {
+  l1?: CacheOptions;
+  l2: CacheOptions & {
+    driver: SyncStorageDriver | AsyncStorageDriver;
+  };
+};
+
+type CacheOptions = {
+  ttl?: DurationUnit;
+  gcInterval?: DurationUnit;
+};

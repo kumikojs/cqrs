@@ -68,10 +68,10 @@ export class Client<
    *
    * @param options - The options for configuring the client.
    */
-  constructor(options?: ClientOptions) {
+  constructor(options: ClientOptions) {
     this.#logger = logger(options?.logger);
 
-    this.#cache = new QueryCache(options?.cache);
+    this.#cache = new QueryCache(options.cache);
 
     this.#eventBus = new EventBus(this.#logger);
     this.#commandBus = new CommandBus(
