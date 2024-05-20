@@ -16,7 +16,7 @@ import type {
   ExtractQueries,
   ExtractQueryResponse,
   InferredCommands,
-  QueryHandlerFunction,
+  QueryHandlerOrFunction,
 } from '@stoik/cqrs-core/types';
 
 /**
@@ -63,7 +63,7 @@ export function create<Modules extends BaseModule[] = BaseModule[]>(
      */
     useQuery: <TQuery extends KnownQueries[keyof KnownQueries]['query']>(
       query: TQuery,
-      handler?: QueryHandlerFunction<
+      handler?: QueryHandlerOrFunction<
         TQuery,
         ExtractQueryResponse<TQuery['queryName'], KnownQueries>
       >
