@@ -24,7 +24,7 @@ import type {
  * @returns An object containing methods to interact with the CQRS instance.
  */
 export function create<Modules extends BaseModule[] = BaseModule[]>(
-  options?: ClientOptions
+  options: ClientOptions
 ) {
   type KnownCommands = ExtractCommands<Combined<Modules>>;
   type KnownQueries = ExtractQueries<Combined<Modules>>;

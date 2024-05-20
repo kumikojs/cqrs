@@ -1,5 +1,9 @@
 import type { AsyncStorageDriver } from '@stoik/cqrs-core/types';
 
+export function createIndexedDBAdapter(dbName = 'stoik', storeName = 'cache') {
+  return new IndexedDBAdapter(dbName, storeName);
+}
+
 /**
  * Represents a storage implementation using IndexedDB.
  */

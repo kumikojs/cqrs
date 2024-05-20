@@ -19,7 +19,7 @@
       "@stoik/cqrs-core/types": ["packages/cqrs-core/src/lib/types/main.ts"],
       "@stoik/react-cqrs": ["packages/react-cqrs/src/index.ts"],
       "@stoik/web_storage": ["packages/web_storage/src/index.ts"],
-      "@stoik/web_storage/adapters": [
+      "@stoik/web_storage/adapters/indexed_db": [
         "packages/web_storage/src/lib/adapters/indexed_db.ts"
       ]
     }

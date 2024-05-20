@@ -4,7 +4,7 @@
   "description": "Web Storage API wrapper with TypeScript support",
   "exports": {
     ".": "./src/index.js",
-    "./adapters": "./src/lib/adapters/indexed_db.js"
+    "./adapters/indexed_db": "./src/lib/adapters/indexed_db.js"
   },
   "dependencies": {
     "tslib": "^2.3.0"
