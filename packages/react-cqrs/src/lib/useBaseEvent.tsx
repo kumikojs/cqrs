@@ -1,12 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect } from 'react';
+
 import { Stoik } from '@stoik/cqrs-core';
+import type { Event, EventHandlerOrFunction } from '@stoik/cqrs-core/types';
 
-import type { EventContract, EventHandlerContract } from '@stoik/cqrs-core';
-
-export const useBaseEvent = <TEvent extends EventContract>(
-  client: Stoik,
+export const useBaseEvent = <TEvent extends Event>(
+  client: Stoik<any>,
   eventName: TEvent['eventName'],
-  handler: EventHandlerContract<TEvent>['handle'] | EventHandlerContract<TEvent>
+  handler: EventHandlerOrFunction<TEvent>
 ) => {
   useEffect(() => {
     const subscription = client.event.on(eventName, handler);

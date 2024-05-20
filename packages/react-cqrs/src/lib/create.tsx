@@ -1,35 +1,39 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { Stoik } from '@stoik/cqrs-core';
+
 import { useBaseCommand } from './useBaseCommand';
 import { useBaseEvent } from './useBaseEvent';
 import { useBaseQuery } from './useBaseQuery';
 
 import type {
   BaseModule,
+  ClientOptions,
   Combined,
-  CommandHandlerContract,
-  ComputeCommands,
-  ComputeEvents,
-  ComputeQueries,
-  EventHandlerContract,
+  CommandHandlerOrFunction,
+  EventHandlerOrFunction,
+  ExtractCommands,
+  ExtractEvents,
+  ExtractQueries,
   ExtractQueryResponse,
   InferredCommands,
-  QueryHandlerContract,
-} from '@stoik/cqrs-core';
+  QueryHandlerFunction,
+} from '@stoik/cqrs-core/types';
 
 /**
  * Creates a CQRS (Command Query Responsibility Segregation) instance.
  * @returns An object containing methods to interact with the CQRS instance.
  */
-export function create<Modules extends BaseModule[] = BaseModule[]>() {
-  type KnownCommands = ComputeCommands<Combined<Modules>>;
-  type KnownQueries = ComputeQueries<Combined<Modules>>;
-  type KnownEvents = ComputeEvents<Combined<Modules>>;
+export function create<Modules extends BaseModule[] = BaseModule[]>(
+  options?: ClientOptions
+) {
+  type KnownCommands = ExtractCommands<Combined<Modules>>;
+  type KnownQueries = ExtractQueries<Combined<Modules>>;
+  type KnownEvents = ExtractEvents<Combined<Modules>>;
 
-  const client = new Stoik<Modules>();
+  const client = new Stoik<Modules>(options);
 
   return {
+    stoik: client,
     /**
      * Hook to execute a command.
      * @param command - The command to execute.
@@ -43,14 +47,13 @@ export function create<Modules extends BaseModule[] = BaseModule[]>() {
       >[keyof InferredCommands<KnownCommands, KnownQueries>]
     >(
       command: TCommand,
-      handler?: CommandHandlerContract<
+      handler?: CommandHandlerOrFunction<
         Extract<
           KnownCommands[keyof KnownCommands],
           { commandName: TCommand['commandName'] }
         >
-      >['execute']
-      // TODO: Fix the type of the handler
-    ) => useBaseCommand(client, command, handler as any),
+      >
+    ) => useBaseCommand<TCommand>(client, command, handler),
 
     /**
      * Hook to execute a query.
@@ -60,10 +63,10 @@ export function create<Modules extends BaseModule[] = BaseModule[]>() {
      */
     useQuery: <TQuery extends KnownQueries[keyof KnownQueries]['query']>(
       query: TQuery,
-      handler?: QueryHandlerContract<
+      handler?: QueryHandlerFunction<
         TQuery,
         ExtractQueryResponse<TQuery['queryName'], KnownQueries>
-      >['execute']
+      >
     ) =>
       useBaseQuery<
         TQuery,
@@ -77,9 +80,7 @@ export function create<Modules extends BaseModule[] = BaseModule[]>() {
      */
     useEvent: <TEvent extends KnownEvents[keyof KnownEvents]>(
       eventName: TEvent['eventName'],
-      handler:
-        | EventHandlerContract<TEvent>['handle']
-        | EventHandlerContract<TEvent>
+      handler: EventHandlerOrFunction<TEvent>
     ) => useBaseEvent(client, eventName, handler),
   };
 }
