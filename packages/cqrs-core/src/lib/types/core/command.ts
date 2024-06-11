@@ -43,7 +43,8 @@ export interface Command<
  * @example
  * ```typescript
  * import type { Command, CommandHandler } from '@stoik/cqrs-core';
- *
+ *import { Command } from '@stoik/react-cqrs';
+
  * type CreateUserCommand = Command<'user.create', { name: string }>;
  * type UpdateUserCommand = Command<'user.update', { id: number; name: string }>;
  *
@@ -82,23 +83,30 @@ export interface CommandHandler<
  *
  * @template CommandType - The type of command the handler accepts, extending the {@link Command} interface.
  */
-export type CommandHandlerFunction<CommandType extends Command> =
-  CommandHandler<CommandType>['execute'];
+export type CommandHandlerFunction<
+  CommandType extends Command = Command,
+  ResponseType = void,
+  ContextType = unknown
+> = CommandHandler<CommandType, ResponseType, ContextType>['execute'];
 
 /**
  * Type representing a command handler, which can be either a function or a class implementing the {@link CommandHandler} interface.
  *
  * @template CommandType - The type of command the handler accepts, extending the {@link Command} interface.
  */
-export type CommandHandlerOrFunction<CommandType extends Command> =
-  | CommandHandler<CommandType>
-  | CommandHandlerFunction<CommandType>;
+export type CommandHandlerOrFunction<
+  CommandType extends Command = Command,
+  ResponseType = void,
+  ContextType = unknown
+> =
+  | CommandHandler<CommandType, ResponseType, ContextType>
+  | CommandHandlerFunction<CommandType, ResponseType, ContextType>;
 
 /**
  * Represents a registry of commands.
  */
 export interface CommandRegistry {
-  [key: string]: Command<string, unknown, unknown>;
+  [key: string]: Command;
 }
 
 /**
@@ -163,6 +171,13 @@ export type InferredCommands<
   >;
 };
 
+export interface InferredCommand<
+  KnownCommands extends CommandRegistry,
+  KnownQueries extends QueryRegistry
+> extends Command {
+  commandName: keyof InferredCommands<KnownCommands, KnownQueries>;
+}
+
 /**
  * Context object provided to command handlers for executing commands.
  *
@@ -177,22 +192,12 @@ type CommandContext<
   emit: EventEmitter<KnownEvents>['emit'];
 };
 
-/**
- * A record of inferred command handlers, constructed from known command and event types.
- * Represents a function or class responsible for executing a specific command type.
- * Provides a context object with access to the event bus for publishing events.
- *
- * @template CommandType - The type of command the handler accepts, extending the {@link Command} interface.
- * @template ResponseType - The return type of the command execution, indicating any result or output.
- * @template KnownQueries - Record of known query types.
- * @template KnownEvents - Record of known event types.
- */
-export type InferredCommandHandlers<
+export type InferredCommandHandler<
   CommandType extends Command,
   ResponseType = void,
   KnownQueries extends QueryRegistry = QueryRegistry,
   KnownEvents extends EventRegistry = EventRegistry
-> = CommandHandler<
+> = CommandHandlerOrFunction<
   CommandType,
   ResponseType,
   CommandContext<KnownQueries, KnownEvents>

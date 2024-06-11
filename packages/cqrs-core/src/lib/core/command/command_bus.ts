@@ -8,8 +8,9 @@ import { CommandInterceptors } from './command_interceptors';
 import type {
   Command,
   CommandHandlerOrFunction,
+  CommandRegistry,
   ExtractCommand,
-  InferredCommandHandlers,
+  InferredCommandHandler,
   InferredCommands,
 } from '../../types/core/command';
 import type { EventRegistry } from '../../types/core/event';
@@ -54,7 +55,7 @@ import type { InterceptorManagerContract } from '../../types/infrastructure/inte
  * ```
  */
 export class CommandBus<
-  KnownCommands extends Record<string, Command> = Record<string, Command>,
+  KnownCommands extends CommandRegistry = CommandRegistry,
   KnownQueries extends QueryRegistry = QueryRegistry,
   KnownEvents extends EventRegistry = EventRegistry
 > {
@@ -139,19 +140,12 @@ export class CommandBus<
     TCommandName extends string = KnownCommands[keyof KnownCommands]['commandName']
   >(
     commandName: TCommandName,
-    handler:
-      | InferredCommandHandlers<
-          ExtractCommand<TCommandName, KnownCommands>,
-          void,
-          KnownQueries,
-          KnownEvents
-        >
-      | InferredCommandHandlers<
-          ExtractCommand<TCommandName, KnownCommands>,
-          void,
-          KnownQueries,
-          KnownEvents
-        >['execute']
+    handler: InferredCommandHandler<
+      ExtractCommand<TCommandName, KnownCommands>,
+      void,
+      KnownQueries,
+      KnownEvents
+    >
   ): VoidFunction {
     const handlerFn = (command: ExtractCommand<TCommandName, KnownCommands>) =>
       typeof handler === 'function'
@@ -179,19 +173,12 @@ export class CommandBus<
     TCommandName extends string = KnownCommands[keyof KnownCommands]['commandName']
   >(
     commandName: TCommandName,
-    handler:
-      | InferredCommandHandlers<
-          ExtractCommand<TCommandName, KnownCommands>,
-          void,
-          KnownQueries,
-          KnownEvents
-        >
-      | InferredCommandHandlers<
-          ExtractCommand<TCommandName, KnownCommands>,
-          void,
-          KnownQueries,
-          KnownEvents
-        >['execute']
+    handler: InferredCommandHandler<
+      ExtractCommand<TCommandName, KnownCommands>,
+      void,
+      KnownQueries,
+      KnownEvents
+    >
   ) {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
