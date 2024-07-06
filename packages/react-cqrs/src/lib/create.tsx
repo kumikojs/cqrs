@@ -9,13 +9,15 @@ import type {
   BaseModule,
   ClientOptions,
   Combined,
+  Command,
   CommandHandlerOrFunction,
   EventHandlerOrFunction,
   ExtractCommands,
   ExtractEvents,
   ExtractQueries,
+  ExtractQueryRequest,
   ExtractQueryResponse,
-  InferredCommands,
+  InferredCommand,
   QueryHandlerOrFunction,
 } from '@stoik/cqrs-core/types';
 
@@ -32,28 +34,57 @@ export function create<Modules extends BaseModule[] = BaseModule[]>(
 
   const client = new Stoik<Modules>(options);
 
+  function useCommand<
+    TCommand extends InferredCommand<
+      KnownCommands[keyof KnownCommands]['commandName'],
+      KnownCommands,
+      KnownQueries
+    > = InferredCommand<
+      KnownCommands[keyof KnownCommands]['commandName'],
+      KnownCommands,
+      KnownQueries
+    >
+  >(
+    command: TCommand,
+    handler?: CommandHandlerOrFunction<TCommand>
+  ): ReturnType<typeof useBaseCommand<TCommand>>;
+
+  function useCommand<TCommand extends Command>(
+    command: InferredCommand<
+      TCommand['commandName'],
+      KnownCommands,
+      KnownQueries,
+      TCommand
+    >,
+    handler?: CommandHandlerOrFunction<
+      InferredCommand<
+        TCommand['commandName'],
+        KnownCommands,
+        KnownQueries,
+        TCommand
+      >
+    >
+  ) {
+    return useBaseCommand<
+      InferredCommand<
+        TCommand['commandName'],
+        KnownCommands,
+        KnownQueries,
+        TCommand
+      >
+    >(client, command, handler);
+  }
+
   return {
     stoik: client,
+
     /**
      * Hook to execute a command.
      * @param command - The command to execute.
      * @param handler - Optional handler function to execute the command.
      * @returns The result of executing the command.
      */
-    useCommand: <
-      TCommand extends InferredCommands<
-        KnownCommands,
-        KnownQueries
-      >[keyof InferredCommands<KnownCommands, KnownQueries>]
-    >(
-      command: TCommand,
-      handler?: CommandHandlerOrFunction<
-        Extract<
-          KnownCommands[keyof KnownCommands],
-          { commandName: TCommand['commandName'] }
-        >
-      >
-    ) => useBaseCommand<TCommand>(client, command, handler),
+    useCommand,
 
     /**
      * Hook to execute a query.
@@ -64,7 +95,7 @@ export function create<Modules extends BaseModule[] = BaseModule[]>(
     useQuery: <TQuery extends KnownQueries[keyof KnownQueries]['query']>(
       query: TQuery,
       handler?: QueryHandlerOrFunction<
-        TQuery,
+        ExtractQueryRequest<TQuery['queryName'], KnownQueries>,
         ExtractQueryResponse<TQuery['queryName'], KnownQueries>
       >
     ) =>
