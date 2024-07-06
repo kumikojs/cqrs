@@ -1,6 +1,7 @@
-import { Query, QueryRegistry } from '../../types/core/query';
 import { StoikLogger } from '../../utilities/logger/stoik_logger';
 import { QueryCache } from '../query/query_cache';
+
+import type { Query, QueryRegistry } from '../../types/core/query';
 
 /**
  * Options for configuring the CommandCache.

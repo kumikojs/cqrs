@@ -1,4 +1,7 @@
-import type { StoikLoggerOptions } from '../utilities/logger/stoik_logger';
+import {
+  StoikLogger,
+  type StoikLoggerOptions,
+} from '../utilities/logger/stoik_logger';
 import type { CommandRegistry } from './core/command';
 import type { EventRegistry } from './core/event';
 import type { ResilienceBuilderOptions } from './core/options/resilience_options';
@@ -15,7 +18,7 @@ export type ClientOptions = NonNullable<
   Partial<{
     command: ResilienceBuilderOptions;
     query: ResilienceBuilderOptions;
-    logger: StoikLoggerOptions;
+    logger: StoikLoggerOptions | StoikLogger;
   }>
 > & {
   cache: QueryCacheOptions;

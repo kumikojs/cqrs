@@ -2,11 +2,12 @@ import { CommandBus } from './core/command/command_bus';
 import { EventBus } from './core/event/event_bus';
 import { QueryBus } from './core/query/query_bus';
 import { QueryCache } from './core/query/query_cache';
+import { StoikLogger, logger } from './utilities/logger/stoik_logger';
+
 import type { CommandRegistry, ExtractCommands } from './types/core/command';
 import type { EventRegistry, ExtractEvents } from './types/core/event';
-import type { BaseModule, ClientOptions, Combined } from './types/main';
 import type { ExtractQueries, QueryRegistry } from './types/core/query';
-import { StoikLogger, logger } from './utilities/logger/stoik_logger';
+import type { BaseModule, ClientOptions, Combined } from './types/main';
 
 /**
  * **Client Class**
@@ -69,7 +70,10 @@ export class Client<
    * @param options - The options for configuring the client.
    */
   constructor(options: ClientOptions) {
-    this.#logger = logger(options?.logger);
+    this.#logger =
+      options?.logger instanceof StoikLogger
+        ? options.logger
+        : logger(options.logger);
 
     this.#cache = new QueryCache(options.cache);
 

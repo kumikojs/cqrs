@@ -171,12 +171,14 @@ export type InferredCommands<
   >;
 };
 
-export interface InferredCommand<
+export type InferredCommand<
+  CommandName extends string,
   KnownCommands extends CommandRegistry,
-  KnownQueries extends QueryRegistry
-> extends Command {
-  commandName: keyof InferredCommands<KnownCommands, KnownQueries>;
-}
+  KnownQueries extends QueryRegistry,
+  DefaultCommand = Command
+> = CommandName extends keyof InferredCommands<KnownCommands, KnownQueries>
+  ? InferredCommands<KnownCommands, KnownQueries>[CommandName]
+  : DefaultCommand;
 
 /**
  * Context object provided to command handlers for executing commands.
