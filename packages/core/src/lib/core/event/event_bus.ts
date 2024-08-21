@@ -92,9 +92,9 @@ export class EventBus<KnownEvents extends EventRegistry = EventRegistry>
    *                  The handler will be invoked whenever an event of the specified type is emitted.
    * @returns A function that can be used to unsubscribe from the event.
    */
-  on<EventType extends KnownEvents[keyof KnownEvents]>(
-    eventName: EventType['eventName'],
-    handler: EventHandlerOrFunction<EventType>
+  on<TEventName extends string = KnownEvents[keyof KnownEvents]['eventName']>(
+    eventName: TEventName,
+    handler: EventHandlerOrFunction<KnownEvents[TEventName]>
   ): VoidFunction {
     const handlerFn = typeof handler === 'function' ? handler : handler.handle;
 
