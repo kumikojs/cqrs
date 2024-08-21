@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Aesop } from '@aesop/core';
+import { Kumiko } from '@kumiko/core';
 
 import { useBaseCommand } from './useBaseCommand';
 import { useBaseEvent } from './useBaseEvent';
@@ -19,7 +19,7 @@ import type {
   ExtractQueryResponse,
   InferredCommand,
   QueryHandlerOrFunction,
-} from '@aesop/core/types';
+} from '@kumiko/core/types';
 
 /**
  * Creates a CQRS (Command Query Responsibility Segregation) instance.
@@ -32,7 +32,7 @@ export function create<Modules extends BaseModule[] = BaseModule[]>(
   type KnownQueries = ExtractQueries<Combined<Modules>>;
   type KnownEvents = ExtractEvents<Combined<Modules>>;
 
-  const client = new Aesop<Modules>(options);
+  const client = new Kumiko<Modules>(options);
 
   function useCommand<
     TCommand extends InferredCommand<
@@ -76,7 +76,7 @@ export function create<Modules extends BaseModule[] = BaseModule[]>(
   }
 
   return {
-    aesop: client,
+    kumiko: client,
 
     /**
      * Hook to execute a command.

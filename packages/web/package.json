@@ -1,5 +1,5 @@
 {
-  "name": "@aesop/web",
+  "name": "@kumiko/web",
   "version": "0.0.1",
   "description": "Web Storage API wrapper with TypeScript support",
   "exports": {

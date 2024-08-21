@@ -13,7 +13,7 @@ import type { QueryRegistry } from './query';
  * @template Options - The optional configuration options for the command, extending the generic {@link CommandOptions} interface.
  * @example
  * ```typescript
- * import type { Command } from '@aesop/core';
+ * import type { Command } from '@kumiko/core';
  *
  * type CreateUserCommand = Command<'user.create', { name: string }>;
  * ```
@@ -42,8 +42,8 @@ export interface Command<
  * @template ResponseType - The optional return type of the command execution, indicating any result or output.
  * @example
  * ```typescript
- * import type { Command, CommandHandler } from '@aesop/core';
- *import { Command } from '@aesop/react';
+ * import type { Command, CommandHandler } from '@kumiko/core';
+ *import { Command } from '@kumiko/react';
 
  * type CreateUserCommand = Command<'user.create', { name: string }>;
  * type UpdateUserCommand = Command<'user.update', { id: number; name: string }>;

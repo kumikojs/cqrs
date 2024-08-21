@@ -15,11 +15,11 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@aesop/core": ["packages/core/src/index.ts"],
-      "@aesop/core/types": ["packages/core/src/lib/types/main.ts"],
-      "@aesop/react": ["packages/react/src/index.ts"],
-      "@aesop/web": ["packages/web/src/index.ts"],
-      "@aesop/web/adapters/indexed_db": [
+      "@kumiko/core": ["packages/core/src/index.ts"],
+      "@kumiko/core/types": ["packages/core/src/lib/types/main.ts"],
+      "@kumiko/react": ["packages/react/src/index.ts"],
+      "@kumiko/web": ["packages/web/src/index.ts"],
+      "@kumiko/web/adapters/indexed_db": [
         "packages/web/src/lib/adapters/indexed_db.ts"
       ]
     }

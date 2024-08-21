@@ -1,6 +1,6 @@
 import { MemoryBusDriver } from '../../infrastructure/bus/drivers/memory_bus';
 import { AbortManager } from '../../infrastructure/middleware/abort_manager';
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { QueryCache } from './query_cache';
 import { QueryInterceptors } from './query_interceptors';
 
@@ -30,7 +30,7 @@ import type { BusDriver } from '../../types/infrastructure/bus';
  *                         Keys are query names (strings), and values are the corresponding {@link QueryContract} types.
  * @example
  * ```typescript
- * import { type QueryContract, QueryBus } from '@aesop/core';
+ * import { type QueryContract, QueryBus } from '@kumiko/core';
  *
  * type User = { id: number; name: string; };
  * type GetUserQuery = QueryContract<'user.get', { id: number; }>;
@@ -80,7 +80,7 @@ export class QueryBus<
    */
   #abortManager = new AbortManager();
 
-  #logger: AesopLogger;
+  #logger: KumikoLogger;
 
   /**
    * Constructs a QueryBus instance.
@@ -89,7 +89,7 @@ export class QueryBus<
    */
   constructor(
     cache: QueryCache,
-    logger: AesopLogger,
+    logger: KumikoLogger,
     options: ResilienceBuilderOptions
   ) {
     this.#logger = logger.child({

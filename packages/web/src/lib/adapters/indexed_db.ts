@@ -1,7 +1,6 @@
+import type { typeAsyncStorageDriver } from '@kumiko/core/types';
 
-import type { typeAsyncStorageDriver } from '@aesop/core/types';
-
-export function createIndexedDBAdapter(dbName = 'aesop', storeName = 'cache') {
+export function createIndexedDBAdapter(dbName = 'kumiko', storeName = 'cache') {
   return new IndexedDBAdapter(dbName, storeName);
 }
 

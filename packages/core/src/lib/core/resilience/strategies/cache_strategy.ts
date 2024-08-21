@@ -19,7 +19,7 @@ import type { AsyncFunction } from '../../../types/helpers';
  *
  * @example
  * ```ts
- * import { CacheStrategy, Cache } from '@aesop/core';
+ * import { CacheStrategy, Cache } from '@kumiko/core';
  *
  * const cache = new Cache();
  * const strategy = new CacheStrategy(cache);

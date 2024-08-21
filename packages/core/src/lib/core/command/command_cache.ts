@@ -1,4 +1,4 @@
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { QueryCache } from '../query/query_cache';
 
 import type { Query, QueryRegistry } from '../../types/core/query';
@@ -8,7 +8,7 @@ import type { Query, QueryRegistry } from '../../types/core/query';
  */
 type CommandCacheOptions = {
   cache: QueryCache;
-  logger: AesopLogger;
+  logger: KumikoLogger;
 };
 
 /**
@@ -19,7 +19,7 @@ type CommandCacheOptions = {
 export class CommandCache<KnownQueries extends QueryRegistry = QueryRegistry> {
   #cache: QueryCache;
   #promise?: Promise<unknown>;
-  #logger: AesopLogger;
+  #logger: KumikoLogger;
 
   /**
    * Constructs a `CommandCache` instance.

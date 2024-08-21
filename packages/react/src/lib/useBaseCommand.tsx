@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useState, useSyncExternalStore } from 'react';
 
-import { CommandSubject, Aesop } from '@aesop/core';
-import type { Command, CommandHandlerOrFunction } from '@aesop/core/types';
+import { CommandSubject, Kumiko } from '@kumiko/core';
+import type { Command, CommandHandlerOrFunction } from '@kumiko/core/types';
 
 /**
  * Base hook for executing commands.
@@ -14,7 +14,7 @@ import type { Command, CommandHandlerOrFunction } from '@aesop/core/types';
  * @returns A tuple containing the current state of the command execution and the execute function.
  */
 export function useBaseCommand<TRequest extends Command>(
-  client: Aesop<any>,
+  client: Kumiko<any>,
   command: TRequest,
   // FIXME: This should be `CommandHandlerOrFunction<TRequest>` instead of `CommandHandlerOrFunction<any>`
   //       but it's not possible to infer the correct type for the handler.

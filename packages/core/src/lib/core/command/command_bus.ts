@@ -1,5 +1,5 @@
 import { MemoryBusDriver } from '../../infrastructure/bus/drivers/memory_bus';
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { EventBus } from '../event/event_bus';
 import { QueryCache } from '../query/query_cache';
 import { CommandCache } from './command_cache';
@@ -31,7 +31,7 @@ import type { InterceptorManagerContract } from '../../types/infrastructure/inte
  * @template KnownQueries - A record of known query types for inference purposes.
  * @example
  * ```ts
- * import { type Command, CommandBus } from '@aesop/core';
+ * import { type Command, CommandBus } from '@kumiko/core';
  *
  * type CreateUserCommand = Command<'user.create', { name: string; }>;
  * type UpdateUserCommand = Command<'user.update', { id: number; name: string; }>;
@@ -77,7 +77,7 @@ export class CommandBus<
 
   #cache: CommandCache<KnownQueries>;
 
-  #logger: AesopLogger;
+  #logger: KumikoLogger;
 
   /**
    * Constructs a CommandBus instance.
@@ -87,7 +87,7 @@ export class CommandBus<
   constructor(
     cache: QueryCache,
     emitter: EventBus,
-    logger: AesopLogger,
+    logger: KumikoLogger,
     options: ResilienceBuilderOptions
   ) {
     this.#logger = logger.child({

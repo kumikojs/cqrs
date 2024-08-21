@@ -1,8 +1,8 @@
-import { create } from '@aesop/react';
+import { create } from '@kumiko/react';
 
 import type { TodoModule } from '../../types/todo';
 
-export const aesop = create<[TodoModule]>({
+export const kumiko = create<[TodoModule]>({
   cache: {
     l2: {
       driver: localStorage,
@@ -10,7 +10,7 @@ export const aesop = create<[TodoModule]>({
   },
 });
 
-aesop.aesop.command.register('CreateTodo', async (command, context) => {
+kumiko.kumiko.command.register('CreateTodo', async (command, context) => {
   console.log('CreateTodo', command);
 
   context.emit({
@@ -22,19 +22,19 @@ aesop.aesop.command.register('CreateTodo', async (command, context) => {
   });
 });
 
-aesop.aesop.command.register('UpdateTodo', async (command) => {
+kumiko.kumiko.command.register('UpdateTodo', async (command) => {
   console.log('UpdateTodo', command);
 });
 
-aesop.aesop.event.on('TodoCreated', async (event) => {
+kumiko.kumiko.event.on('TodoCreated', async (event) => {
   console.log('TodoCreated', event);
 });
 
-aesop.aesop.event.on('TodoUpdated', async (event) => {
+kumiko.kumiko.event.on('TodoUpdated', async (event) => {
   console.log('TodoUpdated', event);
 });
 
-aesop.aesop.query.register('GetTodo', async (query) => {
+kumiko.kumiko.query.register('GetTodo', async (query) => {
   console.log('GetTodo', query);
 
   return {
@@ -43,7 +43,7 @@ aesop.aesop.query.register('GetTodo', async (query) => {
   };
 });
 
-aesop.aesop.query.register('GetTodos', async (query) => {
+kumiko.kumiko.query.register('GetTodos', async (query) => {
   console.log('GetTodos', query);
 
   return {

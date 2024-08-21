@@ -1,4 +1,4 @@
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { BusException } from './bus_exception';
 
 import type { BusErrorKeys, BusOptions } from '../../types/infrastructure/bus';
@@ -9,7 +9,7 @@ import type { BusErrorKeys, BusOptions } from '../../types/infrastructure/bus';
  */
 export class BusOptionsManager<TChannel> {
   #options: BusOptions;
-  #logger: AesopLogger | undefined;
+  #logger: KumikoLogger | undefined;
 
   constructor({ logger, ...options }: Partial<BusOptions> = {}) {
     this.#options = {
@@ -23,7 +23,7 @@ export class BusOptionsManager<TChannel> {
     });
   }
 
-  get logger(): AesopLogger | undefined {
+  get logger(): KumikoLogger | undefined {
     return this.#logger;
   }
 

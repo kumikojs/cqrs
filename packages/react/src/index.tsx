@@ -1,5 +1,5 @@
-export * from '@aesop/core';
-export type * from '@aesop/core/types';
+export * from '@kumiko/core';
+export type * from '@kumiko/core/types';
 
 export * from './lib/useBaseCommand';
 export * from './lib/useBaseQuery';

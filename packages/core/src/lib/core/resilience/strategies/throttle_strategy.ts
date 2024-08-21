@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Cache } from '../../../infrastructure/cache/cache';
-import { AesopLogger } from '../../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../../utilities/logger/kumiko_logger';
 import { Strategy } from './base_strategy';
 import { ThrottleException } from './exceptions/throttle_exception';
 
@@ -14,8 +14,8 @@ import type { AsyncFunction } from '../../../types/helpers';
  *
  *  @example
  * ```ts
- * import { ThrottleStrategy } from '@aesop/core';
- * import { Cache } from '@aesop/cache';
+ * import { ThrottleStrategy } from '@kumiko/core';
+ * import { Cache } from '@kumiko/cache';
  *
  * const cache = new Cache();
  * const strategy = new ThrottleStrategy(cache);
@@ -62,7 +62,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
    */
   #cache: Cache;
 
-  #logger: AesopLogger;
+  #logger: KumikoLogger;
 
   /**
    * Creates a new instance of the ThrottleStrategy.
@@ -72,7 +72,7 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
    */
   constructor(
     cache: Cache,
-    logger: AesopLogger,
+    logger: KumikoLogger,
     options?: Partial<ThrottleOptions>
   ) {
     super({

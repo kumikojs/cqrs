@@ -1,4 +1,4 @@
-import type { Command, Event, Module, Query } from '@aesop/react';
+import type { Command, Event, Module, Query } from '@kumiko/react';
 
 export type CreateTodoCommand = Command<
   'CreateTodo',

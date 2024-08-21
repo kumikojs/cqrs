@@ -1,4 +1,4 @@
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { QueryCache } from '../query/query_cache';
 import { CacheStrategy } from './strategies/cache_strategy';
 import { DeduplicationStrategy } from './strategies/deduplication_strategy';
@@ -18,7 +18,7 @@ import type { ResilienceStrategiesBuilder } from '../../types/core/options/resil
  */
 export const createResilienceStrategiesBuilder = (
   cache: QueryCache,
-  logger: AesopLogger
+  logger: KumikoLogger
 ): ResilienceStrategiesBuilder => ({
   cache: (options) => new CacheStrategy(cache, options),
   retry: (options) => new RetryStrategy(options),

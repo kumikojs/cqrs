@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useState, useSyncExternalStore } from 'react';
 
-import { Aesop, QuerySubject } from '@aesop/core';
-import type { Query, QueryHandlerOrFunction } from '@aesop/core/types';
+import { Kumiko, QuerySubject } from '@kumiko/core';
+import type { Query, QueryHandlerOrFunction } from '@kumiko/core/types';
 
 export function useBaseQuery<TRequest extends Query, TResponse>(
-  client: Aesop<any>,
+  client: Kumiko<any>,
   query: TRequest,
   handler?: QueryHandlerOrFunction<TRequest, TResponse>
 ) {

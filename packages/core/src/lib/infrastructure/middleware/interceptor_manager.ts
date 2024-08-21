@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 
 import type {
   InterceptorContract,
@@ -9,9 +9,9 @@ import type {
 
 export class InterceptorManager<T> implements InterceptorManagerContract<T> {
   #interceptors: InterceptorContract<any>[] = [];
-  #logger: AesopLogger;
+  #logger: KumikoLogger;
 
-  constructor(logger: AesopLogger) {
+  constructor(logger: KumikoLogger) {
     this.#logger = logger.child({ topics: ['interceptors'] });
   }
 
@@ -31,7 +31,7 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
     const name =
       typeof nameOrInterceptor === 'string'
         ? nameOrInterceptor
-        : 'aesop.interceptors.anonymous';
+        : 'kumiko.interceptors.anonymous';
     const effectiveInterceptor = interceptor ?? nameOrInterceptor;
     this.#registerInterceptor(
       name,
@@ -55,7 +55,7 @@ export class InterceptorManager<T> implements InterceptorManagerContract<T> {
     const name =
       typeof nameOrSelector === 'string'
         ? nameOrSelector
-        : 'aesop.interceptors.tap-anonymous';
+        : 'kumiko.interceptors.tap-anonymous';
     const selector =
       typeof nameOrSelector === 'function'
         ? nameOrSelector

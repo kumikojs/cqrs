@@ -2,7 +2,7 @@ import { CommandBus } from './core/command/command_bus';
 import { EventBus } from './core/event/event_bus';
 import { QueryBus } from './core/query/query_bus';
 import { QueryCache } from './core/query/query_cache';
-import { AesopLogger, logger } from './utilities/logger/aesop_logger';
+import { KumikoLogger, logger } from './utilities/logger/kumiko_logger';
 
 import type { CommandRegistry, ExtractCommands } from './types/core/command';
 import type { EventRegistry, ExtractEvents } from './types/core/event';
@@ -12,7 +12,7 @@ import type { BaseModule, ClientOptions, Combined } from './types/main';
 /**
  * **Client Class**
  *
- * The `Client` class serves as the primary entry point for interacting with the Aesop library.
+ * The `Client` class serves as the primary entry point for interacting with the Kumiko library.
  * It acts as a facade, providing a simplified interface to the command, query, and event buses.
  * It facilitates communication and coordination between different parts of the application,
  * playing a role similar to a mediator pattern.
@@ -23,8 +23,8 @@ import type { BaseModule, ClientOptions, Combined } from './types/main';
  *
  * @example
  * ```ts
- * import { Client } from '@aesop/core';
- * import type { Command, QueryContract, EventContract } from '@aesop/core';
+ * import { Client } from '@kumiko/core';
+ * import type { Command, QueryContract, EventContract } from '@kumiko/core';
  *
  * // Define the commands
  * type CreateUserCommand = Command<'user.create', { name: string; email: string; }>;
@@ -62,7 +62,7 @@ export class Client<
   #eventBus: EventBus<KnownEvents>;
   #commandBus: CommandBus<KnownCommands, KnownQueries, KnownEvents>;
   #queryBus: QueryBus<KnownQueries>;
-  #logger: AesopLogger;
+  #logger: KumikoLogger;
 
   /**
    * Constructs a new `Client` instance.
@@ -71,7 +71,7 @@ export class Client<
    */
   constructor(options: ClientOptions) {
     this.#logger =
-      options?.logger instanceof AesopLogger
+      options?.logger instanceof KumikoLogger
         ? options.logger
         : logger(options.logger);
 

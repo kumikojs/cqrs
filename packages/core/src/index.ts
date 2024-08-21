@@ -1,4 +1,4 @@
-export { Client as Aesop } from './lib/client';
+export { Client as Kumiko } from './lib/client';
 
 export * from './lib/core/command/command_bus';
 export * from './lib/core/command/command_subject';

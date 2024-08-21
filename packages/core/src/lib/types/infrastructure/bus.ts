@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 
 /**
  * The bus driver interface.
@@ -93,7 +93,7 @@ export type BusOptions = {
    *
    * @type {Logger}
    */
-  logger?: AesopLogger;
+  logger?: KumikoLogger;
 };
 
 /**

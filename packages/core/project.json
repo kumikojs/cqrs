@@ -1,28 +1,28 @@
 {
-  "name": "aesop_core",
+  "name": "kumiko_core",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "packages/aesop_core/src",
+  "sourceRoot": "packages/kumiko_core/src",
   "projectType": "library",
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/packages/aesop_core",
-        "main": "packages/aesop_core/src/index.ts",
-        "tsConfig": "packages/aesop_core/tsconfig.lib.json",
-        "assets": ["packages/aesop_core/*.md"]
+        "outputPath": "dist/packages/kumiko_core",
+        "main": "packages/kumiko_core/src/index.ts",
+        "tsConfig": "packages/kumiko_core/tsconfig.lib.json",
+        "assets": ["packages/kumiko_core/*.md"]
       }
     },
     "publish": {
-      "command": "node tools/scripts/publish.mjs aesop_core {args.ver} {args.tag}",
+      "command": "node tools/scripts/publish.mjs kumiko_core {args.ver} {args.tag}",
       "dependsOn": ["build"]
     },
     "test": {
       "executor": "@nx/vite:test",
       "outputs": ["{options.reportsDirectory}"],
       "options": {
-        "reportsDirectory": "../../coverage/packages/aesop_core"
+        "reportsDirectory": "../../coverage/packages/kumiko_core"
       }
     }
   },

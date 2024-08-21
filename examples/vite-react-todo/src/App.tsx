@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import viteLogo from '/vite.svg';
 import './App.css';
-import { aesop } from './infra/vendors/aesop';
+import { kumiko } from './infra/vendors/kumiko';
 
-const { useCommand, useEvent, useQuery } = aesop;
+const { useCommand, useEvent, useQuery } = kumiko;
 
 function App() {
   const [result, fn] = useQuery({

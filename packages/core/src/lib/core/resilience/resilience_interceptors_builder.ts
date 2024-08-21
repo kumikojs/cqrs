@@ -3,7 +3,7 @@
 import { InterceptorManager } from '../../infrastructure/middleware/interceptor_manager';
 import { QueryCache } from '../query/query_cache';
 import { createResilienceStrategiesBuilder } from './resilience_strategies_builder';
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 
 import type {
   ResilienceBuilderOptions,
@@ -77,7 +77,7 @@ export class ResilienceInterceptorsBuilder<
    */
   constructor(
     cache: QueryCache,
-    logger: AesopLogger,
+    logger: KumikoLogger,
     {
       serialize,
       ...options
@@ -99,7 +99,7 @@ export class ResilienceInterceptorsBuilder<
    */
   public addRetryInterceptor(): this {
     this.#interceptorManager.use(
-      'aesop.resilience.interceptors.retry',
+      'kumiko.resilience.interceptors.retry',
       async (command, next) => {
         if (!command.options?.retry) {
           return next?.(command);
@@ -124,7 +124,7 @@ export class ResilienceInterceptorsBuilder<
    */
   public addTimeoutInterceptor(): this {
     this.#interceptorManager.use(
-      'aesop.resilience.interceptors.timeout',
+      'kumiko.resilience.interceptors.timeout',
       async (command, next) => {
         if (!command.options?.timeout) {
           return next?.(command);
@@ -150,7 +150,7 @@ export class ResilienceInterceptorsBuilder<
    */
   public addThrottleInterceptor(): this {
     this.#interceptorManager.use(
-      'aesop.resilience.interceptors.throttle',
+      'kumiko.resilience.interceptors.throttle',
       async (command, next) => {
         if (!command.options?.throttle) {
           return next?.(command);
@@ -176,7 +176,7 @@ export class ResilienceInterceptorsBuilder<
    */
   public addFallbackInterceptor(): this {
     this.#interceptorManager.use(
-      'aesop.resilience.interceptors.fallback',
+      'kumiko.resilience.interceptors.fallback',
       async (command, next) => {
         if (!command.options?.fallback) {
           return next?.(command);
@@ -199,7 +199,7 @@ export class ResilienceInterceptorsBuilder<
    */
   public addCacheInterceptor(): this {
     this.#interceptorManager.use(
-      'aesop.resilience.interceptors.cache',
+      'kumiko.resilience.interceptors.cache',
       async (command, next) => {
         if (!command.options?.cache) {
           return next?.(command);
@@ -225,7 +225,7 @@ export class ResilienceInterceptorsBuilder<
    */
   public addDeduplicationInterceptor(): this {
     this.#interceptorManager.use(
-      'aesop.resilience.interceptors.deduplication',
+      'kumiko.resilience.interceptors.deduplication',
       async (command, next) => {
         return this.#deduplicationStrategy.execute(command, async (request) =>
           next?.(request)

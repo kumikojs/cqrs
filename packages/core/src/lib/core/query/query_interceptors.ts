@@ -1,4 +1,4 @@
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 import { QueryCache } from './query_cache';
 
@@ -29,7 +29,7 @@ export class QueryInterceptors<
    */
   #resilienceInterceptorsBuilder: ResilienceInterceptorsBuilder<TQuery>;
 
-  #logger: AesopLogger;
+  #logger: KumikoLogger;
 
   /**
    * Creates a new instance of `QueryInterceptors`.
@@ -38,7 +38,7 @@ export class QueryInterceptors<
    */
   constructor(
     cache: QueryCache,
-    logger: AesopLogger,
+    logger: KumikoLogger,
     options: ResilienceBuilderOptions
   ) {
     this.#resilienceInterceptorsBuilder =

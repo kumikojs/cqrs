@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect } from 'react';
 
-import { Aesop } from '@aesop/core';
-import type { Event, EventHandlerOrFunction } from '@aesop/core/types';
+import { Kumiko } from '@kumiko/core';
+import type { Event, EventHandlerOrFunction } from '@kumiko/core/types';
 
 export const useBaseEvent = <TEvent extends Event>(
-  client: Aesop<any>,
+  client: Kumiko<any>,
   eventName: TEvent['eventName'],
   handler: EventHandlerOrFunction<TEvent>
 ) => {

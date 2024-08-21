@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { QueryCache } from '../query/query_cache';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 import { CommandCache } from './command_cache';
@@ -48,7 +48,7 @@ export class CommandInterceptors<
    * @private
    * Logger instance for logging command interceptor activities.
    */
-  #logger: AesopLogger;
+  #logger: KumikoLogger;
 
   /**
    * Constructs a `CommandInterceptors` instance.
@@ -59,7 +59,7 @@ export class CommandInterceptors<
    */
   constructor(
     cache: QueryCache,
-    logger: AesopLogger,
+    logger: KumikoLogger,
     options: ResilienceBuilderOptions
   ) {
     this.#cache = cache;

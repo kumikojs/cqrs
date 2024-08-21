@@ -1,5 +1,5 @@
 import { MemoryBusDriver } from '../../infrastructure/bus/drivers/memory_bus';
-import { AesopLogger } from '../../utilities/logger/aesop_logger';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 
 import type {
   EventEmitter,
@@ -15,7 +15,7 @@ import type { BusDriver } from '../../types/infrastructure/bus';
  *                          Keys are event names (strings), and values are the corresponding Event types.
  * @example
  * ```typescript
- * import { type Event, EventBus } from '@aesop/core';
+ * import { type Event, EventBus } from '@kumiko/core';
  *
  * type UserCreatedEvent = Event<'user.created', { id: number; name: string; }>;
  * type UserUpdatedEvent = Event<'user.updated', { id: number; name: string; }>;
@@ -56,14 +56,14 @@ export class EventBus<KnownEvents extends EventRegistry = EventRegistry>
    * @private
    * Logger instance for logging event bus activities.
    */
-  #logger: AesopLogger;
+  #logger: KumikoLogger;
 
   /**
    * Constructs an EventBus instance.
    *
    * @param logger - The logger instance to be used for logging.
    */
-  constructor(logger: AesopLogger) {
+  constructor(logger: KumikoLogger) {
     this.#logger = logger.child({ topics: ['event'] });
 
     this.#driver = new MemoryBusDriver({

@@ -19,14 +19,14 @@ const Topics = [
 type Topics = typeof Topics;
 type LoggerTopics = (typeof Topics)[number];
 
-export type AesopLoggerOptions = Omit<LoggerOptions<LoggerTopics[]>, 'topics'>;
+export type KumikoLoggerOptions = Omit<LoggerOptions<LoggerTopics[]>, 'topics'>;
 
-export function logger(config?: AesopLoggerOptions): AesopLogger {
-  return new AesopLogger(config);
+export function logger(config?: KumikoLoggerOptions): KumikoLogger {
+  return new KumikoLogger(config);
 }
 
-export class AesopLogger extends Logger<LoggerTopics[]> {
-  constructor(config?: AesopLoggerOptions) {
+export class KumikoLogger extends Logger<LoggerTopics[]> {
+  constructor(config?: KumikoLoggerOptions) {
     super(config);
   }
 }

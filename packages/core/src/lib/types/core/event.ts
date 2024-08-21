@@ -8,7 +8,7 @@ import type { Maybe } from '../helpers';
  * @template Payload - The optional payload data associated with the event, providing additional context or information.
  * @example
  * ```typescript
- * import type { Event } from '@aesop/core';
+ * import type { Event } from '@kumiko/core';
  *
  * type UserCreatedEvent = Event<'user.created', { id: number; name: string; }>;
  * ```
@@ -32,7 +32,7 @@ export interface Event<Name extends string = string, Payload = unknown> {
  * @template EventType - The type of event the handler accepts, extending the {@link Event} interface.
  * @example
  * ```typescript
- * import type { Event, EventHandler } from '@aesop/core';
+ * import type { Event, EventHandler } from '@kumiko/core';
  *
  * type UserCreatedEvent = Event<'user.created', { id: number; name: string; }>;
  *
