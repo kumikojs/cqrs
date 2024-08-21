@@ -1,0 +1,30 @@
+{
+  "name": "aesop_core",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/aesop_core/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/aesop_core",
+        "main": "packages/aesop_core/src/index.ts",
+        "tsConfig": "packages/aesop_core/tsconfig.lib.json",
+        "assets": ["packages/aesop_core/*.md"]
+      }
+    },
+    "publish": {
+      "command": "node tools/scripts/publish.mjs aesop_core {args.ver} {args.tag}",
+      "dependsOn": ["build"]
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "../../coverage/packages/aesop_core"
+      }
+    }
+  },
+  "tags": []
+}
