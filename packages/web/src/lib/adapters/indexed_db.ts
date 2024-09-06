@@ -1,4 +1,4 @@
-import type { typeAsyncStorageDriver } from '@kumiko/core/types';
+import type { AsyncStorageDriver } from '@kumiko/core/types';
 
 export function createIndexedDBAdapter(dbName = 'kumiko', storeName = 'cache') {
   return new IndexedDBAdapter(dbName, storeName);
@@ -7,7 +7,7 @@ export function createIndexedDBAdapter(dbName = 'kumiko', storeName = 'cache') {
 /**
  * Represents a storage implementation using IndexedDB.
  */
-export class IndexedDBAdapter implements typeAsyncStorageDriver {
+export class IndexedDBAdapter implements AsyncStorageDriver {
   #db: IDBDatabase | null = null;
   #dbName: string;
   #storeName: string;

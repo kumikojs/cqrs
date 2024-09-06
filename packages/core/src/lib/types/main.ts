@@ -2,10 +2,14 @@ import {
   KumikoLogger,
   type KumikoLoggerOptions,
 } from '../utilities/logger/kumiko_logger';
-import type { CommandRegistry } from './core/command';
-import type { EventRegistry } from './core/event';
+import type { Command, CommandRegistry } from './core/command';
+import type { Event, EventRegistry } from './core/event';
 import type { ResilienceBuilderOptions } from './core/options/resilience_options';
-import type { QueryCacheOptions, QueryRegistry } from './core/query';
+import type {
+  QueryCacheOptions,
+  QueryEntry,
+  QueryRegistry,
+} from './core/query';
 import type { UnionToIntersection } from './helpers';
 
 export type * from './core/command';
@@ -24,12 +28,57 @@ export type ClientOptions = NonNullable<
   cache: QueryCacheOptions;
 };
 
-export type Module<T extends BaseModule> = T;
+export type ModuleWrapper<T extends ModuleSchema> = T;
 
-export type Combined<T extends BaseModule[]> = UnionToIntersection<T[number]>;
+export type MergedModuleSchema<T extends ModuleSchema[]> = UnionToIntersection<
+  T[number]
+>;
 
-export type BaseModule = {
+export type ModuleSchema = {
   commands?: CommandRegistry;
   queries?: QueryRegistry;
   events?: EventRegistry;
 };
+
+export type ModuleBlueprint = {
+  commands?: Command[];
+  events?: Event[];
+  queries?: QueryEntry[];
+};
+
+export type BlueprintToModuleMap<T extends ModuleBlueprint> =
+  T extends ModuleBlueprint
+    ? {
+        commands: T['commands'] extends Command[]
+          ? {
+              [K in T['commands'][number]['commandName']]: Extract<
+                T['commands'][number],
+                Command<K>
+              >;
+            }
+          : CommandRegistry;
+        events: T['events'] extends Event[]
+          ? {
+              [K in T['events'][number]['eventName']]: Extract<
+                T['events'][number],
+                Event<K>
+              >;
+            }
+          : EventRegistry;
+        queries: T['queries'] extends QueryEntry[]
+          ? {
+              [K in Extract<
+                T['queries'][number]['req'],
+                { queryName: string }
+              >['queryName']]: Extract<
+                T['queries'][number],
+                QueryEntry<{ queryName: K }, unknown>
+              >;
+            }
+          : QueryRegistry;
+      }
+    : {
+        commands: CommandRegistry;
+        events: EventRegistry;
+        queries: QueryRegistry;
+      };

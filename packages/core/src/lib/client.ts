@@ -7,7 +7,13 @@ import { KumikoLogger, logger } from './utilities/logger/kumiko_logger';
 import type { CommandRegistry, ExtractCommands } from './types/core/command';
 import type { EventRegistry, ExtractEvents } from './types/core/event';
 import type { ExtractQueries, QueryRegistry } from './types/core/query';
-import type { BaseModule, ClientOptions, Combined } from './types/main';
+import type {
+  BlueprintToModuleMap,
+  ClientOptions,
+  MergedModuleSchema,
+  ModuleBlueprint,
+  ModuleSchema,
+} from './types/main';
 
 /**
  * **Client Class**
@@ -17,46 +23,19 @@ import type { BaseModule, ClientOptions, Combined } from './types/main';
  * It facilitates communication and coordination between different parts of the application,
  * playing a role similar to a mediator pattern.
  *
- * @template KnownCommands The known commands and their associated contracts.
- * @template KnownQueries The known queries and their associated contracts.
- * @template KnownEvents The known events and their associated contracts.
- *
- * @example
- * ```ts
- * import { Client } from '@kumiko/core';
- * import type { Command, QueryContract, EventContract } from '@kumiko/core';
- *
- * // Define the commands
- * type CreateUserCommand = Command<'user.create', { name: string; email: string; }>;
- *
- * // Define the queries
- * type GetUserQuery = QueryContract<'user.get', { id: string; }>;
- *
- * // Define the events
- * type UserCreatedEvent = EventContract<'user.created', { id: string; name: string; email: string; }>;
- *
- * // Define the known commands, queries, and events.
- * type KnownCommands = {
- *  'user.create': CreateUserCommand;
- * };
- *
- * type KnownQueries = {
- *  'user.get': GetUserQuery;
- * };
- *
- * type KnownEvents = {
- *  'user.created': UserCreatedEvent;
- * };
- *
- * // Create a new client instance.
- * const client = new Client<KnownCommands, KnownQueries, KnownEvents>();
- * ```
  */
 export class Client<
-  Modules extends BaseModule[] = BaseModule[],
-  KnownCommands extends CommandRegistry = ExtractCommands<Combined<Modules>>,
-  KnownQueries extends QueryRegistry = ExtractQueries<Combined<Modules>>,
-  KnownEvents extends EventRegistry = ExtractEvents<Combined<Modules>>
+  ModulesBlueprint extends ModuleBlueprint[] = ModuleBlueprint[],
+  Modules extends ModuleSchema[] = BlueprintToModuleMap<
+    ModulesBlueprint[number]
+  >[],
+  KnownCommands extends CommandRegistry = ExtractCommands<
+    MergedModuleSchema<Modules>
+  >,
+  KnownQueries extends QueryRegistry = ExtractQueries<
+    MergedModuleSchema<Modules>
+  >,
+  KnownEvents extends EventRegistry = ExtractEvents<MergedModuleSchema<Modules>>
 > {
   #cache: QueryCache;
   #eventBus: EventBus<KnownEvents>;

@@ -135,7 +135,7 @@ export class QueryBus<
    * @returns An unregistration function to remove the handler from the bus.
    */
   register<
-    TQueryName extends string = KnownQueries[keyof KnownQueries]['query']['queryName']
+    TQueryName extends string = KnownQueries[keyof KnownQueries]['req']['queryName']
   >(
     queryName: TQueryName,
     handler: InferredQueryHandler<TQueryName, KnownQueries>
@@ -157,7 +157,7 @@ export class QueryBus<
    *                   or the `execute` method of the interface.
    */
   unregister<
-    TQueryName extends string = KnownQueries[keyof KnownQueries]['query']['queryName']
+    TQueryName extends string = KnownQueries[keyof KnownQueries]['req']['queryName']
   >(
     queryName: TQueryName,
     handler: InferredQueryHandler<TQueryName, KnownQueries>
@@ -178,7 +178,7 @@ export class QueryBus<
    * @returns A promise resolving to the result of the query execution.
    */
   async execute<
-    TQuery extends Query = KnownQueries[keyof KnownQueries]['query'],
+    TQuery extends Query = KnownQueries[keyof KnownQueries]['req'],
     TResult = ExtractQueryResponse<TQuery['queryName'], KnownQueries>
   >(
     query: TQuery,
@@ -220,7 +220,7 @@ export class QueryBus<
    * @returns A promise resolving to the result of the query execution.
    */
   async dispatch<
-    TQuery extends Query = KnownQueries[keyof KnownQueries]['query'],
+    TQuery extends Query = KnownQueries[keyof KnownQueries]['req'],
     TResult = ExtractQueryResponse<TQuery['queryName'], KnownQueries>
   >(query: TQuery): Promise<TResult> {
     return this.execute<TQuery, TResult>(query, (query) =>

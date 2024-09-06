@@ -105,9 +105,7 @@ export type CommandHandlerOrFunction<
 /**
  * Represents a registry of commands.
  */
-export interface CommandRegistry {
-  [key: string]: Command;
-}
+export type CommandRegistry = Record<string, Command>;
 
 /**
  * Options for configuring command execution, including resilience strategies and query dependencies.
@@ -127,8 +125,8 @@ export type CommandOptions<KnownQueries extends QueryRegistry = QueryRegistry> =
          * Names of queries that this command impacts, potentially rendering their results stale after execution.
          */
         queries: (
-          | KnownQueries[keyof KnownQueries]['query']['queryName']
-          | KnownQueries[keyof KnownQueries]['query']
+          | KnownQueries[keyof KnownQueries]['req']['queryName']
+          | KnownQueries[keyof KnownQueries]['req']
         )[];
       };
       onMutate?: (ctx: {

@@ -1,4 +1,4 @@
-import type { Command, Event, Module, Query } from '@kumiko/react';
+import type { Command, Event, ModuleWrapper, Query } from '@kumiko/react';
 
 export type CreateTodoCommand = Command<
   'CreateTodo',
@@ -49,7 +49,7 @@ export type GetTodosQuery = Query<
   }
 >;
 
-export type TodoModule = Module<{
+export type TodoModule = ModuleWrapper<{
   commands: {
     CreateTodo: CreateTodoCommand;
     UpdateTodo: UpdateTodoCommand;

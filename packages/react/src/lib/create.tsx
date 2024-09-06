@@ -6,9 +6,9 @@ import { useBaseEvent } from './useBaseEvent';
 import { useBaseQuery } from './useBaseQuery';
 
 import type {
-  BaseModule,
+  ModuleSchema,
   ClientOptions,
-  Combined,
+  MergedModuleSchema,
   Command,
   CommandHandlerOrFunction,
   EventHandlerOrFunction,
@@ -25,12 +25,12 @@ import type {
  * Creates a CQRS (Command Query Responsibility Segregation) instance.
  * @returns An object containing methods to interact with the CQRS instance.
  */
-export function create<Modules extends BaseModule[] = BaseModule[]>(
+export function create<Modules extends ModuleSchema[] = ModuleSchema[]>(
   options: ClientOptions
 ) {
-  type KnownCommands = ExtractCommands<Combined<Modules>>;
-  type KnownQueries = ExtractQueries<Combined<Modules>>;
-  type KnownEvents = ExtractEvents<Combined<Modules>>;
+  type KnownCommands = ExtractCommands<MergedModuleSchema<Modules>>;
+  type KnownQueries = ExtractQueries<MergedModuleSchema<Modules>>;
+  type KnownEvents = ExtractEvents<MergedModuleSchema<Modules>>;
 
   const client = new Kumiko<Modules>(options);
 

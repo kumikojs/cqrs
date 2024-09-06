@@ -62,10 +62,7 @@ export interface QueryContext {
 export type ExtractQueryRequest<
   QueryName,
   Queries extends QueryRegistry = QueryRegistry
-> = Extract<
-  Queries[keyof Queries],
-  { query: { queryName: QueryName } }
->['query'];
+> = Extract<Queries[keyof Queries], { req: { queryName: QueryName } }>['req'];
 
 /**
  * Extracts the response type for a specific query name.
@@ -73,10 +70,7 @@ export type ExtractQueryRequest<
 export type ExtractQueryResponse<
   QueryName,
   Queries extends QueryRegistry = QueryRegistry
-> = Extract<
-  Queries[keyof Queries],
-  { query: { queryName: QueryName } }
->['response'];
+> = Extract<Queries[keyof Queries], { req: { queryName: QueryName } }>['res'];
 
 /**
  * Represents a registry of queries.
@@ -87,10 +81,11 @@ export interface QueryRegistry {
 
 /**
  * Represents an entry in the query registry.
+ * Each entry contains the request and response types for a specific query.
  */
-export type QueryEntry = {
-  query: Query;
-  response: unknown;
+export type QueryEntry<ReqType extends Query = Query, ResType = unknown> = {
+  req: ReqType;
+  res: ResType;
 };
 
 /**
@@ -117,7 +112,7 @@ export type ExtractQueryResponses<Queries extends QueryRegistry> = {
  * Extracts the query definitions for a list of queries.
  */
 export type ExtractQueryDefinitions<Queries extends QueryRegistry> = {
-  [Key in keyof Queries]: Queries[Key] extends { query: infer QueryType }
+  [Key in keyof Queries]: Queries[Key] extends { req: infer QueryType }
     ? QueryType extends Query<infer Name, infer Payload, infer Options>
       ? Query<Name, Payload, Options>
       : never
