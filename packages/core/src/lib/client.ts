@@ -8,11 +8,11 @@ import type { CommandRegistry, ExtractCommands } from './types/core/command';
 import type { EventRegistry, ExtractEvents } from './types/core/event';
 import type { ExtractQueries, QueryRegistry } from './types/core/query';
 import type {
-  BlueprintToModuleMap,
   ClientOptions,
-  MergedModuleSchema,
-  ModuleBlueprint,
-  ModuleSchema,
+  Feature,
+  FeatureSchema,
+  FeatureToSchema,
+  MergedFeatureSchema,
 } from './types/main';
 
 /**
@@ -25,17 +25,19 @@ import type {
  *
  */
 export class Client<
-  ModulesBlueprint extends ModuleBlueprint[] = ModuleBlueprint[],
-  Modules extends ModuleSchema[] = BlueprintToModuleMap<
-    ModulesBlueprint[number]
+  FeatureList extends Feature[] = Feature[],
+  FeatureSchemaList extends FeatureSchema[] = FeatureToSchema<
+    FeatureList[number]
   >[],
   KnownCommands extends CommandRegistry = ExtractCommands<
-    MergedModuleSchema<Modules>
+    MergedFeatureSchema<FeatureSchemaList>
   >,
   KnownQueries extends QueryRegistry = ExtractQueries<
-    MergedModuleSchema<Modules>
+    MergedFeatureSchema<FeatureSchemaList>
   >,
-  KnownEvents extends EventRegistry = ExtractEvents<MergedModuleSchema<Modules>>
+  KnownEvents extends EventRegistry = ExtractEvents<
+    MergedFeatureSchema<FeatureSchemaList>
+  >
 > {
   #cache: QueryCache;
   #eventBus: EventBus<KnownEvents>;
