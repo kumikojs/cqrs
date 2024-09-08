@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useState, useSyncExternalStore } from 'react';
 
-import { CommandSubject, Kumiko } from '@kumiko/core';
+import { CommandSubject, KumikoClient } from '@kumiko/core';
 import type { Command, CommandHandlerOrFunction } from '@kumiko/core/types';
 
 /**
@@ -14,11 +14,9 @@ import type { Command, CommandHandlerOrFunction } from '@kumiko/core/types';
  * @returns A tuple containing the current state of the command execution and the execute function.
  */
 export function useBaseCommand<TRequest extends Command>(
-  client: Kumiko<any>,
+  client: KumikoClient,
   command: TRequest,
-  // FIXME: This should be `CommandHandlerOrFunction<TRequest>` instead of `CommandHandlerOrFunction<any>`
-  //       but it's not possible to infer the correct type for the handler.
-  handler?: CommandHandlerOrFunction<any>
+  handler?: CommandHandlerOrFunction<TRequest>
 ) {
   const [subject] = useState(() => new CommandSubject(client, handler));
 
