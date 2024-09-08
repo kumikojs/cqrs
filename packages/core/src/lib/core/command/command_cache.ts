@@ -1,7 +1,7 @@
 import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { QueryCache } from '../query/query_cache';
 
-import type { Query, QueryRegistry } from '../../types/core/query';
+import type { QueryRequest, QueryRegistry } from '../../types/core/query';
 
 /**
  * Options for configuring the CommandCache.
@@ -40,8 +40,8 @@ export class CommandCache<KnownQueries extends QueryRegistry = QueryRegistry> {
    */
   invalidateQueries(
     ...queries: (
-      | KnownQueries[keyof KnownQueries]['query']['queryName']
-      | KnownQueries[keyof KnownQueries]['query']
+      | KnownQueries[keyof KnownQueries]['req']['queryName']
+      | KnownQueries[keyof KnownQueries]['req']
     )[]
   ) {
     this.#cache.invalidateQueries(...queries);
@@ -57,34 +57,34 @@ export class CommandCache<KnownQueries extends QueryRegistry = QueryRegistry> {
    */
   async update<
     TQuery extends
-      | KnownQueries[keyof KnownQueries]['query']
-      | KnownQueries[keyof KnownQueries]['query']['queryName'],
-    TResponse extends KnownQueries[keyof KnownQueries]['response'] = Extract<
+      | KnownQueries[keyof KnownQueries]['req']
+      | KnownQueries[keyof KnownQueries]['req']['queryName'],
+    TResponse extends KnownQueries[keyof KnownQueries]['res'] = Extract<
       KnownQueries[keyof KnownQueries],
       {
         query: {
-          queryName: TQuery extends Query ? TQuery['queryName'] : TQuery;
+          queryName: TQuery extends QueryRequest ? TQuery['queryName'] : TQuery;
         };
       }
-    >['response']
+    >['res']
   >(
-    query: TQuery,
+    queryOrName: TQuery,
     updater: (previousResult: TResponse | null | undefined) => TResponse
   ): Promise<void> {
-    const queryContract: Query = (query as Query).queryName
-      ? (query as Query)
-      : { queryName: query as string };
-    this.#logger.trace('Updating query', { query: queryContract });
+    const query: QueryRequest = (queryOrName as QueryRequest).queryName
+      ? (queryOrName as QueryRequest)
+      : { queryName: queryOrName as string };
+    this.#logger.trace('Updating query', { query });
 
-    const prevData = await this.#cache.get<TResponse>(queryContract);
+    const prevData = await this.#cache.get<TResponse>(query);
 
     const nextData = updater(prevData);
 
     try {
-      await this.#cache.optimisticUpdate(queryContract, nextData);
+      await this.#cache.optimisticUpdate(query, nextData);
     } catch (error) {
-      this.#logger.error('Failed to update query', { query: queryContract });
-      await this.#cache.optimisticUpdate(queryContract, prevData);
+      this.#logger.error('Failed to update query', { query });
+      await this.#cache.optimisticUpdate(query, prevData);
     }
 
     this.#promise?.then(() => {

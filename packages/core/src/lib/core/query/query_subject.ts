@@ -4,7 +4,7 @@ import { Operation } from '../../utilities/reactive/operation';
 import { SubscriptionManager } from '../../utilities/subscription/subscription_manager';
 
 import type {
-  Query,
+  QueryRequest,
   QueryHandler,
   QueryHandlerOrFunction,
 } from '../../types/core/query';
@@ -27,7 +27,7 @@ import type {
  * This class is designed for UI components to interact with queries. It abstracts away complex details
  * of query execution and cache management, allowing developers to focus on rendering data and handling state changes.
  */
-export class QuerySubject<TRequest extends Query, TResult> {
+export class QuerySubject<TRequest extends QueryRequest, TResult> {
   /**
    * @private
    * The internal `Operation` instance responsible for handling query execution and state management.
@@ -72,7 +72,7 @@ export class QuerySubject<TRequest extends Query, TResult> {
     this.#lastQuery = query;
     this.#handlerFn = handler
       ? (query) =>
-          client.query.execute(
+          client.query.execute<TRequest, TResult>(
             query,
             typeof handler === 'function' ? handler : handler.execute
           )

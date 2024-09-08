@@ -7,7 +7,7 @@ import type { Event, EventRegistry } from './core/event';
 import type { ResilienceBuilderOptions } from './core/options/resilience_options';
 import type {
   QueryCacheOptions,
-  QueryEntry,
+  Query,
   QueryRegistry,
 } from './core/query';
 import type { UnionToIntersection } from './helpers';
@@ -43,7 +43,7 @@ export type ModuleSchema = {
 export type ModuleBlueprint = {
   commands?: Command[];
   events?: Event[];
-  queries?: QueryEntry[];
+  queries?: Query[];
 };
 
 export type BlueprintToModuleMap<T extends ModuleBlueprint> =
@@ -65,14 +65,14 @@ export type BlueprintToModuleMap<T extends ModuleBlueprint> =
               >;
             }
           : EventRegistry;
-        queries: T['queries'] extends QueryEntry[]
+        queries: T['queries'] extends Query[]
           ? {
               [K in Extract<
                 T['queries'][number]['req'],
                 { queryName: string }
               >['queryName']]: Extract<
                 T['queries'][number],
-                QueryEntry<{ queryName: K }, unknown>
+                Query<{ queryName: K }, unknown>
               >;
             }
           : QueryRegistry;

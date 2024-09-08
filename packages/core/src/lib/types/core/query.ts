@@ -3,10 +3,7 @@ import type { AsyncStorageDriver, SyncStorageDriver } from '../main';
 import type { OptionsContainer } from './options/options';
 import type { ResilienceOptions } from './options/resilience_options';
 
-/**
- * Represents a query definition.
- */
-export interface Query<
+export interface QueryRequest<
   Name extends string = string,
   Payload = unknown,
   Options = unknown
@@ -16,11 +13,21 @@ export interface Query<
   context?: QueryContext;
 }
 
+export type QueryResponse<ResponseType = unknown> = ResponseType;
+
+export type Query<
+  ReqType extends QueryRequest = QueryRequest,
+  ResType extends QueryResponse = QueryResponse
+> = {
+  req: ReqType;
+  res: ResType;
+};
+
 /**
  * Represents a query handler definition.
  */
 export interface QueryHandler<
-  QueryType extends Query = Query,
+  QueryType extends QueryRequest = QueryRequest,
   ResponseType = unknown
 > {
   execute(query: QueryType): Promise<ResponseType>;
@@ -30,7 +37,7 @@ export interface QueryHandler<
  * Function type representing a query handler.
  */
 export type QueryHandlerFunction<
-  QueryType extends Query = Query,
+  QueryType extends QueryRequest = QueryRequest,
   ResponseType = unknown
 > = QueryHandler<QueryType, ResponseType>['execute'];
 
@@ -38,7 +45,7 @@ export type QueryHandlerFunction<
  * Type representing either a query handler or a query handler function.
  */
 export type QueryHandlerOrFunction<
-  QueryType extends Query = Query,
+  QueryType extends QueryRequest = QueryRequest,
   ResponseType = unknown
 > =
   | QueryHandler<QueryType, ResponseType>
@@ -60,9 +67,9 @@ export interface QueryContext {
  * Extracts the request type for a specific query name.
  */
 export type ExtractQueryRequest<
-  QueryName,
+  QueryName extends string,
   Queries extends QueryRegistry = QueryRegistry
-> = Extract<Queries[keyof Queries], { req: { queryName: QueryName } }>['req'];
+> = Extract<Queries[keyof Queries], { req: QueryRequest<QueryName> }>['req'];
 
 /**
  * Extracts the response type for a specific query name.
@@ -76,23 +83,14 @@ export type ExtractQueryResponse<
  * Represents a registry of queries.
  */
 export interface QueryRegistry {
-  [key: string]: QueryEntry;
+  [key: string]: Query;
 }
-
-/**
- * Represents an entry in the query registry.
- * Each entry contains the request and response types for a specific query.
- */
-export type QueryEntry<ReqType extends Query = Query, ResType = unknown> = {
-  req: ReqType;
-  res: ResType;
-};
 
 /**
  * Infers the query handler type for a specific query name.
  */
 export type InferredQueryHandler<
-  QueryName,
+  QueryName extends string,
   Queries extends QueryRegistry = QueryRegistry
 > = QueryHandlerOrFunction<
   ExtractQueryRequest<QueryName, Queries>,
@@ -113,8 +111,8 @@ export type ExtractQueryResponses<Queries extends QueryRegistry> = {
  */
 export type ExtractQueryDefinitions<Queries extends QueryRegistry> = {
   [Key in keyof Queries]: Queries[Key] extends { req: infer QueryType }
-    ? QueryType extends Query<infer Name, infer Payload, infer Options>
-      ? Query<Name, Payload, Options>
+    ? QueryType extends QueryRequest<infer Name, infer Payload, infer Options>
+      ? QueryRequest<Name, Payload, Options>
       : never
     : never;
 };
