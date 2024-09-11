@@ -1,6 +1,10 @@
 import type { DurationUnit } from '../helpers';
-import type { AsyncStorageDriver, SyncStorageDriver } from '../main';
-import type { OptionsContainer } from './options/options';
+import type {
+  AsyncStorageDriver,
+  InterceptorManagerContract,
+  SyncStorageDriver,
+} from '../main';
+import type { MergedPartialOptions, OptionsContainer } from './options/options';
 import type { ResilienceOptions } from './options/resilience_options';
 
 export interface QueryRequest<
@@ -145,3 +149,113 @@ type CacheOptions = {
   ttl?: DurationUnit;
   gcInterval?: DurationUnit;
 };
+
+type ExtractQuery<Queries, QueryName> = QueryName extends keyof Queries
+  ? Queries[QueryName]
+  : never;
+
+export interface QueryBusContract<
+  KnownQueries extends QueryRegistry = QueryRegistry,
+  KnownQueryDefinitions extends Record<
+    string,
+    QueryRequest
+  > = ExtractQueryDefinitions<KnownQueries>
+> {
+  execute<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
+    query: TQuery['req'],
+    handler: QueryHandlerFunction<TQuery['req'], TQuery['res']>
+  ): Promise<TQuery['res']>;
+
+  dispatch<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
+    query: TQuery['req']
+  ): Promise<TQuery['res']>;
+
+  /*
+   * Infers queryName from KnownQueries.
+   * Useful when queryName is known and request/response types don't need to be specified.
+   */
+  register<
+    TQueryName extends keyof KnownQueries,
+    TQuery extends ExtractQuery<KnownQueries, TQueryName>
+  >(
+    queryName: TQueryName,
+    handler: QueryHandlerOrFunction<TQuery['req'], TQuery['res']>
+  ): VoidFunction;
+
+  /*
+   * Infers queryName from the query request.
+   * Useful when queryName is not known and request/response types need to be specified.
+   */
+  register<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
+    queryName: TQuery['req']['queryName'],
+    handler: QueryHandlerOrFunction<TQuery['req'], TQuery['res']>
+  ): VoidFunction;
+
+  /*
+   * Explicitly specify the types of the query request and response.
+   */
+  register<
+    TQueryRequest extends QueryRequest = KnownQueries[keyof KnownQueries]['req'],
+    TQueryResponse extends QueryResponse = ExtractQueryResponse<
+      TQueryRequest['queryName'],
+      KnownQueries
+    >
+  >(
+    queryName: TQueryRequest['queryName'],
+    handler: QueryHandlerFunction<TQueryRequest, TQueryResponse>
+  ): VoidFunction;
+
+  /*
+   * Infers queryName from KnownQueries.
+   * Useful when queryName is known and request/response types don't need to be specified.
+   */
+  unregister<
+    TQueryName extends keyof KnownQueries,
+    TQuery extends ExtractQuery<KnownQueries, TQueryName>
+  >(
+    queryName: TQueryName,
+    handler: QueryHandlerOrFunction<TQuery['req'], TQuery['res']>
+  ): void;
+
+  /*
+   * Infers queryName from the query request.
+   * Useful when queryName is not known and request/response types need to be specified.
+   */
+  unregister<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
+    queryName: TQuery['req']['queryName'],
+    handler: QueryHandlerOrFunction<TQuery['req'], TQuery['res']>
+  ): void;
+
+  /*
+   * Explicitly specify the types of the query request and response.
+   */
+  unregister<
+    TQueryRequest extends QueryRequest = KnownQueries[keyof KnownQueries]['req'],
+    TQueryResponse extends QueryResponse = ExtractQueryResponse<
+      TQueryRequest['queryName'],
+      KnownQueries
+    >
+  >(
+    queryName: TQueryRequest['queryName'],
+    handler: QueryHandlerFunction<TQueryRequest, TQueryResponse>
+  ): void;
+
+  cancelQuery<
+    TQuery extends QueryRequest = KnownQueryDefinitions[keyof KnownQueryDefinitions]
+  >(
+    queryName: TQuery['queryName']
+  ): void;
+  cancelQuery<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
+    queryName: TQuery['req']['queryName']
+  ): void;
+
+  disconnect(): void;
+
+  interceptors: InterceptorManagerContract<
+    QueryRequest<
+      string,
+      unknown,
+      MergedPartialOptions<QueryRequest, KnownQueryDefinitions>
+    >
+  >;
+}

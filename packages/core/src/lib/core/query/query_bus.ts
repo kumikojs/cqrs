@@ -9,11 +9,13 @@ import type { ResilienceBuilderOptions } from '../../types/core/options/resilien
 import type {
   ExtractQueryDefinitions,
   ExtractQueryResponse,
-  InferredQueryHandler,
   Query,
+  QueryBusContract,
   QueryHandlerFunction,
+  QueryHandlerOrFunction,
   QueryRegistry,
   QueryRequest,
+  QueryResponse,
 } from '../../types/core/query';
 import type { BusDriver } from '../../types/infrastructure/bus';
 import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
@@ -24,7 +26,8 @@ export class QueryBus<
     string,
     QueryRequest
   > = ExtractQueryDefinitions<KnownQueries>
-> {
+> implements QueryBusContract<KnownQueries>
+{
   #abortManager = new AbortManager();
   #driver: BusDriver<string>;
   #interceptorManager: InterceptorManagerContract<
@@ -69,11 +72,9 @@ export class QueryBus<
     return this.#interceptorManager;
   }
 
-  register<
-    TQueryName extends string = KnownQueries[keyof KnownQueries]['req']['queryName']
-  >(
-    queryName: TQueryName,
-    handler: InferredQueryHandler<TQueryName, KnownQueries>
+  register<TQuery extends Query>(
+    queryName: TQuery['req']['queryName'],
+    handler: QueryHandlerOrFunction<TQuery['req'], TQuery['res']>
   ): VoidFunction {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -82,32 +83,15 @@ export class QueryBus<
     return () => this.unregister(queryName, handler);
   }
 
-  unregister<
-    TQueryName extends string = KnownQueries[keyof KnownQueries]['req']['queryName']
-  >(
-    queryName: TQueryName,
-    handler: InferredQueryHandler<TQueryName, KnownQueries>
-  ) {
+  unregister<TQuery extends Query>(
+    queryName: TQuery['req']['queryName'],
+    handler: QueryHandlerOrFunction<TQuery['req'], TQuery['res']>
+  ): void {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
     this.#driver.unsubscribe(queryName, handlerFn);
   }
 
-  /**
-   * The overloads order is important to ensure the correct type inference.
-   * The 1st overload is defined to handle the case when the query is known and we don't need to specify the request and result type explicitly.
-   */
-  async execute<
-    TQuery extends QueryRequest = KnownQueries[keyof KnownQueries]['req'],
-    TResult = ExtractQueryResponse<TQuery['queryName'], KnownQueries>
-  >(
-    query: TQuery,
-    handler: QueryHandlerFunction<TQuery, TResult>
-  ): Promise<TResult>;
-  async execute<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
-    query: TQuery['req'],
-    handler: QueryHandlerFunction<TQuery['req'], TQuery['res']>
-  ): Promise<TQuery['res']>;
   async execute<TQuery extends Query>(
     query: TQuery['req'],
     handler: QueryHandlerFunction<TQuery['req'], TQuery['res']>
@@ -136,13 +120,6 @@ export class QueryBus<
     );
   }
 
-  async dispatch<
-    TQuery extends KnownQueries[keyof KnownQueries]['req'] = KnownQueries[keyof KnownQueries]['req'],
-    TResult = ExtractQueryResponse<TQuery['queryName'], KnownQueries>
-  >(query: TQuery): Promise<TResult>;
-  async dispatch<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
-    query: TQuery['req']
-  ): Promise<TQuery['res']>;
   async dispatch<TQuery extends Query>(
     query: TQuery['req']
   ): Promise<TQuery['res']> {
@@ -151,9 +128,9 @@ export class QueryBus<
     );
   }
 
-  cancelQuery<
-    TQuery extends QueryRequest = KnownQueryDefinitions[keyof KnownQueryDefinitions]
-  >(queryName: TQuery['queryName']) {
+  cancelQuery<TQuery extends Query>(
+    queryName: TQuery['req']['queryName']
+  ): void {
     this.#abortManager.cancelRequest(queryName);
   }
 
