@@ -3,7 +3,8 @@ import { Operation } from '../../utilities/reactive/operation';
 
 import type {
   Command,
-  CommandHandlerOrFunction,
+  CommandHandler,
+  CommandWithDependencies,
 } from '../../types/core/command';
 
 /**
@@ -38,13 +39,15 @@ export class CommandSubject {
    * Creates a new instance of `CommandSubject`.
    *
    * @param client - The client instance for interacting with the cache.
-   * @param handler - An optional command handler function or class implementing the {@link CommandHandlerOrFunction} interface.
+   * @param handler - An optional command handler function or class implementing the {@link CommandHandler} interface.
    */
-  constructor(client: Client, handler?: CommandHandlerOrFunction<Command>) {
+  constructor(client: Client, handler?: CommandHandler<Command>) {
     this.#client = client;
     this.#handlerFn = handler
-      ? (command: Command) => client.command.execute(command, handler)
-      : (command: Command) => client.command.dispatch(command);
+      ? (command: Command) =>
+          client.command.execute(command as CommandWithDependencies, handler)
+      : (command: Command) =>
+          client.command.dispatch(command as CommandWithDependencies);
   }
 
   /**
