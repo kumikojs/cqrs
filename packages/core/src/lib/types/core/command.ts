@@ -9,7 +9,7 @@ export interface Command<
   Name extends string = string,
   Payload = unknown,
   Options = unknown
-> extends OptionsContainer<Options & CommandOptions> {
+> extends OptionsContainer<Options & CommandExecutionOptions> {
   commandName: Name;
   payload?: Payload;
 }
@@ -35,25 +35,26 @@ export type CommandHandler<
   | CommandExecutor<CommandType, ContextType>
   | CommandExecutorFunction<CommandType, ContextType>;
 
-export type CommandOptions<KnownQueries extends QueryRegistry = QueryRegistry> =
-  Partial<
-    Omit<ResilienceOptions, 'cache'> & {
-      invalidation?: {
-        queries: (
-          | KnownQueries[keyof KnownQueries]['req']['queryName']
-          | KnownQueries[keyof KnownQueries]['req']
-        )[];
-      };
-      onMutate?: (ctx: { cache: CommandCache<KnownQueries> }) => void;
-    }
-  >;
+export type CommandExecutionOptions<
+  KnownQueries extends QueryRegistry = QueryRegistry
+> = Partial<
+  Omit<ResilienceOptions, 'cache'> & {
+    invalidation?: {
+      queries: (
+        | KnownQueries[keyof KnownQueries]['req']['queryName']
+        | KnownQueries[keyof KnownQueries]['req']
+      )[];
+    };
+    onMutate?: (ctx: { cache: CommandCache<KnownQueries> }) => void;
+  }
+>;
 
 export type CommandWithDependencies<
   Name extends string = string,
   Payload = unknown,
   Options = unknown,
   KnownQueries extends QueryRegistry = QueryRegistry
-> = Command<Name, Payload, Options & CommandOptions<KnownQueries>>;
+> = Command<Name, Payload, Options & CommandExecutionOptions<KnownQueries>>;
 
 export type InferredCommands<
   KnownCommands extends CommandRegistry,
