@@ -35,6 +35,14 @@ export type CommandHandler<
   | CommandExecutor<CommandType, ContextType>
   | CommandExecutorFunction<CommandType, ContextType>;
 
+export type CommandExecutionContext<
+  KnownQueries extends QueryRegistry,
+  KnownEvents extends EventRegistry
+> = {
+  cache: CommandCache<KnownQueries>;
+  emit: EventEmitter<KnownEvents>['emit'];
+};
+
 export type CommandExecutionOptions<
   KnownQueries extends QueryRegistry = QueryRegistry
 > = Partial<
@@ -68,30 +76,10 @@ export type InferredCommands<
   >;
 };
 
-/**
- * Extracts a command by its name from the known command registry.
- *
- * @template CommandName - The name of the command to extract.
- * @template KnownCommands - The registry of known commands.
- */
 export type ExtractCommand<
   CommandName extends string,
   KnownCommands extends CommandRegistry
 > = Extract<KnownCommands[keyof KnownCommands], { commandName: CommandName }>;
-
-/**
- * Context object for command handlers including cache and event emitter.
- *
- * @template KnownQueries - Known query types.
- * @template KnownEvents - Known event types.
- */
-export type CommandContext<
-  KnownQueries extends QueryRegistry,
-  KnownEvents extends EventRegistry
-> = {
-  cache: CommandCache<KnownQueries>;
-  emit: EventEmitter<KnownEvents>['emit'];
-};
 
 /**
  * Represents a command handler with context and response types.
@@ -105,7 +93,10 @@ export type InferredCommandHandler<
   CommandType extends Command,
   KnownQueries extends QueryRegistry = QueryRegistry,
   KnownEvents extends EventRegistry = EventRegistry
-> = CommandHandler<CommandType, CommandContext<KnownQueries, KnownEvents>>;
+> = CommandHandler<
+  CommandType,
+  CommandExecutionContext<KnownQueries, KnownEvents>
+>;
 
 type GetCommandByName<Commands extends CommandRegistry, Name extends string> = {
   [Key in keyof Commands]: Commands[Key]['commandName'] extends Name
