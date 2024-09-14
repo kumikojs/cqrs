@@ -1,17 +1,10 @@
 import type { CommandCache } from '../../core/command/command_cache';
-import { InterceptorManagerContract } from '../main';
+import type { InterceptorManagerContract } from '../main';
 import type { EventEmitter, EventRegistry } from './event';
 import type { MergedPartialOptions, OptionsContainer } from './options/options';
 import type { ResilienceOptions } from './options/resilience_options';
 import type { QueryRegistry } from './query';
 
-/**
- * Represents a command to modify application state or trigger side effects.
- *
- * @template Name - The unique name of the command.
- * @template Payload - Optional payload data associated with the command.
- * @template Options - Optional configuration options for the command.
- */
 export interface Command<
   Name extends string = string,
   Payload = unknown,
@@ -21,59 +14,27 @@ export interface Command<
   payload?: Payload;
 }
 
-/**
- * Represents a handler for executing a command.
- *
- * @template CommandType - The type of command the handler accepts.
- * @template ResponseType - The return type of the command execution.
- * @template ContextType - The context provided for executing the command.
- */
-export interface CommandHandler<
-  CommandType extends Command = Command,
-  ResponseType = void,
-  ContextType = unknown
-> {
-  execute(command: CommandType, context: ContextType): Promise<ResponseType>;
-}
-
-/**
- * Represents a function that handles a command.
- *
- * @template CommandType - The type of command the handler accepts.
- * @template ResponseType - The return type of the command execution.
- * @template ContextType - The context provided for executing the command.
- */
-export type CommandHandlerFunction<
-  CommandType extends Command = Command,
-  ResponseType = void,
-  ContextType = unknown
-> = (command: CommandType, context: ContextType) => Promise<ResponseType>;
-
-/**
- * Represents either a function or class-based command handler.
- *
- * @template CommandType - The type of command the handler accepts.
- * @template ResponseType - The return type of the command execution.
- * @template ContextType - The context provided for executing the command.
- */
-export type CommandHandlerOrFunction<
-  CommandType extends Command = Command,
-  ResponseType = void,
-  ContextType = unknown
-> =
-  | CommandHandler<CommandType, ResponseType, ContextType>
-  | CommandHandlerFunction<CommandType, ResponseType, ContextType>;
-
-/**
- * Represents a registry of commands.
- */
 export type CommandRegistry = Record<string, Command>;
 
-/**
- * Options for configuring command execution, including resilience strategies and query dependencies.
- *
- * @template KnownQueries - Array of queries the command depends on.
- */
+export interface CommandExecutor<
+  CommandType extends Command = Command,
+  ContextType = unknown
+> {
+  execute(command: CommandType, context: ContextType): Promise<void>;
+}
+
+export type CommandExecutorFunction<
+  CommandType extends Command = Command,
+  ContextType = unknown
+> = (command: CommandType, context: ContextType) => Promise<void>;
+
+export type CommandHandler<
+  CommandType extends Command = Command,
+  ContextType = unknown
+> =
+  | CommandExecutor<CommandType, ContextType>
+  | CommandExecutorFunction<CommandType, ContextType>;
+
 export type CommandOptions<KnownQueries extends QueryRegistry = QueryRegistry> =
   Partial<
     Omit<ResilienceOptions, 'cache'> & {
@@ -87,14 +48,6 @@ export type CommandOptions<KnownQueries extends QueryRegistry = QueryRegistry> =
     }
   >;
 
-/**
- * Represents a command augmented with dependencies and options.
- *
- * @template Name - Name of the command.
- * @template Payload - Payload type of the command.
- * @template Options - Original options type of the command.
- * @template KnownQueries - Queries that the command depends on.
- */
 export type CommandWithDependencies<
   Name extends string = string,
   Payload = unknown,
@@ -102,12 +55,6 @@ export type CommandWithDependencies<
   KnownQueries extends QueryRegistry = QueryRegistry
 > = Command<Name, Payload, Options & CommandOptions<KnownQueries>>;
 
-/**
- * A record of commands with inferred queries based on known commands and queries.
- *
- * @template KnownCommands - Known command types.
- * @template KnownQueries - Known query types.
- */
 export type InferredCommands<
   KnownCommands extends CommandRegistry,
   KnownQueries extends QueryRegistry
@@ -155,14 +102,9 @@ export type CommandContext<
  */
 export type InferredCommandHandler<
   CommandType extends Command,
-  ResponseType = void,
   KnownQueries extends QueryRegistry = QueryRegistry,
   KnownEvents extends EventRegistry = EventRegistry
-> = CommandHandlerOrFunction<
-  CommandType,
-  ResponseType,
-  CommandContext<KnownQueries, KnownEvents>
->;
+> = CommandHandler<CommandType, CommandContext<KnownQueries, KnownEvents>>;
 
 type GetCommandByName<Commands extends CommandRegistry, Name extends string> = {
   [Key in keyof Commands]: Commands[Key]['commandName'] extends Name
@@ -194,13 +136,6 @@ type CommandForDispatch<
   : never;
 
 /**
- * Extracts the command registry from an object.
- */
-export type ExtractCommands<T> = T extends { commands: CommandRegistry }
-  ? T['commands']
-  : CommandRegistry;
-
-/**
  * Command Bus Contract interface defining operations for command handling.
  *
  * @template KnownCommands - Known command types.
@@ -219,12 +154,7 @@ export interface CommandBusContract<
     >[keyof InferredCommands<KnownCommands, KnownQueries>]
   >(
     command: CommandForDispatch<CommandType, KnownCommands, KnownQueries>,
-    handler: InferredCommandHandler<
-      CommandType,
-      void,
-      KnownQueries,
-      KnownEvents
-    >
+    handler: InferredCommandHandler<CommandType, KnownQueries, KnownEvents>
   ): Promise<void>;
 
   dispatch<
@@ -240,7 +170,6 @@ export interface CommandBusContract<
     commandName: CommandName,
     handler: InferredCommandHandler<
       GetCommandByName<KnownCommands, CommandName>,
-      void,
       KnownQueries,
       KnownEvents
     >
@@ -252,19 +181,13 @@ export interface CommandBusContract<
     >[keyof InferredCommands<KnownCommands, KnownQueries>]
   >(
     commandName: CommandType['commandName'],
-    handler: InferredCommandHandler<
-      CommandType,
-      void,
-      KnownQueries,
-      KnownEvents
-    >
+    handler: InferredCommandHandler<CommandType, KnownQueries, KnownEvents>
   ): VoidFunction;
 
   unregister<CommandName extends keyof KnownCommands & string>(
     commandName: CommandName,
     handler: InferredCommandHandler<
       GetCommandByName<KnownCommands, CommandName>,
-      void,
       KnownQueries,
       KnownEvents
     >
@@ -276,12 +199,7 @@ export interface CommandBusContract<
     >[keyof InferredCommands<KnownCommands, KnownQueries>]
   >(
     commandName: CommandType['commandName'],
-    handler: InferredCommandHandler<
-      CommandType,
-      void,
-      KnownQueries,
-      KnownEvents
-    >
+    handler: InferredCommandHandler<CommandType, KnownQueries, KnownEvents>
   ): void;
 
   disconnect(): void;

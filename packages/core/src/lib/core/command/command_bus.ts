@@ -6,7 +6,7 @@ import { CommandInterceptors } from './command_interceptors';
 
 import type {
   Command,
-  CommandHandlerOrFunction,
+  CommandHandler,
   CommandRegistry,
   InferredCommandHandler,
   InferredCommands,
@@ -71,12 +71,7 @@ export class CommandBus<
 
   register<CommandType extends Command>(
     commandName: CommandType['commandName'],
-    handler: InferredCommandHandler<
-      CommandType,
-      void,
-      KnownQueries,
-      KnownEvents
-    >
+    handler: InferredCommandHandler<CommandType, KnownQueries, KnownEvents>
   ): VoidFunction {
     const handlerFn = (command: CommandType) =>
       typeof handler === 'function'
@@ -93,7 +88,7 @@ export class CommandBus<
 
   unregister<TCommand extends Command>(
     commandName: TCommand['commandName'],
-    handler: InferredCommandHandler<TCommand, void, KnownQueries, KnownEvents>
+    handler: InferredCommandHandler<TCommand, KnownQueries, KnownEvents>
   ): void {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -106,10 +101,7 @@ export class CommandBus<
       KnownQueries
     >[keyof InferredCommands<KnownCommands, KnownQueries>],
     TResponse = void
-  >(
-    command: TCommand,
-    handler: CommandHandlerOrFunction<TCommand>
-  ): Promise<TResponse> {
+  >(command: TCommand, handler: CommandHandler<TCommand>): Promise<TResponse> {
     return await this.#interceptorManager.execute<TCommand, TResponse>(
       command,
       async (command) =>
