@@ -107,7 +107,7 @@ type FindCommandByName<
     : never;
 }[keyof Commands];
 
-type CommandForDispatch<
+type CommandForExecution<
   CommandType extends Command,
   KnownCommands extends CommandRegistry,
   KnownQueries extends QueryRegistry
@@ -148,7 +148,7 @@ export interface CommandBusContract<
       KnownQueries
     >[keyof InferredCommands<KnownCommands, KnownQueries>]
   >(
-    command: CommandForDispatch<CommandType, KnownCommands, KnownQueries>,
+    command: CommandForExecution<CommandType, KnownCommands, KnownQueries>,
     handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
   ): Promise<void>;
 
@@ -158,7 +158,7 @@ export interface CommandBusContract<
       KnownQueries
     >[keyof InferredCommands<KnownCommands, KnownQueries>]
   >(
-    command: CommandForDispatch<CommandType, KnownCommands, KnownQueries>
+    command: CommandForExecution<CommandType, KnownCommands, KnownQueries>
   ): Promise<void>;
 
   register<CommandName extends keyof KnownCommands & string>(
