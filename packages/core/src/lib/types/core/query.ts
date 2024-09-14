@@ -122,13 +122,6 @@ export type ExtractQueryDefinitions<Queries extends QueryRegistry> = {
 };
 
 /**
- * Extracts queries from a given type.
- */
-export type ExtractQueries<Type> = Type extends { queries: QueryRegistry }
-  ? Type['queries']
-  : QueryRegistry;
-
-/**
  * Represents the options for the query cache.
  *
  * @remarks
