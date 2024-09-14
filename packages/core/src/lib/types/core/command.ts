@@ -98,7 +98,10 @@ export type CommandHandlerWithContext<
   CommandExecutionContext<KnownQueries, KnownEvents>
 >;
 
-type GetCommandByName<Commands extends CommandRegistry, Name extends string> = {
+type FindCommandByName<
+  Commands extends CommandRegistry,
+  Name extends string
+> = {
   [Key in keyof Commands]: Commands[Key]['commandName'] extends Name
     ? Commands[Key]
     : never;
@@ -109,7 +112,7 @@ type CommandForDispatch<
   KnownCommands extends CommandRegistry,
   KnownQueries extends QueryRegistry
 > = CommandType extends Command
-  ? GetCommandByName<KnownCommands, CommandType['commandName']> extends never
+  ? FindCommandByName<KnownCommands, CommandType['commandName']> extends never
     ? CommandWithDependencies<
         CommandType['commandName'],
         CommandType['payload'],
@@ -117,12 +120,12 @@ type CommandForDispatch<
         KnownQueries
       > // External command
     : CommandWithDependencies<
-        GetCommandByName<
+        FindCommandByName<
           KnownCommands,
           CommandType['commandName']
         >['commandName'],
-        GetCommandByName<KnownCommands, CommandType['commandName']>['payload'],
-        GetCommandByName<KnownCommands, CommandType['commandName']>['options'],
+        FindCommandByName<KnownCommands, CommandType['commandName']>['payload'],
+        FindCommandByName<KnownCommands, CommandType['commandName']>['options'],
         KnownQueries
       > // Known command from the registry
   : never;
@@ -161,7 +164,7 @@ export interface CommandBusContract<
   register<CommandName extends keyof KnownCommands & string>(
     commandName: CommandName,
     handler: CommandHandlerWithContext<
-      GetCommandByName<KnownCommands, CommandName>,
+      FindCommandByName<KnownCommands, CommandName>,
       KnownQueries,
       KnownEvents
     >
@@ -179,7 +182,7 @@ export interface CommandBusContract<
   unregister<CommandName extends keyof KnownCommands & string>(
     commandName: CommandName,
     handler: CommandHandlerWithContext<
-      GetCommandByName<KnownCommands, CommandName>,
+      FindCommandByName<KnownCommands, CommandName>,
       KnownQueries,
       KnownEvents
     >
