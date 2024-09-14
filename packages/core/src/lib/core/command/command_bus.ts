@@ -9,7 +9,7 @@ import type {
   CommandHandler,
   CommandRegistry,
   CommandHandlerWithContext,
-  InferredCommands,
+  ResolvedCommandRegistry,
 } from '../../types/core/command';
 import type { EventBusContract, EventRegistry } from '../../types/core/event';
 import type { MergedPartialOptions } from '../../types/core/options/options';
@@ -96,10 +96,10 @@ export class CommandBus<
   }
 
   async execute<
-    TCommand extends Command = InferredCommands<
+    TCommand extends Command = ResolvedCommandRegistry<
       KnownCommands,
       KnownQueries
-    >[keyof InferredCommands<KnownCommands, KnownQueries>],
+    >[keyof ResolvedCommandRegistry<KnownCommands, KnownQueries>],
     TResponse = void
   >(command: TCommand, handler: CommandHandler<TCommand>): Promise<TResponse> {
     return await this.#interceptorManager.execute<TCommand, TResponse>(

@@ -64,7 +64,7 @@ export type CommandWithDependencies<
   KnownQueries extends QueryRegistry = QueryRegistry
 > = Command<Name, Payload, Options & CommandExecutionOptions<KnownQueries>>;
 
-export type InferredCommands<
+export type ResolvedCommandRegistry<
   KnownCommands extends CommandRegistry,
   KnownQueries extends QueryRegistry
 > = {
@@ -143,20 +143,20 @@ export interface CommandBusContract<
   KnownEvents extends EventRegistry = EventRegistry
 > {
   execute<
-    CommandType extends Command = InferredCommands<
+    CommandType extends Command = ResolvedCommandRegistry<
       KnownCommands,
       KnownQueries
-    >[keyof InferredCommands<KnownCommands, KnownQueries>]
+    >[keyof ResolvedCommandRegistry<KnownCommands, KnownQueries>]
   >(
     command: CommandForExecution<CommandType, KnownCommands, KnownQueries>,
     handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
   ): Promise<void>;
 
   dispatch<
-    CommandType extends Command = InferredCommands<
+    CommandType extends Command = ResolvedCommandRegistry<
       KnownCommands,
       KnownQueries
-    >[keyof InferredCommands<KnownCommands, KnownQueries>]
+    >[keyof ResolvedCommandRegistry<KnownCommands, KnownQueries>]
   >(
     command: CommandForExecution<CommandType, KnownCommands, KnownQueries>
   ): Promise<void>;
@@ -170,10 +170,10 @@ export interface CommandBusContract<
     >
   ): VoidFunction;
   register<
-    CommandType extends Command = InferredCommands<
+    CommandType extends Command = ResolvedCommandRegistry<
       KnownCommands,
       KnownQueries
-    >[keyof InferredCommands<KnownCommands, KnownQueries>]
+    >[keyof ResolvedCommandRegistry<KnownCommands, KnownQueries>]
   >(
     commandName: CommandType['commandName'],
     handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
@@ -188,10 +188,10 @@ export interface CommandBusContract<
     >
   ): void;
   unregister<
-    CommandType extends Command = InferredCommands<
+    CommandType extends Command = ResolvedCommandRegistry<
       KnownCommands,
       KnownQueries
-    >[keyof InferredCommands<KnownCommands, KnownQueries>]
+    >[keyof ResolvedCommandRegistry<KnownCommands, KnownQueries>]
   >(
     commandName: CommandType['commandName'],
     handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
