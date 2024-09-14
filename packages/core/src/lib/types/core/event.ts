@@ -53,11 +53,19 @@ export interface EventBusContract<
 > extends EventEmitter<KnownEvents> {
   disconnect(): void;
 
+  on<EventName extends keyof KnownEvents & string>(
+    eventName: EventName,
+    handler: EventHandlerOrFunction<GetEventByName<KnownEvents, EventName>>
+  ): VoidFunction;
   on<EventType extends Event = KnownEvents[keyof KnownEvents]>(
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
   ): VoidFunction;
 
+  off<EventName extends keyof KnownEvents & string>(
+    eventName: EventName,
+    handler: EventHandlerOrFunction<GetEventByName<KnownEvents, EventName>>
+  ): void;
   off<EventType extends Event = KnownEvents[keyof KnownEvents]>(
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
