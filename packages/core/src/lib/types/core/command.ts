@@ -89,7 +89,7 @@ export type ExtractCommand<
  * @template KnownQueries - Known query types.
  * @template KnownEvents - Known event types.
  */
-export type InferredCommandHandler<
+export type CommandHandlerWithContext<
   CommandType extends Command,
   KnownQueries extends QueryRegistry = QueryRegistry,
   KnownEvents extends EventRegistry = EventRegistry
@@ -146,7 +146,7 @@ export interface CommandBusContract<
     >[keyof InferredCommands<KnownCommands, KnownQueries>]
   >(
     command: CommandForDispatch<CommandType, KnownCommands, KnownQueries>,
-    handler: InferredCommandHandler<CommandType, KnownQueries, KnownEvents>
+    handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
   ): Promise<void>;
 
   dispatch<
@@ -160,7 +160,7 @@ export interface CommandBusContract<
 
   register<CommandName extends keyof KnownCommands & string>(
     commandName: CommandName,
-    handler: InferredCommandHandler<
+    handler: CommandHandlerWithContext<
       GetCommandByName<KnownCommands, CommandName>,
       KnownQueries,
       KnownEvents
@@ -173,12 +173,12 @@ export interface CommandBusContract<
     >[keyof InferredCommands<KnownCommands, KnownQueries>]
   >(
     commandName: CommandType['commandName'],
-    handler: InferredCommandHandler<CommandType, KnownQueries, KnownEvents>
+    handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
   ): VoidFunction;
 
   unregister<CommandName extends keyof KnownCommands & string>(
     commandName: CommandName,
-    handler: InferredCommandHandler<
+    handler: CommandHandlerWithContext<
       GetCommandByName<KnownCommands, CommandName>,
       KnownQueries,
       KnownEvents
@@ -191,7 +191,7 @@ export interface CommandBusContract<
     >[keyof InferredCommands<KnownCommands, KnownQueries>]
   >(
     commandName: CommandType['commandName'],
-    handler: InferredCommandHandler<CommandType, KnownQueries, KnownEvents>
+    handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
   ): void;
 
   disconnect(): void;

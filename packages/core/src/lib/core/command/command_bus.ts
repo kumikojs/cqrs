@@ -8,7 +8,7 @@ import type {
   Command,
   CommandHandler,
   CommandRegistry,
-  InferredCommandHandler,
+  CommandHandlerWithContext,
   InferredCommands,
 } from '../../types/core/command';
 import type { EventBusContract, EventRegistry } from '../../types/core/event';
@@ -71,7 +71,7 @@ export class CommandBus<
 
   register<CommandType extends Command>(
     commandName: CommandType['commandName'],
-    handler: InferredCommandHandler<CommandType, KnownQueries, KnownEvents>
+    handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
   ): VoidFunction {
     const handlerFn = (command: CommandType) =>
       typeof handler === 'function'
@@ -88,7 +88,7 @@ export class CommandBus<
 
   unregister<TCommand extends Command>(
     commandName: TCommand['commandName'],
-    handler: InferredCommandHandler<TCommand, KnownQueries, KnownEvents>
+    handler: CommandHandlerWithContext<TCommand, KnownQueries, KnownEvents>
   ): void {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
