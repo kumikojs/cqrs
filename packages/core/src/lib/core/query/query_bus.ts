@@ -8,14 +8,12 @@ import type { MergedPartialOptions } from '../../types/core/options/options';
 import type { ResilienceBuilderOptions } from '../../types/core/options/resilience_options';
 import type {
   ExtractQueryDefinitions,
-  ExtractQueryResponse,
   Query,
   QueryBusContract,
   QueryHandlerFunction,
   QueryHandlerOrFunction,
   QueryRegistry,
   QueryRequest,
-  QueryResponse,
 } from '../../types/core/query';
 import type { BusDriver } from '../../types/infrastructure/bus';
 import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
