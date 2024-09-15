@@ -4,15 +4,19 @@ import { QueryBus } from './core/query/query_bus';
 import { QueryCache } from './core/query/query_cache';
 import { KumikoLogger, logger } from './utilities/logger/kumiko_logger';
 
-import type { CommandRegistry, ExtractCommands } from './types/core/command';
-import type { EventRegistry, ExtractEvents } from './types/core/event';
-import type { ExtractQueries, QueryRegistry } from './types/core/query';
+import type { CommandBusContract, CommandRegistry } from './types/core/command';
+import type { EventBusContract, EventRegistry } from './types/core/event';
+import type { QueryRegistry } from './types/core/query';
 import type {
   ClientOptions,
+  ExtractCommands,
+  ExtractEvents,
+  ExtractQueries,
   Feature,
   FeatureSchema,
   FeatureToSchema,
   MergedFeatureSchema,
+  QueryBusContract,
 } from './types/main';
 
 /**
@@ -40,9 +44,9 @@ export class Client<
   >
 > {
   #cache: QueryCache;
-  #eventBus: EventBus<KnownEvents>;
-  #commandBus: CommandBus<KnownCommands, KnownQueries, KnownEvents>;
-  #queryBus: QueryBus<KnownQueries>;
+  #eventBus: EventBusContract<KnownEvents>;
+  #commandBus: CommandBusContract<KnownCommands, KnownQueries, KnownEvents>;
+  #queryBus: QueryBusContract<KnownQueries>;
   #logger: KumikoLogger;
 
   /**
@@ -83,7 +87,7 @@ export class Client<
    *
    * @returns {CommandBus<KnownCommands, KnownQueries, KnownEvents>} The command bus instance.
    */
-  get command(): CommandBus<KnownCommands, KnownQueries, KnownEvents> {
+  get command(): CommandBusContract<KnownCommands, KnownQueries, KnownEvents> {
     return this.#commandBus;
   }
 
@@ -92,7 +96,7 @@ export class Client<
    *
    * @returns {QueryBus<KnownQueries>} The query bus instance.
    */
-  get query(): QueryBus<KnownQueries> {
+  get query(): QueryBusContract<KnownQueries> {
     return this.#queryBus;
   }
 
@@ -101,7 +105,7 @@ export class Client<
    *
    * @returns {EventBus<KnownEvents>} The event bus instance.
    */
-  get event(): EventBus<KnownEvents> {
+  get event(): EventBusContract<KnownEvents> {
     return this.#eventBus;
   }
 
