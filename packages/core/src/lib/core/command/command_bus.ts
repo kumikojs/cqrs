@@ -6,10 +6,9 @@ import { CommandInterceptors } from './command_interceptors';
 
 import type {
   Command,
-  CommandHandler,
-  CommandRegistry,
+  CommandForExecution,
   CommandHandlerWithContext,
-  ResolvedCommandRegistry,
+  CommandRegistry,
 } from '../../types/core/command';
 import type { EventBusContract, EventRegistry } from '../../types/core/event';
 import type { MergedPartialOptions } from '../../types/core/options/options';
@@ -95,25 +94,31 @@ export class CommandBus<
     this.#driver.unsubscribe(commandName, handlerFn);
   }
 
-  async execute<
-    TCommand extends Command = ResolvedCommandRegistry<
-      KnownCommands,
-      KnownQueries
-    >[keyof ResolvedCommandRegistry<KnownCommands, KnownQueries>],
-    TResponse = void
-  >(command: TCommand, handler: CommandHandler<TCommand>): Promise<TResponse> {
-    return await this.#interceptorManager.execute<TCommand, TResponse>(
-      command,
-      async (command) =>
-        typeof handler === 'function'
-          ? handler(command, { emit: this.#emitter.emit })
-          : handler.execute(command, { emit: this.#emitter.emit })
+  async execute<TCommand extends Command>(
+    cmd: CommandForExecution<TCommand, KnownCommands, KnownQueries>,
+    handler: CommandHandlerWithContext<TCommand, KnownQueries, KnownEvents>
+  ): Promise<void> {
+    return await this.#interceptorManager.execute<
+      CommandForExecution<TCommand, KnownCommands, KnownQueries>,
+      void
+    >(cmd, async (resolvedCmd) =>
+      typeof handler === 'function'
+        ? handler(resolvedCmd as TCommand, {
+            emit: this.#emitter.emit,
+            cache: this.#cache,
+          })
+        : handler.execute(resolvedCmd as TCommand, {
+            emit: this.#emitter.emit,
+            cache: this.#cache,
+          })
     );
   }
 
-  async dispatch<TCommand extends Command>(command: TCommand): Promise<void> {
-    return this.execute<TCommand, void>(command, (command) =>
-      this.#driver.publish(command['commandName'], command)
+  async dispatch<TCommand extends Command>(
+    cmd: CommandForExecution<TCommand, KnownCommands, KnownQueries>
+  ): Promise<void> {
+    return this.execute(cmd, (resolvedCmd) =>
+      this.#driver.publish(resolvedCmd['commandName'], resolvedCmd)
     );
   }
 

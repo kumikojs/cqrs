@@ -178,36 +178,34 @@ export type ResolvedCommandRegistry<
  * - **If the command is not known** (external):
  *   Resolves to the command type with explicit typing, assuming the command is external and not in the registry.
  */
-type CommandForExecution<
+export type CommandForExecution<
   CommandType extends Command,
   KnownCommands extends CommandRegistry,
   KnownQueries extends QueryRegistry
-> = CommandType extends Command
-  ? FindCommandByName<KnownCommands, CommandType['commandName']> extends never
-    ? /**
-       * Command is not found in the registry (external).
-       * Type inferred from explicit command definition.
-       */
-      CommandWithDependencies<
-        CommandType['commandName'],
-        CommandType['payload'],
-        CommandType['options'],
-        KnownQueries
-      >
-    : /**
-       * Command is found in the registry (known).
-       * Type inferred from registry with appropriate dependencies and options.
-       */
-      CommandWithDependencies<
-        FindCommandByName<
-          KnownCommands,
-          CommandType['commandName']
-        >['commandName'],
-        FindCommandByName<KnownCommands, CommandType['commandName']>['payload'],
-        FindCommandByName<KnownCommands, CommandType['commandName']>['options'],
-        KnownQueries
-      >
-  : never;
+> = FindCommandByName<KnownCommands, CommandType['commandName']> extends never
+  ? /**
+     * Command is not found in the registry (external).
+     * Type inferred from explicit command definition.
+     */
+    CommandWithDependencies<
+      CommandType['commandName'],
+      CommandType['payload'],
+      CommandType['options'],
+      KnownQueries
+    >
+  : /**
+     * Command is found in the registry (known).
+     * Type inferred from registry with appropriate dependencies and options.
+     */
+    CommandWithDependencies<
+      FindCommandByName<
+        KnownCommands,
+        CommandType['commandName']
+      >['commandName'],
+      FindCommandByName<KnownCommands, CommandType['commandName']>['payload'],
+      FindCommandByName<KnownCommands, CommandType['commandName']>['options'],
+      KnownQueries
+    >;
 
 export interface CommandBusContract<
   KnownCommands extends CommandRegistry = CommandRegistry,
