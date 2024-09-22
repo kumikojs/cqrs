@@ -12,13 +12,11 @@ export type * from './core/feature';
 export type * from './infrastructure/interceptor';
 export type * from './infrastructure/storage';
 
-export interface ClientConfiguration {
+export type ClientOptions = {
   resilience?: {
     command?: ResilienceBuilderOptions;
     query?: ResilienceBuilderOptions;
   };
   logger?: KumikoLoggerOptions | KumikoLogger;
   cache: QueryCacheOptions;
-}
-
-export type ClientOptions = NonNullable<ClientConfiguration>;
+};
