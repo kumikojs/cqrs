@@ -1,14 +1,14 @@
 import { ms } from '../../../utilities/ms/ms';
 import { JsonSerializer } from '../../../utilities/serializer/json_serializer';
 
-import type { DurationUnit, Nullable, Optional } from '../../../types/helpers';
+import type { DurationUnit } from '../../../types/helpers';
 
 /**
  * Represents the data structure for a cache entry.
  */
 type CacheEntryData<TValue> = {
   key: string;
-  value: Optional<TValue>;
+  value?: TValue;
   expiration: number;
   ttl: DurationUnit;
 };
@@ -18,7 +18,7 @@ type CacheEntryData<TValue> = {
  */
 export class CacheEntry<TValue> {
   #key: string;
-  #value: Optional<TValue>;
+  #value?: TValue;
   #expiration: number;
   #ttl: DurationUnit;
 
@@ -33,9 +33,9 @@ export class CacheEntry<TValue> {
    */
   constructor(
     key: string,
-    value: Optional<TValue>,
-    ttl: Optional<DurationUnit>,
-    expiration?: Optional<number>
+    value?: TValue,
+    ttl?: DurationUnit,
+    expiration?: number
   ) {
     this.#key = key;
     this.#value = value;
@@ -83,7 +83,7 @@ export class CacheEntry<TValue> {
    * Serializes the cache entry to a string.
    * @returns The serialized cache entry string, or null if serialization fails.
    */
-  serialize(): Nullable<string> {
+  serialize(): string | null {
     const serialized = CacheEntry.#serializer.serialize({
       key: this.#key,
       value: this.#value,

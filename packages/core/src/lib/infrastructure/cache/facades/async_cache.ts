@@ -1,4 +1,3 @@
-import type { NullablePromise } from '../../../types/helpers';
 import type { AsyncStorageDriver } from '../../../types/infrastructure/storage';
 
 export class AsyncCache {
@@ -10,7 +9,7 @@ export class AsyncCache {
     this.#open();
   }
 
-  async getItem(key: string): NullablePromise<string> {
+  async getItem(key: string): Promise<string | null> {
     return this.#storage.getItem(key);
   }
 
@@ -26,7 +25,7 @@ export class AsyncCache {
     return this.#storage.clear();
   }
 
-  async key(index: number): NullablePromise<string> {
+  async key(index: number): Promise<string | null> {
     const keys = await this.#storage.getAllKeys();
     return keys[index] ?? null;
   }

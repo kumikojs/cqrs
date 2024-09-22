@@ -67,9 +67,13 @@ export class Client<
       this.#cache,
       this.#eventBus,
       this.#logger,
-      options?.command
+      options?.resilience?.command
     );
-    this.#queryBus = new QueryBus(this.#cache, this.#logger, options?.query);
+    this.#queryBus = new QueryBus(
+      this.#cache,
+      this.#logger,
+      options?.resilience?.query
+    );
   }
 
   /**

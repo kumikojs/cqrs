@@ -1,4 +1,3 @@
-import type { Nullable } from '../../../types/helpers';
 import type { SyncStorageDriver } from '../../../types/infrastructure/storage';
 
 export class SyncCache {
@@ -10,7 +9,7 @@ export class SyncCache {
     this.#open();
   }
 
-  getItem(key: string): Nullable<string> {
+  getItem(key: string): string | null {
     return this.#storage.getItem(key);
   }
 
@@ -26,7 +25,7 @@ export class SyncCache {
     return this.#storage.clear();
   }
 
-  key(index: number): Nullable<string> {
+  key(index: number): string | null {
     return this.#storage.key(index);
   }
 

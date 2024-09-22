@@ -4,12 +4,7 @@ import { CacheScheduler } from './cache_scheduler';
 import { AsyncCache } from './facades/async_cache';
 import { SyncCache } from './facades/sync_cache';
 
-import type {
-  DurationUnit,
-  NullablePromise,
-  Optional,
-  OptionalPromise,
-} from '../../types/helpers';
+import type { DurationUnit } from '../../types/helpers';
 import type {
   AsyncStorageDriver,
   SyncStorageDriver,
@@ -107,7 +102,7 @@ export class Cache {
    * @param key The key of the item to retrieve.
    * @returns The value associated with the key, or null if the key does not exist or the item has expired.
    */
-  async get<TValue>(key: string): NullablePromise<TValue> {
+  async get<TValue>(key: string): Promise<TValue | null> {
     const item = await this.#cache.getItem(key);
     if (!item) return null;
 
@@ -147,7 +142,7 @@ export class Cache {
    * @param key The key of the item.
    * @returns The time-to-live (TTL) of the item, or undefined if the item does not exist.
    */
-  async ttl(key: string): OptionalPromise<DurationUnit> {
+  async ttl(key: string): Promise<DurationUnit | undefined> {
     const item = await this.#cache.getItem(key);
     if (!item) return undefined;
 
@@ -168,7 +163,7 @@ export class Cache {
   async set<TValue>(
     key: string,
     value: TValue,
-    ttl: Optional<DurationUnit> = this.#defaultTTL
+    ttl: DurationUnit = this.#defaultTTL
   ): Promise<void> {
     const entry = new CacheEntry(key, value, ttl);
     const serialized = entry.serialize();
@@ -199,7 +194,7 @@ export class Cache {
    * @param index The index of the key.
    * @returns The key at the specified index, or null if the index is out of range.
    */
-  async key(index: number): NullablePromise<string> {
+  async key(index: number): Promise<string | null> {
     return await this.#cache.key(index);
   }
 

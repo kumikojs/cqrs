@@ -1,10 +1,17 @@
-import type { Optional, UnionToIntersection } from '../../helpers';
+import type { UnionToIntersection } from '../../helpers';
 
 /**
- * Represents a container for options.
+ * **OptionsContainer**
+ *
+ * A generic container for options that allows partial, optional, and defaulted option objects.
+ * - The `options` property itself is optional.
+ * - `T` can represent any shape, and all properties within `T` are optional by default.
+ * - You can pass specific shapes that enforce stricter typing if needed.
  */
-export type OptionsContainer<T = Record<string, unknown>> = {
-  options?: Optional<Record<string, unknown> & T>;
+export type OptionsContainer<
+  T extends Record<string, unknown> = Record<string, unknown>
+> = {
+  options?: Partial<T>;
 };
 
 type ExtractedOptions<T> = T extends {
