@@ -7,7 +7,10 @@ import { CommandCache } from './command_cache';
 
 import type { Command, CommandRegistry } from '../../types/core/command';
 import type { MergedPartialOptions } from '../../types/core/options/options';
-import type { ResilienceBuilderOptions } from '../../types/core/options/resilience_options';
+import type {
+  ResilienceBuilderOptions,
+  ResilienceOptions,
+} from '../../types/core/options/resilience_options';
 import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
 
 /**
@@ -28,7 +31,7 @@ export class CommandInterceptors<
   CommandType extends Command<
     string,
     unknown,
-    MergedPartialOptions<Command, KnownCommands>
+    MergedPartialOptions<Command, KnownCommands> & ResilienceOptions
   >,
   KnownCommands extends CommandRegistry
 > {

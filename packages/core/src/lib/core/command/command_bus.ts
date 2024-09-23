@@ -96,18 +96,22 @@ export class CommandBus<
 
   async execute<TCommand extends Command>(
     cmd: CommandForExecution<TCommand, KnownCommands, KnownQueries>,
-    handler: CommandHandlerWithContext<TCommand, KnownQueries, KnownEvents>
+    handler: CommandHandlerWithContext<
+      CommandForExecution<TCommand, KnownCommands, KnownQueries>,
+      KnownQueries,
+      KnownEvents
+    >
   ): Promise<void> {
     return await this.#interceptorManager.execute<
       CommandForExecution<TCommand, KnownCommands, KnownQueries>,
       void
     >(cmd, async (resolvedCmd) =>
       typeof handler === 'function'
-        ? handler(resolvedCmd as TCommand, {
+        ? handler(resolvedCmd, {
             emit: this.#emitter.emit,
             cache: this.#cache,
           })
-        : handler.execute(resolvedCmd as TCommand, {
+        : handler.execute(resolvedCmd, {
             emit: this.#emitter.emit,
             cache: this.#cache,
           })
