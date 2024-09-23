@@ -1,7 +1,7 @@
 import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { QueryCache } from '../query/query_cache';
 
-import type { QueryRequest, QueryRegistry } from '../../types/core/query';
+import type { QueryRegistry, QueryRequest } from '../../types/core/query';
 
 /**
  * Options for configuring the CommandCache.
@@ -55,7 +55,7 @@ export class CommandCache<KnownQueries extends QueryRegistry = QueryRegistry> {
    * @param query - The query to update.
    * @param updater - The function to generate the new response based on the previous result.
    */
-  async update<
+  async optimisticUpdate<
     TQuery extends
       | KnownQueries[keyof KnownQueries]['req']
       | KnownQueries[keyof KnownQueries]['req']['queryName'],

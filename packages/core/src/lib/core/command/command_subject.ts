@@ -1,11 +1,7 @@
 import { Client } from '../../client';
 import { Operation } from '../../utilities/reactive/operation';
 
-import type {
-  Command,
-  CommandHandler,
-  CommandWithDependencies,
-} from '../../types/core/command';
+import type { Command, CommandHandler } from '../../types/core/command';
 
 /**
  * **CommandSubject Class**
@@ -44,10 +40,8 @@ export class CommandSubject {
   constructor(client: Client, handler?: CommandHandler<Command>) {
     this.#client = client;
     this.#handlerFn = handler
-      ? (command: Command) =>
-          client.command.execute(command as CommandWithDependencies, handler)
-      : (command: Command) =>
-          client.command.dispatch(command as CommandWithDependencies);
+      ? (command: Command) => client.command.execute(command, handler)
+      : (command: Command) => client.command.dispatch(command);
   }
 
   /**
