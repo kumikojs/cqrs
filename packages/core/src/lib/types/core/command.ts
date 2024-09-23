@@ -14,8 +14,8 @@ import type { QueryRegistry } from './query';
 export interface Command<
   Name extends string = string,
   Payload = unknown,
-  Options = unknown
-> extends OptionsContainer<Options & CommandExecutionOptions> {
+  Options extends Record<string, unknown> = Record<string, unknown>
+> extends OptionsContainer<Options & CommandExecutionOptions<never>> {
   commandName: Name;
   payload?: Payload;
 }
@@ -42,9 +42,10 @@ export type CommandExecutionContext<
  * - **onMutate**: Callback for handling cache mutations.
  */
 export type CommandExecutionOptions<
+  CommandType extends Command,
   KnownQueries extends QueryRegistry = QueryRegistry
 > = Partial<
-  Omit<ResilienceOptions, 'cache'> & {
+  Omit<ResilienceOptions, 'cache' | 'fallback'> & {
     invalidation?: {
       queries: (
         | KnownQueries[keyof KnownQueries]['req']['queryName']
@@ -52,6 +53,7 @@ export type CommandExecutionOptions<
       )[];
     };
     onMutate?: (ctx: { cache: CommandCache<KnownQueries> }) => void;
+    fallback?: (command: CommandType, error: unknown) => void;
   }
 >;
 
@@ -61,11 +63,13 @@ export type CommandExecutionOptions<
  * Extends the basic `Command` type with additional options related to command execution.
  */
 export type CommandWithDependencies<
-  Name extends string = string,
-  Payload = unknown,
-  Options = unknown,
+  CommandType extends Command,
   KnownQueries extends QueryRegistry = QueryRegistry
-> = Command<Name, Payload, Options & CommandExecutionOptions<KnownQueries>>;
+> = Command<
+  CommandType['commandName'],
+  CommandType['payload'],
+  CommandType['options'] & CommandExecutionOptions<CommandType, KnownQueries>
+>;
 
 /**
  * Interface for executing commands with a specific context.
@@ -163,9 +167,7 @@ export type ResolvedCommandRegistry<
   KnownQueries extends QueryRegistry
 > = {
   [CommandName in KnownCommands[keyof KnownCommands]['commandName']]: CommandWithDependencies<
-    CommandName,
-    ExtractCommand<CommandName, KnownCommands>['payload'],
-    ExtractCommand<CommandName, KnownCommands>['options'],
+    ExtractCommand<CommandName, KnownCommands>,
     KnownQueries
   >;
 };
@@ -182,30 +184,11 @@ export type CommandForExecution<
   CommandType extends Command,
   KnownCommands extends CommandRegistry,
   KnownQueries extends QueryRegistry
-> = FindCommandByName<KnownCommands, CommandType['commandName']> extends never
-  ? /**
-     * Command is not found in the registry (external).
-     * Type inferred from explicit command definition.
-     */
-    CommandWithDependencies<
-      CommandType['commandName'],
-      CommandType['payload'],
-      CommandType['options'],
-      KnownQueries
-    >
-  : /**
-     * Command is found in the registry (known).
-     * Type inferred from registry with appropriate dependencies and options.
-     */
-    CommandWithDependencies<
-      FindCommandByName<
-        KnownCommands,
-        CommandType['commandName']
-      >['commandName'],
-      FindCommandByName<KnownCommands, CommandType['commandName']>['payload'],
-      FindCommandByName<KnownCommands, CommandType['commandName']>['options'],
-      KnownQueries
-    >;
+> = CommandType extends { commandName: infer Name }
+  ? Name extends keyof KnownCommands
+    ? CommandWithDependencies<KnownCommands[Name], KnownQueries>
+    : CommandWithDependencies<CommandType, KnownQueries>
+  : CommandWithDependencies<CommandType, KnownQueries>;
 
 export interface CommandBusContract<
   KnownCommands extends CommandRegistry = CommandRegistry,
@@ -225,7 +208,11 @@ export interface CommandBusContract<
     >[keyof ResolvedCommandRegistry<KnownCommands, KnownQueries>]
   >(
     command: CommandForExecution<CommandType, KnownCommands, KnownQueries>,
-    handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
+    handler: CommandHandlerWithContext<
+      CommandForExecution<CommandType, KnownCommands, KnownQueries>,
+      KnownQueries,
+      KnownEvents
+    >
   ): Promise<void>;
 
   /**
