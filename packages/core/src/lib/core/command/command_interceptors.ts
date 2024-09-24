@@ -5,7 +5,11 @@ import { QueryCache } from '../query/query_cache';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 import { CommandCache } from './command_cache';
 
-import type { Command, CommandRegistry } from '../../types/core/command';
+import type {
+  Command,
+  CommandExecutionOptions,
+  CommandRegistry,
+} from '../../types/core/command';
 import type { MergedPartialOptions } from '../../types/core/options/options';
 import type {
   ResilienceBuilderOptions,
@@ -31,7 +35,9 @@ export class CommandInterceptors<
   CommandType extends Command<
     string,
     unknown,
-    MergedPartialOptions<Command, KnownCommands> & ResilienceOptions
+    MergedPartialOptions<Command, KnownCommands> &
+      ResilienceOptions &
+      CommandExecutionOptions<never>
   >,
   KnownCommands extends CommandRegistry
 > {
@@ -151,8 +157,7 @@ export class CommandInterceptors<
           nextResult
         );
 
-        // FIXME: This is a hack to get around the type issue with CommandCache
-        command.options.onMutate({ cache: cache as unknown as never });
+        command.options.onMutate({ cache });
 
         return await nextResult;
       }

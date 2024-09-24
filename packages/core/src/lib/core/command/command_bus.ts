@@ -6,6 +6,7 @@ import { CommandInterceptors } from './command_interceptors';
 
 import type {
   Command,
+  CommandCacheContract,
   CommandForExecution,
   CommandHandlerWithContext,
   CommandRegistry,
@@ -27,7 +28,7 @@ export class CommandBus<
     Command<string, unknown, MergedPartialOptions<Command, KnownCommands>>
   >;
   #emitter: EventBusContract<KnownEvents>;
-  #cache: CommandCache<KnownQueries>;
+  #cache: CommandCacheContract<KnownQueries>;
   #logger: KumikoLogger;
 
   constructor(

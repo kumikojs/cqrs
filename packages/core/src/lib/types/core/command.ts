@@ -1,5 +1,9 @@
-import type { CommandCache } from '../../core/command/command_cache';
-import type { InterceptorManagerContract } from '../main';
+import type {
+  ExtractQueryResponse,
+  InterceptorManagerContract,
+  Query,
+  QueryRequest,
+} from '../main';
 import type { EventEmitter, EventRegistry } from './event';
 import type { MergedPartialOptions, OptionsContainer } from './options/options';
 import type { ResilienceOptions } from './options/resilience_options';
@@ -15,7 +19,7 @@ export interface Command<
   Name extends string = string,
   Payload = unknown,
   Options extends Record<string, unknown> = Record<string, unknown>
-> extends OptionsContainer<Options & CommandExecutionOptions<never>> {
+> extends OptionsContainer<Options> {
   commandName: Name;
   payload?: Payload;
 }
@@ -30,7 +34,7 @@ export type CommandExecutionContext<
   KnownQueries extends QueryRegistry,
   KnownEvents extends EventRegistry
 > = {
-  cache: CommandCache<KnownQueries>;
+  cache: CommandCacheContract<KnownQueries>;
   emit: EventEmitter<KnownEvents>['emit'];
 };
 
@@ -52,7 +56,7 @@ export type CommandExecutionOptions<
         | KnownQueries[keyof KnownQueries]['req']
       )[];
     };
-    onMutate?: (ctx: { cache: CommandCache<KnownQueries> }) => void;
+    onMutate?: (ctx: { cache: CommandCacheContract<KnownQueries> }) => void;
     fallback?: (command: CommandType, error: unknown) => void;
   }
 >;
@@ -302,4 +306,40 @@ export interface CommandBusContract<
   interceptors: InterceptorManagerContract<
     Command<string, unknown, MergedPartialOptions<Command, KnownCommands>>
   >;
+}
+
+export interface CommandCacheContract<KnownQueries extends QueryRegistry> {
+  invalidateQueries(
+    ...queries: (
+      | KnownQueries[keyof KnownQueries]['req']['queryName']
+      | KnownQueries[keyof KnownQueries]['req']
+    )[]
+  ): void;
+
+  optimisticUpdate<
+    TQueryRequest extends KnownQueries[keyof KnownQueries]['req']
+  >(
+    query: TQueryRequest,
+    updater: (
+      prev?: ExtractQueryResponse<TQueryRequest['queryName'], KnownQueries>
+    ) => ExtractQueryResponse<TQueryRequest['queryName'], KnownQueries>
+  ): Promise<void>;
+  optimisticUpdate<TQueryName extends keyof KnownQueries & string>(
+    queryName: TQueryName,
+    updater: (
+      prev?: ExtractQueryResponse<TQueryName, KnownQueries>
+    ) => ExtractQueryResponse<TQueryName, KnownQueries>
+  ): Promise<void>;
+  optimisticUpdate<
+    TQuery extends QueryRequest = KnownQueries[keyof KnownQueries]['req']
+  >(
+    queryOrName: TQuery['queryName'],
+    updater: (
+      prev: ExtractQueryResponse<TQuery['queryName'], KnownQueries>
+    ) => ExtractQueryResponse<TQuery['queryName'], KnownQueries>
+  ): Promise<void>;
+  optimisticUpdate<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
+    queryOrName: TQuery['req'],
+    updater: (prev: TQuery['res'] | null | undefined) => TQuery['res']
+  ): Promise<void>;
 }
