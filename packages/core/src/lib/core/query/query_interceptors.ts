@@ -5,7 +5,10 @@ import { QueryCache } from './query_cache';
 import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
 import type { QueryRequest } from '../../types/core/query';
 import type { MergedPartialOptions } from '../../types/core/options/options';
-import type { ResilienceBuilderOptions } from '../../types/core/options/resilience_options';
+import type {
+  ResilienceBuilderOptions,
+  ResilienceOptions,
+} from '../../types/core/options/resilience_options';
 
 /**
  * The `QueryInterceptors` class constructs a chain of interceptors specifically designed for handling queries.
@@ -19,7 +22,7 @@ export class QueryInterceptors<
   TQuery extends QueryRequest<
     string,
     unknown,
-    MergedPartialOptions<QueryRequest, KnownQueries>
+    MergedPartialOptions<QueryRequest, KnownQueries> & ResilienceOptions
   >,
   KnownQueries extends Record<string, QueryRequest>
 > {

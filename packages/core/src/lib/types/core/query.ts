@@ -5,13 +5,13 @@ import type {
   SyncStorageDriver,
 } from '../main';
 import type { MergedPartialOptions, OptionsContainer } from './options/options';
-import type { ResilienceOptions } from './options/resilience_options';
+import { ResilienceOptions } from './options/resilience_options';
 
 export interface QueryRequest<
   Name extends string = string,
   Payload = unknown,
-  Options = unknown
-> extends OptionsContainer<Options & ResilienceOptions> {
+  Options extends Record<string, unknown> = Record<string, unknown>
+> extends OptionsContainer<Options> {
   queryName: Name;
   payload?: Payload;
   context?: QueryContext;
@@ -27,12 +27,40 @@ export type Query<
   res: ResType;
 };
 
+export type QueryRequestExecutionOptions<QueryType extends Query> = Partial<
+  Omit<ResilienceOptions, 'fallback'>
+> & {
+  fallback?: (
+    req: QueryType['req'],
+    error: unknown
+  ) => QueryResponse<QueryType['res']>;
+};
+
+export type QueryRequestForExecution<
+  QueryType extends Query,
+  KnownQueries extends QueryRegistry
+> = QueryType extends Query<
+  QueryRequest<infer Name, infer Payload, infer Options>
+>
+  ? Name extends keyof KnownQueries
+    ? QueryRequest<
+        Name,
+        Payload,
+        Options & QueryRequestExecutionOptions<ExtractQuery<KnownQueries, Name>>
+      >
+    : QueryRequest<
+        QueryType['req']['queryName'],
+        QueryType['req']['payload'],
+        QueryType['req']['options'] & QueryRequestExecutionOptions<QueryType>
+      >
+  : never;
+
 /**
  * Represents a query handler definition.
  */
 export interface QueryHandler<
   QueryType extends QueryRequest = QueryRequest,
-  ResponseType = unknown
+  ResponseType extends QueryResponse = unknown
 > {
   execute(query: QueryType): Promise<ResponseType>;
 }
@@ -42,7 +70,7 @@ export interface QueryHandler<
  */
 export type QueryHandlerFunction<
   QueryType extends QueryRequest = QueryRequest,
-  ResponseType = unknown
+  ResponseType extends QueryResponse = unknown
 > = QueryHandler<QueryType, ResponseType>['execute'];
 
 /**
@@ -50,7 +78,7 @@ export type QueryHandlerFunction<
  */
 export type QueryHandlerOrFunction<
   QueryType extends QueryRequest = QueryRequest,
-  ResponseType = unknown
+  ResponseType extends QueryResponse = unknown
 > =
   | QueryHandler<QueryType, ResponseType>
   | QueryHandlerFunction<QueryType, ResponseType>;
@@ -79,9 +107,9 @@ export type ExtractQueryRequest<
  * Extracts the response type for a specific query name.
  */
 export type ExtractQueryResponse<
-  QueryName,
+  QueryName extends string,
   Queries extends QueryRegistry = QueryRegistry
-> = Extract<Queries[keyof Queries], { req: { queryName: QueryName } }>['res'];
+> = Extract<Queries[keyof Queries], { req: QueryRequest<QueryName> }>['res'];
 
 /**
  * Represents a registry of queries.
@@ -89,26 +117,6 @@ export type ExtractQueryResponse<
 export interface QueryRegistry {
   [key: string]: Query;
 }
-
-/**
- * Infers the query handler type for a specific query name.
- */
-export type InferredQueryHandler<
-  QueryName extends string,
-  Queries extends QueryRegistry = QueryRegistry
-> = QueryHandlerOrFunction<
-  ExtractQueryRequest<QueryName, Queries>,
-  ExtractQueryResponse<QueryName, Queries>
->;
-
-/**
- * Extracts the responses for a list of queries.
- */
-export type ExtractQueryResponses<Queries extends QueryRegistry> = {
-  [Key in keyof Queries]: Queries[Key] extends { response: infer ResponseType }
-    ? ResponseType
-    : never;
-};
 
 /**
  * Extracts the query definitions for a list of queries.
@@ -119,6 +127,16 @@ export type ExtractQueryDefinitions<Queries extends QueryRegistry> = {
       ? QueryRequest<Name, Payload, Options>
       : never
     : never;
+};
+
+export type ResolvedQueryRegistry<
+  KnownQueries extends QueryRegistry,
+  KnownDependencies extends QueryRegistry = KnownQueries
+> = {
+  [QueryName in KnownQueries[keyof KnownQueries]['req']['queryName']]: Query<
+    ExtractQueryRequest<QueryName, KnownQueries>,
+    ExtractQueryResponse<QueryName, KnownDependencies>
+  >;
 };
 
 /**
@@ -143,7 +161,7 @@ type CacheOptions = {
   gcInterval?: DurationUnit;
 };
 
-type ExtractQuery<Queries, QueryName> = QueryName extends keyof Queries
+export type ExtractQuery<Queries, QueryName> = QueryName extends keyof Queries
   ? Queries[QueryName]
   : never;
 
@@ -155,12 +173,12 @@ export interface QueryBusContract<
   > = ExtractQueryDefinitions<KnownQueries>
 > {
   execute<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
-    query: TQuery['req'],
-    handler: QueryHandlerFunction<TQuery['req'], TQuery['res']>
+    query: QueryRequestForExecution<TQuery, KnownQueries> | TQuery['req'],
+    handler: QueryHandlerOrFunction<TQuery['req'], TQuery['res']>
   ): Promise<TQuery['res']>;
 
   dispatch<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
-    query: TQuery['req']
+    query: QueryRequestForExecution<TQuery, KnownQueries> | TQuery['req']
   ): Promise<TQuery['res']>;
 
   /*
