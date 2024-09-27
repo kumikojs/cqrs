@@ -4,7 +4,7 @@ import { JsonSerializer } from '../../utilities/serializer/json_serializer';
 import { SubscriptionManager } from '../../utilities/subscription/subscription_manager';
 
 import type { CacheEvent } from '../../infrastructure/cache/cache';
-import type { QueryRequest, QueryCacheOptions } from '../../types/core/query';
+import type { QueryInput, QueryCacheOptions } from '../../types/core/query';
 import type { DurationUnit } from '../../types/helpers';
 import type {
   AsyncStorageDriver,
@@ -94,7 +94,7 @@ export class QueryCache {
     return this.#l2;
   }
 
-  async get<TValue>(query: QueryRequest | string): Promise<TValue | null> {
+  async get<TValue>(query: QueryInput | string): Promise<TValue | null> {
     const key = typeof query === 'string' ? query : this.getCacheKey(query);
 
     /**
@@ -120,14 +120,14 @@ export class QueryCache {
     return persistedValue;
   }
 
-  set<TValue>(query: QueryRequest, value: TValue, ttl?: DurationUnit) {
+  set<TValue>(query: QueryInput, value: TValue, ttl?: DurationUnit) {
     const key = this.getCacheKey(query);
 
     this.#l1.set(key, value, ttl);
     this.#l2.set(key, value, ttl);
   }
 
-  async delete(query: QueryRequest) {
+  async delete(query: QueryInput) {
     const key = this.getCacheKey(query);
 
     await Promise.all([this.#l1.delete(key), this.#l2.delete(key)]);
@@ -151,7 +151,7 @@ export class QueryCache {
   }
 
   invalidateQueries(
-    ...queries: (QueryRequest | QueryRequest['queryName'])[]
+    ...queries: (QueryInput | QueryInput['queryName'])[]
   ): void {
     for (const query of queries) {
       this.#invalidate(
@@ -165,7 +165,7 @@ export class QueryCache {
     }
   }
 
-  getCacheKey({ queryName, payload }: QueryRequest): string {
+  getCacheKey({ queryName, payload }: QueryInput): string {
     const serializedPayload = this.#serializer.serialize(payload);
 
     if (serializedPayload.isSuccess() && serializedPayload.value) {
@@ -177,13 +177,13 @@ export class QueryCache {
     return `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
   }
 
-  async optimisticUpdate(previousQuery: QueryRequest, value: unknown) {
+  async optimisticUpdate(previousQuery: QueryInput, value: unknown) {
     const key = this.getCacheKey(previousQuery);
 
     this.#l1.optimisticUpdate(key, value);
   }
 
-  #invalidate(cache: Cache, { queryName, payload }: QueryRequest): void {
+  #invalidate(cache: Cache, { queryName, payload }: QueryInput): void {
     if (!payload) {
       this.#invalidateAll(cache, queryName);
       return;

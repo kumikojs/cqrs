@@ -10,10 +10,10 @@ import type {
   ExtractQueryDefinitions,
   Query,
   QueryBusContract,
-  QueryHandlerFunction,
-  QueryHandlerOrFunction,
+  QueryProcessorFunction,
+  QueryHandler,
   QueryRegistry,
-  QueryRequest,
+  QueryInput,
 } from '../../types/core/query';
 import type { BusDriver } from '../../types/infrastructure/bus';
 import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
@@ -22,17 +22,17 @@ export class QueryBus<
   KnownQueries extends QueryRegistry = QueryRegistry,
   KnownQueryDefinitions extends Record<
     string,
-    QueryRequest
+    QueryInput
   > = ExtractQueryDefinitions<KnownQueries>
 > implements QueryBusContract<KnownQueries>
 {
   #abortManager = new AbortManager();
   #driver: BusDriver<string>;
   #interceptorManager: InterceptorManagerContract<
-    QueryRequest<
+    QueryInput<
       string,
       unknown,
-      MergedPartialOptions<QueryRequest, KnownQueryDefinitions>
+      MergedPartialOptions<QueryInput, KnownQueryDefinitions>
     >
   >;
   #logger: KumikoLogger;
@@ -47,10 +47,10 @@ export class QueryBus<
     });
 
     this.#interceptorManager = new QueryInterceptors<
-      QueryRequest<
+      QueryInput<
         string,
         unknown,
-        MergedPartialOptions<QueryRequest, KnownQueryDefinitions>
+        MergedPartialOptions<QueryInput, KnownQueryDefinitions>
       >,
       KnownQueryDefinitions
     >(cache, this.#logger, { ...options }).buildInterceptors();
@@ -72,7 +72,7 @@ export class QueryBus<
 
   register<TQuery extends Query>(
     queryName: TQuery['req']['queryName'],
-    handler: QueryHandlerOrFunction<TQuery['req'], TQuery['res']>
+    handler: QueryHandler<TQuery['req'], TQuery['res']>
   ): VoidFunction {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -83,7 +83,7 @@ export class QueryBus<
 
   unregister<TQuery extends Query>(
     queryName: TQuery['req']['queryName'],
-    handler: QueryHandlerOrFunction<TQuery['req'], TQuery['res']>
+    handler: QueryHandler<TQuery['req'], TQuery['res']>
   ): void {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -92,7 +92,7 @@ export class QueryBus<
 
   async execute<TQuery extends Query>(
     query: TQuery['req'],
-    handler: QueryHandlerFunction<TQuery['req'], TQuery['res']>
+    handler: QueryProcessorFunction<TQuery['req'], TQuery['res']>
   ): Promise<TQuery['res']> {
     const signal = query.context?.signal;
 

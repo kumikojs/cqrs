@@ -1,8 +1,8 @@
 import type {
-  ExtractQueryResponse,
+  GetQueryResult,
   InterceptorManagerContract,
   Query,
-  QueryRequest,
+  QueryInput,
 } from '../main';
 import type { EventEmitter, EventRegistry } from './event';
 import type { MergedPartialOptions, OptionsContainer } from './options/options';
@@ -316,27 +316,25 @@ export interface CommandCacheContract<KnownQueries extends QueryRegistry> {
     )[]
   ): void;
 
-  optimisticUpdate<
-    TQueryRequest extends KnownQueries[keyof KnownQueries]['req']
-  >(
-    query: TQueryRequest,
+  optimisticUpdate<TQueryInput extends KnownQueries[keyof KnownQueries]['req']>(
+    query: TQueryInput,
     updater: (
-      prev?: ExtractQueryResponse<TQueryRequest['queryName'], KnownQueries>
-    ) => ExtractQueryResponse<TQueryRequest['queryName'], KnownQueries>
+      prev?: GetQueryResult<TQueryInput['queryName'], KnownQueries>
+    ) => GetQueryResult<TQueryInput['queryName'], KnownQueries>
   ): Promise<void>;
   optimisticUpdate<TQueryName extends keyof KnownQueries & string>(
     queryName: TQueryName,
     updater: (
-      prev?: ExtractQueryResponse<TQueryName, KnownQueries>
-    ) => ExtractQueryResponse<TQueryName, KnownQueries>
+      prev?: GetQueryResult<TQueryName, KnownQueries>
+    ) => GetQueryResult<TQueryName, KnownQueries>
   ): Promise<void>;
   optimisticUpdate<
-    TQuery extends QueryRequest = KnownQueries[keyof KnownQueries]['req']
+    TQuery extends QueryInput = KnownQueries[keyof KnownQueries]['req']
   >(
     queryOrName: TQuery['queryName'],
     updater: (
-      prev: ExtractQueryResponse<TQuery['queryName'], KnownQueries>
-    ) => ExtractQueryResponse<TQuery['queryName'], KnownQueries>
+      prev: GetQueryResult<TQuery['queryName'], KnownQueries>
+    ) => GetQueryResult<TQuery['queryName'], KnownQueries>
   ): Promise<void>;
   optimisticUpdate<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
     queryOrName: TQuery['req'],

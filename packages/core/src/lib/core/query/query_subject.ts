@@ -6,10 +6,10 @@ import { SubscriptionManager } from '../../utilities/subscription/subscription_m
 import { ResilienceOptions } from '../../types/core/options/resilience_options';
 import type {
   Query,
-  QueryHandlerFunction,
-  QueryHandlerOrFunction,
-  QueryRequest,
-  QueryResponse,
+  QueryProcessorFunction,
+  QueryHandler,
+  QueryInput,
+  QueryResult,
 } from '../../types/core/query';
 
 /**
@@ -31,8 +31,8 @@ import type {
  * of query execution and cache management, allowing developers to focus on rendering data and handling state changes.
  */
 export class QuerySubject<
-  TRequest extends QueryRequest<string, unknown, ResilienceOptions>,
-  TResult extends QueryResponse
+  TRequest extends QueryInput<string, unknown, ResilienceOptions>,
+  TResult extends QueryResult
 > {
   /**
    * @private
@@ -50,7 +50,7 @@ export class QuerySubject<
    * @private
    * The handler function used for executing the query.
    */
-  #handlerFn: QueryHandlerFunction<TRequest, TResult>;
+  #handlerFn: QueryProcessorFunction<TRequest, TResult>;
 
   /**
    * @private
@@ -71,7 +71,7 @@ export class QuerySubject<
   constructor(
     query: TRequest,
     client: Client,
-    handler?: QueryHandlerOrFunction<TRequest, TResult>
+    handler?: QueryHandler<TRequest, TResult>
   ) {
     this.#operation = new Operation<TResult>();
     this.#client = client;
