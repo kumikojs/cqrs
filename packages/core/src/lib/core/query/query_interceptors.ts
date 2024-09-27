@@ -3,7 +3,7 @@ import { ResilienceInterceptorsBuilder } from '../resilience/resilience_intercep
 import { QueryCache } from './query_cache';
 
 import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
-import type { QueryRequest } from '../../types/core/query';
+import type { QueryInput } from '../../types/core/query';
 import type { MergedPartialOptions } from '../../types/core/options/options';
 import type {
   ResilienceBuilderOptions,
@@ -19,12 +19,12 @@ import type {
  * @template KnownQueries - A record of known query types for type inference.
  */
 export class QueryInterceptors<
-  TQuery extends QueryRequest<
+  TQuery extends QueryInput<
     string,
     unknown,
-    MergedPartialOptions<QueryRequest, KnownQueries> & ResilienceOptions
+    MergedPartialOptions<QueryInput, KnownQueries> & ResilienceOptions
   >,
-  KnownQueries extends Record<string, QueryRequest>
+  KnownQueries extends Record<string, QueryInput>
 > {
   /**
    * @private
