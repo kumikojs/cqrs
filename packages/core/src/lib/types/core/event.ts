@@ -19,7 +19,10 @@ export type EventHandlerOrFunction<EventType extends Event> =
 
 export type EventRegistry = Record<string, Event>;
 
-type GetEventByName<Events extends EventRegistry, Name extends string> = {
+export type GetEventByName<
+  Events extends EventRegistry,
+  Name extends string
+> = {
   [Key in keyof Events]: Events[Key]['eventName'] extends Name
     ? Events[Key]
     : never;

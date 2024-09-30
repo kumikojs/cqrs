@@ -1,7 +1,10 @@
 import { Client } from '../../client';
 import { Operation } from '../../utilities/reactive/operation';
 
-import type { Command, CommandHandler } from '../../types/core/command';
+import type {
+  Command,
+  CommandExecutorFunction,
+} from '../../types/core/command';
 
 /**
  * **CommandSubject Class**
@@ -37,7 +40,7 @@ export class CommandSubject {
    * @param client - The client instance for interacting with the cache.
    * @param handler - An optional command handler function or class implementing the {@link CommandHandler} interface.
    */
-  constructor(client: Client, handler?: CommandHandler<Command>) {
+  constructor(client: Client, handler?: CommandExecutorFunction) {
     this.#client = client;
     this.#handlerFn = handler
       ? (command: Command) => client.command.execute(command, handler)

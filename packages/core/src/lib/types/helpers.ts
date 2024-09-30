@@ -12,6 +12,8 @@ export type UnionToIntersection<U> = (
   ? I
   : never;
 
+export type ExtractFunction<T> = T extends (...args: any[]) => any ? T : never;
+
 // #region snippet: duration_unit
 
 type Millisecond = `${number}ms`;

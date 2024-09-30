@@ -72,7 +72,7 @@ export class QueryBus<
 
   register<TQuery extends Query>(
     queryName: TQuery['req']['queryName'],
-    handler: QueryHandler<TQuery['req'], TQuery['res']>
+    handler: QueryHandler<TQuery>
   ): VoidFunction {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -83,7 +83,7 @@ export class QueryBus<
 
   unregister<TQuery extends Query>(
     queryName: TQuery['req']['queryName'],
-    handler: QueryHandler<TQuery['req'], TQuery['res']>
+    handler: QueryHandler<TQuery>
   ): void {
     const handlerFn = typeof handler === 'function' ? handler : handler.execute;
 
@@ -92,7 +92,7 @@ export class QueryBus<
 
   async execute<TQuery extends Query>(
     query: TQuery['req'],
-    handler: QueryProcessorFunction<TQuery['req'], TQuery['res']>
+    handler: QueryProcessorFunction<TQuery>
   ): Promise<TQuery['res']> {
     const signal = query.context?.signal;
 

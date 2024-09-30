@@ -6,10 +6,9 @@ import { SubscriptionManager } from '../../utilities/subscription/subscription_m
 import { ResilienceOptions } from '../../types/core/options/resilience_options';
 import type {
   Query,
-  QueryProcessorFunction,
   QueryHandler,
   QueryInput,
-  QueryResult,
+  QueryProcessorFunction,
 } from '../../types/core/query';
 
 /**
@@ -31,26 +30,25 @@ import type {
  * of query execution and cache management, allowing developers to focus on rendering data and handling state changes.
  */
 export class QuerySubject<
-  TRequest extends QueryInput<string, unknown, ResilienceOptions>,
-  TResult extends QueryResult
+  TRequest extends Query<QueryInput<string, unknown, ResilienceOptions>>
 > {
   /**
    * @private
    * The internal `Operation` instance responsible for handling query execution and state management.
    */
-  #operation: Operation<TResult>;
+  #operation: Operation<TRequest['res']>;
 
   /**
    * @private
    * Stores details of the most recently executed query, used for re-execution upon cache invalidation.
    */
-  #lastQuery: TRequest;
+  #lastQuery: TRequest['req'];
 
   /**
    * @private
    * The handler function used for executing the query.
    */
-  #handlerFn: QueryProcessorFunction<TRequest, TResult>;
+  #handlerFn: QueryProcessorFunction<TRequest>;
 
   /**
    * @private
@@ -69,20 +67,20 @@ export class QuerySubject<
    *                     If not provided, the default query dispatching mechanism is used.
    */
   constructor(
-    query: TRequest,
+    query: TRequest['req'],
     client: Client,
-    handler?: QueryHandler<TRequest, TResult>
+    handler?: QueryHandler<TRequest>
   ) {
-    this.#operation = new Operation<TResult>();
+    this.#operation = new Operation<TRequest['res']>();
     this.#client = client;
     this.#lastQuery = query;
     this.#handlerFn = handler
       ? (query) =>
-          client.query.execute<Query<TRequest, TResult>>(
+          client.query.execute<TRequest>(
             query,
             typeof handler === 'function' ? handler : handler.execute
           )
-      : (query) => client.query.dispatch<Query<TRequest, TResult>>(query);
+      : (query) => client.query.dispatch<TRequest>(query);
   }
 
   /**
@@ -91,10 +89,13 @@ export class QuerySubject<
    * @param query - The query to be executed.
    * @returns A promise resolving to the query's result.
    */
-  async execute(query: TRequest): Promise<TResult> {
+  async execute(query: TRequest['req']) {
     this.#lastQuery = query;
 
-    return this.#operation.execute<TRequest, TResult>(query, this.#handlerFn);
+    return this.#operation.execute<TRequest['req'], TRequest['res']>(
+      query,
+      this.#handlerFn
+    );
   }
 
   /**
@@ -169,7 +170,9 @@ export class QuerySubject<
       async (key) => {
         if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
 
-        const result = await this.#client.cache.get<TResult>(this.#lastQuery);
+        const result = await this.#client.cache.get<TRequest['res']>(
+          this.#lastQuery
+        );
 
         if (result) {
           this.#operation.stale(result);

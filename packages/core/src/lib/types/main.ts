@@ -7,8 +7,10 @@ import type { QueryCacheOptions } from './core/query';
 
 export type * from './core/command';
 export type * from './core/event';
-export type * from './core/query';
 export type * from './core/feature';
+export type * from './core/options/resilience_options';
+export type * from './core/query';
+export type * from './helpers';
 export type * from './infrastructure/interceptor';
 export type * from './infrastructure/storage';
 

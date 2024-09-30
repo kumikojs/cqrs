@@ -58,30 +58,22 @@ export type PreparedQueryInput<
 /**
  * Represents a query handler definition.
  */
-export interface QueryProcessor<
-  QueryType extends QueryInput = QueryInput,
-  ResponseType extends QueryResult = unknown
-> {
-  execute(query: QueryType): Promise<ResponseType>;
+export interface QueryProcessor<QueryType extends Query> {
+  execute(query: QueryType['req']): Promise<QueryType['res']>;
 }
 
 /**
  * Function type representing a query handler.
  */
-export type QueryProcessorFunction<
-  QueryType extends QueryInput = QueryInput,
-  ResponseType extends QueryResult = unknown
-> = QueryProcessor<QueryType, ResponseType>['execute'];
+export type QueryProcessorFunction<QueryType extends Query = Query> =
+  QueryProcessor<QueryType>['execute'];
 
 /**
  * Type representing either a query handler or a query handler function.
  */
-export type QueryHandler<
-  QueryType extends QueryInput = QueryInput,
-  ResponseType extends QueryResult = unknown
-> =
-  | QueryProcessor<QueryType, ResponseType>
-  | QueryProcessorFunction<QueryType, ResponseType>;
+export type QueryHandler<QueryType extends Query = Query> =
+  | QueryProcessor<QueryType>
+  | QueryProcessorFunction<QueryType>;
 
 /**
  * Represents the context for a query, primarily used for cancellation.
@@ -174,7 +166,7 @@ export interface QueryBusContract<
 > {
   execute<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
     query: PreparedQueryInput<TQuery, KnownQueries> | TQuery['req'],
-    handler: QueryHandler<TQuery['req'], TQuery['res']>
+    handler: QueryHandler<TQuery>
   ): Promise<TQuery['res']>;
 
   dispatch<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
@@ -190,7 +182,7 @@ export interface QueryBusContract<
     TQuery extends ExtractQuery<KnownQueries, TQueryName>
   >(
     queryName: TQueryName,
-    handler: QueryHandler<TQuery['req'], TQuery['res']>
+    handler: QueryHandler<TQuery>
   ): VoidFunction;
 
   /*
@@ -199,21 +191,7 @@ export interface QueryBusContract<
    */
   register<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
     queryName: TQuery['req']['queryName'],
-    handler: QueryHandler<TQuery['req'], TQuery['res']>
-  ): VoidFunction;
-
-  /*
-   * Explicitly specify the types of the query request and response.
-   */
-  register<
-    TQueryInput extends QueryInput = KnownQueries[keyof KnownQueries]['req'],
-    TQueryResult extends QueryResult = GetQueryResult<
-      TQueryInput['queryName'],
-      KnownQueries
-    >
-  >(
-    queryName: TQueryInput['queryName'],
-    handler: QueryProcessorFunction<TQueryInput, TQueryResult>
+    handler: QueryHandler<TQuery>
   ): VoidFunction;
 
   /*
@@ -225,7 +203,7 @@ export interface QueryBusContract<
     TQuery extends ExtractQuery<KnownQueries, TQueryName>
   >(
     queryName: TQueryName,
-    handler: QueryHandler<TQuery['req'], TQuery['res']>
+    handler: QueryHandler<TQuery>
   ): void;
 
   /*
@@ -234,21 +212,7 @@ export interface QueryBusContract<
    */
   unregister<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
     queryName: TQuery['req']['queryName'],
-    handler: QueryHandler<TQuery['req'], TQuery['res']>
-  ): void;
-
-  /*
-   * Explicitly specify the types of the query request and response.
-   */
-  unregister<
-    TQueryInput extends QueryInput = KnownQueries[keyof KnownQueries]['req'],
-    TQueryResult extends QueryResult = GetQueryResult<
-      TQueryInput['queryName'],
-      KnownQueries
-    >
-  >(
-    queryName: TQueryInput['queryName'],
-    handler: QueryProcessorFunction<TQueryInput, TQueryResult>
+    handler: QueryHandler<TQuery>
   ): void;
 
   cancelQuery<
