@@ -2,21 +2,12 @@
 import { useCallback, useState, useSyncExternalStore } from 'react';
 
 import { CommandSubject, KumikoClient } from '@kumiko/core';
-import type { Command, CommandHandlerOrFunction } from '@kumiko/core/types';
+import type { Command, CommandExecutorFunction } from '@kumiko/core/types';
 
-/**
- * Base hook for executing commands.
- *
- * @template TRequest - The type of the command to execute.
- * @param client - The CQRS client instance.
- * @param command - The command to execute.
- * @param handler - Optional handler function to execute the command.
- * @returns A tuple containing the current state of the command execution and the execute function.
- */
 export function useBaseCommand<TRequest extends Command>(
-  client: KumikoClient,
+  client: KumikoClient<any, any>,
   command: TRequest,
-  handler?: CommandHandlerOrFunction<TRequest>
+  handler?: CommandExecutorFunction
 ) {
   const [subject] = useState(() => new CommandSubject(client, handler));
 

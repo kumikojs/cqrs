@@ -1,17 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 import { KumikoClient, QuerySubject } from '@kumiko/core';
-import type { QueryRequest, QueryHandlerOrFunction } from '@kumiko/core/types';
+import type { QueryProcessor } from '@kumiko/core/types';
+import type { ExtendedQuery } from './types/query';
 
-export function useBaseQuery<TRequest extends QueryRequest, TResponse>(
-  client: KumikoClient,
-  query: TRequest,
-  handler?: QueryHandlerOrFunction<TRequest, TResponse>
+export function useBaseQuery<TRequest extends ExtendedQuery>(
+  client: KumikoClient<any, any>,
+  query: TRequest['req'],
+  handler?: QueryProcessor<TRequest>
 ) {
+  const { runOnMount = true } = query.options || {}; // Default is to run on mount
+
   const [subject] = useState(
-    () => new QuerySubject<TRequest, TResponse>(query, client, handler)
+    () => new QuerySubject<TRequest>(query, client, handler)
   );
+
+  useEffect(() => {
+    if (runOnMount) {
+      subject.execute(query);
+    }
+  }, [runOnMount, query]);
 
   const result = useSyncExternalStore(
     useCallback((onStateChange) => subject.subscribe(onStateChange), [subject]),
@@ -20,7 +29,7 @@ export function useBaseQuery<TRequest extends QueryRequest, TResponse>(
   );
 
   const execute = useCallback(
-    (payload?: TRequest['payload']) => {
+    (payload?: TRequest['req']['payload']) => {
       subject.execute({
         payload,
         ...query,

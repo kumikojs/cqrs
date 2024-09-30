@@ -1,117 +1,83 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Kumiko } from '@kumiko/core';
+import { KumikoClient } from '@kumiko/core';
 
 import { useBaseCommand } from './useBaseCommand';
 import { useBaseEvent } from './useBaseEvent';
 import { useBaseQuery } from './useBaseQuery';
 
 import type {
-  FeatureSchema,
   ClientOptions,
-  MergedFeatureSchema,
   Command,
-  CommandHandlerOrFunction,
+  CommandExecutorFunction,
+  CommandForExecution,
+  CommandHandlerWithContext,
+  Event,
   EventHandlerOrFunction,
   ExtractCommands,
   ExtractEvents,
+  ExtractFunction,
   ExtractQueries,
-  ExtractQueryRequest,
-  ExtractQueryResponse,
-  InferredCommand,
-  QueryHandlerOrFunction,
+  Feature,
+  FeatureToSchema,
+  GetEventByName,
+  MergedFeatureSchema,
+  PreparedQueryInput,
+  QueryProcessor,
+  ResolvedCommandRegistry,
 } from '@kumiko/core/types';
 
-/**
- * Creates a CQRS (Command Query Responsibility Segregation) instance.
- * @returns An object containing methods to interact with the CQRS instance.
- */
-export function create<Modules extends FeatureSchema[] = FeatureSchema[]>(
+import type { ExtendedQuery } from './types/query';
+
+export function create<FeatureList extends Feature[] = Feature[]>(
   options: ClientOptions
 ) {
-  type KnownCommands = ExtractCommands<MergedFeatureSchema<Modules>>;
-  type KnownQueries = ExtractQueries<MergedFeatureSchema<Modules>>;
-  type KnownEvents = ExtractEvents<MergedFeatureSchema<Modules>>;
+  type FeatureSchemaList = FeatureToSchema<FeatureList[number]>[];
+  type KnownCommands = ExtractCommands<MergedFeatureSchema<FeatureSchemaList>>;
+  type KnownQueries = ExtractQueries<MergedFeatureSchema<FeatureSchemaList>>;
+  type KnownEvents = ExtractEvents<MergedFeatureSchema<FeatureSchemaList>>;
 
-  const client = new Kumiko<Modules>(options);
+  const client = new KumikoClient<FeatureList>(options);
 
   function useCommand<
-    TCommand extends InferredCommand<
-      KnownCommands[keyof KnownCommands]['commandName'],
+    CommandType extends Command = ResolvedCommandRegistry<
       KnownCommands,
       KnownQueries
-    > = InferredCommand<
-      KnownCommands[keyof KnownCommands]['commandName'],
-      KnownCommands,
-      KnownQueries
-    >
+    >[keyof ResolvedCommandRegistry<KnownCommands, KnownQueries>]
   >(
-    command: TCommand,
-    handler?: CommandHandlerOrFunction<TCommand>
-  ): ReturnType<typeof useBaseCommand<TCommand>>;
-
-  function useCommand<TCommand extends Command>(
-    command: InferredCommand<
-      TCommand['commandName'],
-      KnownCommands,
-      KnownQueries,
-      TCommand
-    >,
-    handler?: CommandHandlerOrFunction<
-      InferredCommand<
-        TCommand['commandName'],
-        KnownCommands,
-        KnownQueries,
-        TCommand
-      >
+    command: CommandForExecution<CommandType, KnownCommands, KnownQueries>,
+    handler?: ExtractFunction<
+      CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
     >
   ) {
-    return useBaseCommand<
-      InferredCommand<
-        TCommand['commandName'],
-        KnownCommands,
-        KnownQueries,
-        TCommand
-      >
-    >(client, command, handler);
+    return useBaseCommand(client, command, handler as CommandExecutorFunction);
+  }
+
+  function useEventListener<EventName extends keyof KnownEvents & string>(
+    eventName: EventName,
+    handler: EventHandlerOrFunction<GetEventByName<KnownEvents, EventName>>
+  ): void;
+  function useEventListener<
+    EventType extends Event = KnownEvents[keyof KnownEvents]
+  >(
+    eventName: EventType['eventName'],
+    handler: EventHandlerOrFunction<EventType>
+  ) {
+    return useBaseEvent(client, eventName, handler);
+  }
+
+  function useQuery<
+    TQuery extends ExtendedQuery = KnownQueries[keyof KnownQueries]
+  >(
+    query: PreparedQueryInput<TQuery, KnownQueries> | TQuery['req'],
+    handler?: QueryProcessor<TQuery>
+  ) {
+    useBaseQuery<TQuery>(client, query, handler);
   }
 
   return {
     kumiko: client,
-
-    /**
-     * Hook to execute a command.
-     * @param command - The command to execute.
-     * @param handler - Optional handler function to execute the command.
-     * @returns The result of executing the command.
-     */
     useCommand,
-
-    /**
-     * Hook to execute a query.
-     * @param query - The query to execute.
-     * @param handler - Optional handler function to execute the query.
-     * @returns The result of executing the query.
-     */
-    useQuery: <TQuery extends KnownQueries[keyof KnownQueries]['query']>(
-      query: TQuery,
-      handler?: QueryHandlerOrFunction<
-        ExtractQueryRequest<TQuery['queryName'], KnownQueries>,
-        ExtractQueryResponse<TQuery['queryName'], KnownQueries>
-      >
-    ) =>
-      useBaseQuery<
-        TQuery,
-        ExtractQueryResponse<TQuery['queryName'], KnownQueries>
-      >(client, query, handler),
-
-    /**
-     * Hook to handle an event.
-     * @param eventName - The name of the event to handle.
-     * @param handler - The handler function or object to handle the event.
-     */
-    useEvent: <TEvent extends KnownEvents[keyof KnownEvents]>(
-      eventName: TEvent['eventName'],
-      handler: EventHandlerOrFunction<TEvent>
-    ) => useBaseEvent(client, eventName, handler),
+    useEventListener,
+    useQuery,
   };
 }
