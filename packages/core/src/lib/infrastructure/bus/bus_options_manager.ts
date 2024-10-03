@@ -46,7 +46,7 @@ export class BusOptionsManager<TChannel> {
    * @param {TChannel} channel - The channel related to the error (optional).
    */
   throwError(key: BusErrorKeys, channel?: TChannel): void | never {
-    const message = this.#getErrorMessage(key);
+    const message = this.#getErrorMessage(key, channel);
 
     if (this.#options.mode === 'soft') {
       this.#logger?.warn(message, {
@@ -57,19 +57,19 @@ export class BusOptionsManager<TChannel> {
     }
 
     throw new BusException(key, {
-      message,
       channel: channel ? channel : 'N/A',
+      message,
     });
   }
 
-  #getErrorMessage(key: BusErrorKeys): string {
+  #getErrorMessage(key: BusErrorKeys, channel?: TChannel): string {
     switch (key) {
       case 'MAX_HANDLERS_PER_CHANNEL':
         return `Limit of ${
           this.#options.maxHandlersPerChannel
-        } handler(s) per channel reached.`;
+        } handler(s) per channel reached: ${channel}`;
       case 'NO_HANDLER_FOUND':
-        return `No handler found for this channel.`;
+        return `No handler found for this channel: ${channel}`;
       default:
         throw new Error(`Unknown Bus Error Key: ${key}`);
     }
