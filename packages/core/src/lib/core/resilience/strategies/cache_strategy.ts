@@ -67,8 +67,6 @@ export class CacheStrategy extends Strategy<CacheOptions> {
    */
   #cache: QueryCache;
 
-  #persist: boolean;
-
   constructor(cache: QueryCache, options?: Partial<CacheOptions>) {
     super({
       ...CacheStrategy.#defaultOptions,
@@ -76,7 +74,6 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     });
 
     this.#cache = cache;
-    this.#persist = this.options.persist;
   }
 
   /**
@@ -113,7 +110,7 @@ export class CacheStrategy extends Strategy<CacheOptions> {
 
     await this.#cache.l1.set(key, result, this.options.ttl);
 
-    if (this.#persist) {
+    if (this.options.persist) {
       await this.#cache.l2.set(key, result, this.options.ttl);
     }
 
