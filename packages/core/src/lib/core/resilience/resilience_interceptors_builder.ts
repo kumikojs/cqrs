@@ -101,14 +101,10 @@ export class ResilienceInterceptorsBuilder<
     this.#interceptorManager.use(
       'kumiko.resilience.interceptors.retry',
       async (command, next) => {
-        if (!command.options?.retry) {
-          return next?.(command);
-        }
-
         const strategy = this.#strategyBuilder.retry({
-          ...(typeof command.options.retry === 'boolean'
+          ...(typeof command.options?.retry === 'boolean'
             ? {}
-            : command.options.retry),
+            : command.options?.retry),
         });
         return strategy.execute(command, async (request) => next?.(request));
       }
@@ -126,15 +122,11 @@ export class ResilienceInterceptorsBuilder<
     this.#interceptorManager.use(
       'kumiko.resilience.interceptors.timeout',
       async (command, next) => {
-        if (!command.options?.timeout) {
-          return next?.(command);
-        }
-
         const strategy = this.#strategyBuilder.timeout({
           timeout:
-            typeof command.options.timeout === 'boolean'
+            typeof command.options?.timeout === 'boolean'
               ? undefined
-              : command.options.timeout || this.#options?.timeout,
+              : command.options?.timeout || this.#options?.timeout,
         });
         return strategy.execute(command, async (request) => next?.(request));
       }
@@ -152,14 +144,10 @@ export class ResilienceInterceptorsBuilder<
     this.#interceptorManager.use(
       'kumiko.resilience.interceptors.throttle',
       async (command, next) => {
-        if (!command.options?.throttle) {
-          return next?.(command);
-        }
-
         const strategy = this.#strategyBuilder.throttle({
-          ...(typeof command.options.throttle === 'boolean'
+          ...(typeof command.options?.throttle === 'boolean'
             ? {}
-            : command.options.throttle || this.#options?.throttle),
+            : command.options?.throttle || this.#options?.throttle),
           serialize: this.#serializer,
         });
         return strategy.execute(command, async (request) => next?.(request));
@@ -201,14 +189,10 @@ export class ResilienceInterceptorsBuilder<
     this.#interceptorManager.use(
       'kumiko.resilience.interceptors.cache',
       async (command, next) => {
-        if (!command.options?.cache) {
-          return next?.(command);
-        }
-
         const strategy = this.#strategyBuilder.cache({
-          ...(typeof command.options.cache === 'boolean'
+          ...(typeof command.options?.cache === 'boolean'
             ? {}
-            : command.options.cache),
+            : command.options?.cache),
           serialize: this.#serializer,
         });
         return strategy.execute(command, async (request) => next?.(request));
