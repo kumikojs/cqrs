@@ -36,6 +36,31 @@ export type QueryExecutionOptions<QueryType extends Query> = Partial<
   ) => QueryResult<QueryType['res']>;
 };
 
+export type PreparedQuery<
+  QueryType extends Query,
+  KnownQueries extends QueryRegistry
+> = QueryType extends Query<
+  QueryInput<infer Name, infer Payload, infer Options>
+>
+  ? Name extends keyof KnownQueries
+    ? Query<
+        QueryInput<
+          Name,
+          Payload,
+          Options & QueryExecutionOptions<ExtractQuery<KnownQueries, Name>>
+        >,
+        GetQueryResult<Name, KnownQueries>
+      >
+    : Query<
+        QueryInput<
+          QueryType['req']['queryName'],
+          QueryType['req']['payload'],
+          QueryType['req']['options'] & QueryExecutionOptions<QueryType>
+        >,
+        QueryType['res']
+      >
+  : never;
+
 export type PreparedQueryInput<
   QueryType extends Query,
   KnownQueries extends QueryRegistry
@@ -164,13 +189,30 @@ export interface QueryBusContract<
     QueryInput
   > = ExtractQueryDefinitions<KnownQueries>
 > {
+  execute<
+    TQueryInput extends PreparedQueryInput<
+      KnownQueries[keyof KnownQueries],
+      KnownQueries
+    >
+  >(
+    query: TQueryInput,
+    handler: QueryHandler<ExtractQuery<KnownQueries, TQueryInput['queryName']>>
+  ): Promise<GetQueryResult<TQueryInput['queryName'], KnownQueries>>;
   execute<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
-    query: PreparedQueryInput<TQuery, KnownQueries> | TQuery['req'],
+    query: PreparedQuery<TQuery, KnownQueries>['req'],
     handler: QueryHandler<TQuery>
   ): Promise<TQuery['res']>;
 
+  dispatch<
+    TQueryInput extends PreparedQueryInput<
+      KnownQueries[keyof KnownQueries],
+      KnownQueries
+    >
+  >(
+    query: TQueryInput
+  ): Promise<GetQueryResult<TQueryInput['queryName'], KnownQueries>>;
   dispatch<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
-    query: PreparedQueryInput<TQuery, KnownQueries> | TQuery['req']
+    query: PreparedQuery<TQuery, KnownQueries>['req']
   ): Promise<TQuery['res']>;
 
   /*
