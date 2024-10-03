@@ -33,7 +33,7 @@ type EventForEmit<
   KnownEvents extends EventRegistry
 > = EventType extends Event
   ? GetEventByName<KnownEvents, EventType['eventName']> extends never
-    ? Event<EventType['eventName'], EventType['payload']>
+    ? EventType
     : GetEventByName<KnownEvents, EventType['eventName']>
   : never;
 
