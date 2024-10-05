@@ -1,8 +1,6 @@
-import type { Maybe } from '../helpers';
-
 export interface Event<Name extends string = string, Payload = unknown> {
   eventName: Name;
-  payload: Maybe<Payload>;
+  payload?: Payload;
 }
 
 export interface EventHandler<EventType extends Event = Event> {
@@ -28,7 +26,7 @@ export type GetEventByName<
     : never;
 }[keyof Events];
 
-type EventForEmit<
+export type EventForEmit<
   EventType extends Event,
   KnownEvents extends EventRegistry
 > = EventType extends Event

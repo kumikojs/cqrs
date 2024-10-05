@@ -68,7 +68,7 @@ export class QuerySubject<
    */
   constructor(
     query: TRequest['req'],
-    client: Client,
+    client: Client<any, any>,
     handler?: QueryHandler<TRequest>
   ) {
     this.#operation = new Operation<TRequest['res']>();

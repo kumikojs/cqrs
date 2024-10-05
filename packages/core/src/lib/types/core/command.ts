@@ -146,7 +146,7 @@ export type ExtractCommand<
  * - **Commands**: The command registry to search.
  * - **Name**: The name of the command to find.
  */
-type FindCommandByName<
+export type FindCommandByName<
   Commands extends CommandRegistry,
   Name extends string
 > = {

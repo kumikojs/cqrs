@@ -11,7 +11,6 @@ import type {
   CommandForExecution,
   CommandHandlerWithContext,
   Event,
-  EventForEmit,
   EventHandlerOrFunction,
   ExtractCommands,
   ExtractEvents,
@@ -20,22 +19,14 @@ import type {
   ExtractQuery,
   Feature,
   FeatureToSchema,
-  FindCommandByName,
-  FindQueryByName,
   GetEventByName,
-  GetQueryInput,
-  GetQueryResult,
   MergedFeatureSchema,
-  PreparedQuery,
   PreparedQueryInput,
   QueryHandler,
-  QueryInput,
-  QueryProcessor,
   QueryProcessorFunction,
   ResolvedCommandRegistry,
 } from '@kumiko/core/types';
 
-import { OperationResult } from 'packages/core/src/lib/utilities/reactive/operation';
 import type { ExtendedQuery } from './types/query';
 
 export function createHooks<FeatureList extends Feature[] = Feature[]>(
