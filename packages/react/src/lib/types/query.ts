@@ -1,7 +1,7 @@
 import type {
   Query,
   QueryInput,
-  QueryResult,
+  QueryOutput,
   ResilienceOptions,
 } from '@kumiko/core/types';
 
@@ -25,5 +25,5 @@ export type ExtendedQueryInput<
 
 export type ExtendedQuery<
   Input extends ExtendedQueryInput<string> = ExtendedQueryInput<string>,
-  Output extends QueryResult = QueryResult
+  Output extends QueryOutput = QueryOutput
 > = Query<Input, Output>;

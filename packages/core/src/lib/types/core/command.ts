@@ -1,5 +1,5 @@
 import type {
-  GetQueryResult,
+  GetQueryOutput,
   InterceptorManagerContract,
   Query,
   QueryInput,
@@ -320,22 +320,22 @@ export interface CommandCacheContract<KnownQueries extends QueryRegistry> {
   optimisticUpdate<TQueryInput extends KnownQueries[keyof KnownQueries]['req']>(
     query: TQueryInput,
     updater: (
-      prev?: GetQueryResult<TQueryInput['queryName'], KnownQueries>
-    ) => GetQueryResult<TQueryInput['queryName'], KnownQueries>
+      prev?: GetQueryOutput<TQueryInput['queryName'], KnownQueries>
+    ) => GetQueryOutput<TQueryInput['queryName'], KnownQueries>
   ): Promise<void>;
   optimisticUpdate<TQueryName extends keyof KnownQueries & string>(
     queryName: TQueryName,
     updater: (
-      prev?: GetQueryResult<TQueryName, KnownQueries>
-    ) => GetQueryResult<TQueryName, KnownQueries>
+      prev?: GetQueryOutput<TQueryName, KnownQueries>
+    ) => GetQueryOutput<TQueryName, KnownQueries>
   ): Promise<void>;
   optimisticUpdate<
     TQuery extends QueryInput = KnownQueries[keyof KnownQueries]['req']
   >(
     queryOrName: TQuery['queryName'],
     updater: (
-      prev: GetQueryResult<TQuery['queryName'], KnownQueries>
-    ) => GetQueryResult<TQuery['queryName'], KnownQueries>
+      prev: GetQueryOutput<TQuery['queryName'], KnownQueries>
+    ) => GetQueryOutput<TQuery['queryName'], KnownQueries>
   ): Promise<void>;
   optimisticUpdate<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
     queryOrName: TQuery['req'],

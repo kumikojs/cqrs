@@ -18,11 +18,11 @@ export type QueryInput<
   options?: Options extends null | undefined | never ? never : Options;
 };
 
-export type QueryResult<ResponseType = unknown> = ResponseType;
+export type QueryOutput<ResponseType = unknown> = ResponseType;
 
 export type Query<
   ReqType extends QueryInput = QueryInput,
-  ResType extends QueryResult = QueryResult
+  ResType extends QueryOutput = QueryOutput
 > = {
   req: ReqType;
   res: ResType;
@@ -34,7 +34,7 @@ export type QueryExecutionOptions<QueryType extends Query> = Partial<
   fallback?: (
     req: QueryType['req'],
     error: unknown
-  ) => QueryResult<QueryType['res']>;
+  ) => QueryOutput<QueryType['res']>;
 };
 
 export type PreparedQuery<
@@ -50,7 +50,7 @@ export type PreparedQuery<
           Payload,
           Options & QueryExecutionOptions<ExtractQuery<KnownQueries, Name>>
         >,
-        GetQueryResult<Name, KnownQueries>
+        GetQueryOutput<Name, KnownQueries>
       >
     : Query<
         QueryInput<
@@ -124,7 +124,7 @@ export type GetQueryInput<
 /**
  * Extracts the response type for a specific query name.
  */
-export type GetQueryResult<
+export type GetQueryOutput<
   QueryName extends string,
   Queries extends QueryRegistry = QueryRegistry
 > = Extract<Queries[keyof Queries], { req: QueryInput<QueryName> }>['res'];
@@ -162,7 +162,7 @@ export type ResolvedQueryRegistry<
 > = {
   [QueryName in KnownQueries[keyof KnownQueries]['req']['queryName']]: Query<
     GetQueryInput<QueryName, KnownQueries>,
-    GetQueryResult<QueryName, KnownDependencies>
+    GetQueryOutput<QueryName, KnownDependencies>
   >;
 };
 
@@ -207,7 +207,7 @@ export interface QueryBusContract<
   >(
     query: TQueryInput,
     handler: QueryHandler<ExtractQuery<KnownQueries, TQueryInput['queryName']>>
-  ): Promise<GetQueryResult<TQueryInput['queryName'], KnownQueries>>;
+  ): Promise<GetQueryOutput<TQueryInput['queryName'], KnownQueries>>;
   execute<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
     query: PreparedQuery<TQuery, KnownQueries>['req'],
     handler: QueryHandler<TQuery>
@@ -220,7 +220,7 @@ export interface QueryBusContract<
     >
   >(
     query: TQueryInput
-  ): Promise<GetQueryResult<TQueryInput['queryName'], KnownQueries>>;
+  ): Promise<GetQueryOutput<TQueryInput['queryName'], KnownQueries>>;
   dispatch<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
     query: PreparedQuery<TQuery, KnownQueries>['req']
   ): Promise<TQuery['res']>;
