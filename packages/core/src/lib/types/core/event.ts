@@ -17,29 +17,23 @@ export type EventHandlerOrFunction<EventType extends Event> =
 
 export type EventRegistry = Record<string, Event>;
 
-export type GetEventByName<
+export type ExtractEventByName<
   Events extends EventRegistry,
   Name extends string
-> = {
-  [Key in keyof Events]: Events[Key]['eventName'] extends Name
-    ? Events[Key]
-    : never;
-}[keyof Events];
+> = Extract<Events[keyof Events], { eventName: Name }>;
 
-export type EventForEmit<
+export type InferEvent<
   EventType extends Event,
   KnownEvents extends EventRegistry
-> = EventType extends Event
-  ? GetEventByName<KnownEvents, EventType['eventName']> extends never
-    ? EventType
-    : GetEventByName<KnownEvents, EventType['eventName']>
-  : never;
+> = ExtractEventByName<KnownEvents, EventType['eventName']> extends never
+  ? EventType
+  : ExtractEventByName<KnownEvents, EventType['eventName']>;
 
 export interface EventEmitter<
   KnownEvents extends EventRegistry = EventRegistry
 > {
   emit<EventType extends Event>(
-    event: EventForEmit<EventType, KnownEvents>
+    event: InferEvent<EventType, KnownEvents>
   ): Promise<void>;
 }
 
@@ -50,18 +44,18 @@ export interface EventBusContract<
 
   on<EventName extends keyof KnownEvents & string>(
     eventName: EventName,
-    handler: EventHandlerOrFunction<GetEventByName<KnownEvents, EventName>>
+    handler: EventHandlerOrFunction<ExtractEventByName<KnownEvents, EventName>>
   ): VoidFunction;
-  on<EventType extends Event = KnownEvents[keyof KnownEvents]>(
+  on<EventType extends Event>(
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
   ): VoidFunction;
 
   off<EventName extends keyof KnownEvents & string>(
     eventName: EventName,
-    handler: EventHandlerOrFunction<GetEventByName<KnownEvents, EventName>>
+    handler: EventHandlerOrFunction<ExtractEventByName<KnownEvents, EventName>>
   ): void;
-  off<EventType extends Event = KnownEvents[keyof KnownEvents]>(
+  off<EventType extends Event>(
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
   ): void;

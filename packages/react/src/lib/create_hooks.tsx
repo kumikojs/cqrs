@@ -17,7 +17,7 @@ import type {
   ExtractQueries,
   Feature,
   FeatureToSchema,
-  GetEventByName,
+  ExtractEventByName,
   GetQueryByName,
   MergedFeatureSchema,
   PreparedQueryInput,
@@ -80,14 +80,14 @@ export function createHooks<FeatureList extends Feature[] = Feature[]>(
       ? EventNameOrType['eventName']
       : never,
     initialState?: EventNameOrType extends keyof KnownEvents & string
-      ? GetEventByName<KnownEvents, EventNameOrType>['payload']
+      ? ExtractEventByName<KnownEvents, EventNameOrType>['payload']
       : EventNameOrType extends Event
       ? EventNameOrType['payload']
       : never
   ): ReturnType<
     typeof useBaseSignal<
       EventNameOrType extends keyof KnownEvents & string
-        ? GetEventByName<KnownEvents, EventNameOrType>
+        ? ExtractEventByName<KnownEvents, EventNameOrType>
         : EventNameOrType extends Event
         ? EventNameOrType
         : never
@@ -103,19 +103,16 @@ export function createHooks<FeatureList extends Feature[] = Feature[]>(
 
   function useEventListener<EventName extends keyof KnownEvents & string>(
     eventName: EventName,
-    handler: EventHandlerOrFunction<GetEventByName<KnownEvents, EventName>>
+    handler: EventHandlerOrFunction<ExtractEventByName<KnownEvents, EventName>>
   ): ReturnType<
-    typeof useBaseEventListener<GetEventByName<KnownEvents, EventName>>
+    typeof useBaseEventListener<ExtractEventByName<KnownEvents, EventName>>
   >;
-  function useEventListener<
-    EventType extends Event = KnownEvents[keyof KnownEvents]
-  >(
+  function useEventListener<EventType extends Event>(
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
   ): ReturnType<typeof useBaseEventListener<EventType>>;
-  function useEventListener<
-    EventType extends Event = KnownEvents[keyof KnownEvents]
-  >(
+
+  function useEventListener<EventType extends Event>(
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
   ) {
