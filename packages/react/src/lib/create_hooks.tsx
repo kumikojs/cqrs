@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { KumikoClient } from '@kumiko/core';
 import { useBaseCommand } from './useBaseCommand';
 import { useBaseEventListener } from './useBaseEvent';
@@ -16,18 +15,17 @@ import type {
   ExtractEvents,
   ExtractFunction,
   ExtractQueries,
-  ExtractQuery,
   Feature,
   FeatureToSchema,
   GetEventByName,
+  GetQueryByName,
   MergedFeatureSchema,
   PreparedQueryInput,
   QueryHandler,
-  QueryProcessorFunction,
   ResolvedCommandRegistry,
 } from '@kumiko/core/types';
 
-import type { ExtendedQuery } from './types/query';
+import type { ExtendedQuery, OptionalQueryOptions } from './types/query';
 
 export function createHooks<FeatureList extends Feature[] = Feature[]>(
   client: KumikoClient<FeatureList>
@@ -52,24 +50,20 @@ export function createHooks<FeatureList extends Feature[] = Feature[]>(
   }
 
   function useQuery<
-    TQueryInput extends PreparedQueryInput<
-      KnownQueries[keyof KnownQueries],
-      KnownQueries
-    >,
-    QueryType extends ExtendedQuery = ExtractQuery<
-      KnownQueries,
-      TQueryInput['queryName']
-    >
+    QueryName extends keyof KnownQueries & string,
+    QueryType extends ExtendedQuery = GetQueryByName<KnownQueries, QueryName>
   >(
-    query:
-      | TQueryInput
-      | (PreparedQueryInput<QueryType, KnownQueries> & {
-          options: { runOnMount: boolean };
-        }),
-    handler?: QueryProcessorFunction<QueryType> | QueryHandler<QueryType>
+    query: {
+      queryName: QueryName;
+      payload?: QueryType['req']['payload'];
+      options?: PreparedQueryInput<QueryType, KnownQueries>['options'];
+    } & OptionalQueryOptions,
+    handler?: QueryHandler<QueryType>
   ): ReturnType<typeof useBaseQuery<QueryType>>;
-  function useQuery<QueryType extends ExtendedQuery>(
-    query: PreparedQueryInput<QueryType, KnownQueries>,
+  function useQuery<
+    QueryType extends ExtendedQuery = KnownQueries[keyof KnownQueries]
+  >(
+    query: PreparedQueryInput<QueryType, KnownQueries> & OptionalQueryOptions,
     handler?: QueryHandler<QueryType>
   ): ReturnType<typeof useBaseQuery<QueryType>>;
   function useQuery<QueryType extends ExtendedQuery>(

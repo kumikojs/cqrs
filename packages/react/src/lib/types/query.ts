@@ -9,13 +9,17 @@ type QueryOptions = {
   runOnMount?: boolean;
 };
 
-type ExtendedQueryInput<
+export type OptionalQueryOptions = {
+  options?: QueryOptions;
+};
+
+export type ExtendedQueryInput<
   TQueryName extends string,
-  TQueryParams = unknown,
+  TQueryPayload = unknown,
   TQueryOptions extends Record<string, unknown> = Record<string, unknown>
 > = QueryInput<
   TQueryName,
-  TQueryParams,
+  TQueryPayload,
   TQueryOptions & QueryOptions & ResilienceOptions
 >;
 
