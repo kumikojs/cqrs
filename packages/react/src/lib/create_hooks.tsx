@@ -1,28 +1,21 @@
 import { KumikoClient } from '@kumiko/core';
-import { useBaseCommand } from './useBaseCommand';
 import { useBaseEventListener } from './useBaseEvent';
 import { useBaseQuery } from './useBaseQuery';
 import { useBaseSignal } from './useBaseSignal';
+import { useCommand } from './useCommand';
 
 import type {
-  Command,
-  CommandExecutorFunction,
-  CommandForExecution,
-  CommandHandlerWithContext,
   Event,
   EventHandlerOrFunction,
-  ExtractCommands,
+  ExtractEventByName,
   ExtractEvents,
-  ExtractFunction,
   ExtractQueries,
   Feature,
   FeatureToSchema,
-  ExtractEventByName,
   GetQueryByName,
   MergedFeatureSchema,
   PreparedQueryInput,
   QueryHandler,
-  ResolvedCommandRegistry,
 } from '@kumiko/core/types';
 
 import type { ExtendedQuery, OptionalQueryOptions } from './types/query';
@@ -31,23 +24,8 @@ export function createHooks<FeatureList extends Feature[] = Feature[]>(
   client: KumikoClient<FeatureList>
 ) {
   type FeatureSchemaList = FeatureToSchema<FeatureList[number]>[];
-  type KnownCommands = ExtractCommands<MergedFeatureSchema<FeatureSchemaList>>;
   type KnownQueries = ExtractQueries<MergedFeatureSchema<FeatureSchemaList>>;
   type KnownEvents = ExtractEvents<MergedFeatureSchema<FeatureSchemaList>>;
-
-  function useCommand<
-    CommandType extends Command = ResolvedCommandRegistry<
-      KnownCommands,
-      KnownQueries
-    >[keyof ResolvedCommandRegistry<KnownCommands, KnownQueries>]
-  >(
-    command: CommandForExecution<CommandType, KnownCommands, KnownQueries>,
-    handler?: ExtractFunction<
-      CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
-    >
-  ): ReturnType<typeof useBaseCommand<CommandType>> {
-    return useBaseCommand(client, command, handler as CommandExecutorFunction);
-  }
 
   function useQuery<
     QueryName extends keyof KnownQueries & string,
@@ -120,7 +98,7 @@ export function createHooks<FeatureList extends Feature[] = Feature[]>(
   }
 
   return {
-    useCommand,
+    useCommand: useCommand(client),
     useEventListener,
     useQuery,
     useSignal,

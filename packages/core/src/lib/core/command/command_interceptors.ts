@@ -7,7 +7,7 @@ import { CommandCache } from './command_cache';
 
 import type {
   Command,
-  CommandExecutionOptions,
+  CommandWithOptions,
   CommandRegistry,
 } from '../../types/core/command';
 import type { MergedPartialOptions } from '../../types/core/options/options';
@@ -37,7 +37,7 @@ export class CommandInterceptors<
     unknown,
     MergedPartialOptions<Command, KnownCommands> &
       ResilienceOptions &
-      CommandExecutionOptions<never>
+      CommandWithOptions<never>
   >,
   KnownCommands extends CommandRegistry
 > {
