@@ -9,10 +9,7 @@ export function useBaseSignal<T extends Event>(
   eventBus: EventBusContract<any>,
   signalName: string,
   initialState?: T['payload']
-): readonly [
-  T['payload'],
-  (update: T['payload'] | ((prev: T['payload']) => T['payload'])) => void
-] {
+) {
   const [subject] = useState(
     () => new Signal<T>(eventBus, signalName, initialState)
   );
