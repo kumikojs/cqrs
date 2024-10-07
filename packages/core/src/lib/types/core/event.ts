@@ -1,6 +1,6 @@
 export interface Event<Name extends string = string, Payload = unknown> {
   eventName: Name;
-  payload?: Payload;
+  payload?: Payload extends null | undefined | never ? never : Payload;
 }
 
 export interface EventHandler<EventType extends Event = Event> {

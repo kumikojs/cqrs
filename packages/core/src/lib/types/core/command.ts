@@ -5,7 +5,7 @@ import type {
   QueryInput,
 } from '../main';
 import type { EventEmitter, EventRegistry } from './event';
-import type { MergedPartialOptions, OptionsContainer } from './options/options';
+import type { MergedPartialOptions } from './options/options';
 import type { ResilienceOptions } from './options/resilience_options';
 import type { QueryRegistry } from './query';
 
@@ -19,9 +19,10 @@ export interface Command<
   Name extends string = string,
   Payload = unknown,
   Options extends Record<string, unknown> = Record<string, unknown>
-> extends OptionsContainer<Options> {
+> {
   commandName: Name;
-  payload?: Payload;
+  payload?: Payload extends null | undefined | never ? never : Payload;
+  options?: Options extends null | undefined | never ? never : Options;
 }
 
 /**

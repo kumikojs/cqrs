@@ -4,18 +4,19 @@ import type {
   InterceptorManagerContract,
   SyncStorageDriver,
 } from '../main';
-import type { MergedPartialOptions, OptionsContainer } from './options/options';
+import type { MergedPartialOptions } from './options/options';
 import type { ResilienceOptions } from './options/resilience_options';
 
-export interface QueryInput<
+export type QueryInput<
   Name extends string = string,
   Payload = unknown,
   Options extends Record<string, unknown> = Record<string, unknown>
-> extends OptionsContainer<Options> {
+> = {
   queryName: Name;
-  payload?: Payload;
+  payload?: Payload extends null | undefined | never ? never : Payload;
   context?: QueryContext;
-}
+  options?: Options extends null | undefined | never ? never : Options;
+};
 
 export type QueryResult<ResponseType = unknown> = ResponseType;
 
@@ -127,6 +128,15 @@ export type GetQueryResult<
   QueryName extends string,
   Queries extends QueryRegistry = QueryRegistry
 > = Extract<Queries[keyof Queries], { req: QueryInput<QueryName> }>['res'];
+
+export type GetQueryByName<
+  Queries extends QueryRegistry,
+  Name extends string
+> = {
+  [Key in keyof Queries]: Queries[Key]['req']['queryName'] extends Name
+    ? Queries[Key]
+    : never;
+}[keyof Queries];
 
 /**
  * Represents a registry of queries.
