@@ -4,17 +4,15 @@ import { useCallback, useState, useSyncExternalStore } from 'react';
 
 /**
  * React hook to observe and emit signals using SignalSubject and EventBus.
- *
- * @param eventBus - The EventBus instance used to emit and listen to signals.
- * @param signalName - The unique name of the signal (event name).
- * @param initialState - The initial state of the signal.
- * @returns A tuple containing the current signal state and a function to emit new signals.
  */
 export function useBaseSignal<T extends Event>(
   eventBus: EventBusContract<any>,
   signalName: string,
   initialState?: T['payload']
-): readonly [T['payload'], (newState: T['payload']) => void] {
+): readonly [
+  T['payload'],
+  (update: T['payload'] | ((prev: T['payload']) => T['payload'])) => void
+] {
   const [subject] = useState(
     () => new Signal<T>(eventBus, signalName, initialState)
   );
@@ -33,7 +31,12 @@ export function useBaseSignal<T extends Event>(
   );
 
   const emitSignal = useCallback(
-    (newState: T['payload']) => {
+    (update: T['payload'] | ((prev: T['payload']) => T['payload'])) => {
+      const prevState = subject.state;
+      const newState =
+        typeof update === 'function'
+          ? (update as (prev: T['payload']) => T['payload'])(prevState)
+          : update;
       subject.emit(newState);
     },
     [subject]
