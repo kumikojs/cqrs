@@ -1,12 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
 import { KumikoClient, QuerySubject } from '@kumiko/core';
-import type { QueryHandler } from '@kumiko/core/types';
+import type { Feature, QueryHandler } from '@kumiko/core/types';
 import type { ExtendedQuery } from './types/query';
 
-export function useBaseQuery<TRequest extends ExtendedQuery>(
-  client: KumikoClient<any, any>,
+export function useBaseQuery<
+  TRequest extends ExtendedQuery,
+  FeatureList extends Feature[] = Feature[]
+>(
+  client: KumikoClient<FeatureList>,
   query: TRequest['req'],
   handler?: QueryHandler<TRequest>
 ) {

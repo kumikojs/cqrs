@@ -28,7 +28,7 @@ export type Query<
   res: ResType;
 };
 
-export type QueryExecutionOptions<QueryType extends Query> = Partial<
+export type QueryWithOptions<QueryType extends Query> = Partial<
   Omit<ResilienceOptions, 'fallback'>
 > & {
   fallback?: (
@@ -37,7 +37,7 @@ export type QueryExecutionOptions<QueryType extends Query> = Partial<
   ) => QueryOutput<QueryType['res']>;
 };
 
-export type PreparedQuery<
+export type InferQuery<
   QueryType extends Query,
   KnownQueries extends QueryRegistry
 > = QueryType extends Query<
@@ -48,7 +48,7 @@ export type PreparedQuery<
         QueryInput<
           Name,
           Payload,
-          Options & QueryExecutionOptions<ExtractQuery<KnownQueries, Name>>
+          Options & QueryWithOptions<ExtractQuery<KnownQueries, Name>>
         >,
         GetQueryOutput<Name, KnownQueries>
       >
@@ -56,13 +56,13 @@ export type PreparedQuery<
         QueryInput<
           QueryType['req']['queryName'],
           QueryType['req']['payload'],
-          QueryType['req']['options'] & QueryExecutionOptions<QueryType>
+          QueryType['req']['options'] & QueryWithOptions<QueryType>
         >,
         QueryType['res']
       >
   : never;
 
-export type PreparedQueryInput<
+export type InferQueryInput<
   QueryType extends Query,
   KnownQueries extends QueryRegistry
 > = QueryType extends Query<
@@ -72,12 +72,12 @@ export type PreparedQueryInput<
     ? QueryInput<
         Name,
         Payload,
-        Options & QueryExecutionOptions<ExtractQuery<KnownQueries, Name>>
+        Options & QueryWithOptions<ExtractQuery<KnownQueries, Name>>
       >
     : QueryInput<
         QueryType['req']['queryName'],
         QueryType['req']['payload'],
-        QueryType['req']['options'] & QueryExecutionOptions<QueryType>
+        QueryType['req']['options'] & QueryWithOptions<QueryType>
       >
   : never;
 
@@ -156,16 +156,6 @@ export type ExtractQueryDefinitions<Queries extends QueryRegistry> = {
     : never;
 };
 
-export type ResolvedQueryRegistry<
-  KnownQueries extends QueryRegistry,
-  KnownDependencies extends QueryRegistry = KnownQueries
-> = {
-  [QueryName in KnownQueries[keyof KnownQueries]['req']['queryName']]: Query<
-    GetQueryInput<QueryName, KnownQueries>,
-    GetQueryOutput<QueryName, KnownDependencies>
-  >;
-};
-
 /**
  * Represents the options for the query cache.
  *
@@ -200,7 +190,7 @@ export interface QueryBusContract<
   > = ExtractQueryDefinitions<KnownQueries>
 > {
   execute<
-    TQueryInput extends PreparedQueryInput<
+    TQueryInput extends InferQueryInput<
       KnownQueries[keyof KnownQueries],
       KnownQueries
     >
@@ -209,12 +199,12 @@ export interface QueryBusContract<
     handler: QueryHandler<ExtractQuery<KnownQueries, TQueryInput['queryName']>>
   ): Promise<GetQueryOutput<TQueryInput['queryName'], KnownQueries>>;
   execute<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
-    query: PreparedQuery<TQuery, KnownQueries>['req'],
+    query: InferQuery<TQuery, KnownQueries>['req'],
     handler: QueryHandler<TQuery>
   ): Promise<TQuery['res']>;
 
   dispatch<
-    TQueryInput extends PreparedQueryInput<
+    TQueryInput extends InferQueryInput<
       KnownQueries[keyof KnownQueries],
       KnownQueries
     >
@@ -222,7 +212,7 @@ export interface QueryBusContract<
     query: TQueryInput
   ): Promise<GetQueryOutput<TQueryInput['queryName'], KnownQueries>>;
   dispatch<TQuery extends Query = KnownQueries[keyof KnownQueries]>(
-    query: PreparedQuery<TQuery, KnownQueries>['req']
+    query: InferQuery<TQuery, KnownQueries>['req']
   ): Promise<TQuery['res']>;
 
   /*
