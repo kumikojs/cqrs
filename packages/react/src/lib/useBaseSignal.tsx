@@ -1,17 +1,26 @@
-import { Signal } from '@kumiko/core';
-import type { Event, EventBusContract } from '@kumiko/core/types';
 import { useCallback, useState, useSyncExternalStore } from 'react';
+
+import { Signal } from '@kumiko/core';
+
+import type {
+  Event,
+  EventBusContract,
+  EventRegistry,
+} from '@kumiko/core/types';
 
 /**
  * React hook to observe and emit signals using SignalSubject and EventBus.
  */
-export function useBaseSignal<T extends Event>(
-  eventBus: EventBusContract<any>,
+export function useBaseSignal<
+  T extends Event,
+  KnownEvents extends EventRegistry = EventRegistry
+>(
+  eventBus: EventBusContract<KnownEvents>,
   signalName: string,
   initialState?: T['payload']
 ) {
   const [subject] = useState(
-    () => new Signal<T>(eventBus, signalName, initialState)
+    () => new Signal<T, KnownEvents>(eventBus, signalName, initialState)
   );
 
   const subscribeToSignal = useCallback(

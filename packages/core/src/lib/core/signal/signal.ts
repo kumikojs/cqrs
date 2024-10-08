@@ -1,12 +1,21 @@
-import type { Event, EventBusContract } from '../../types/core/event';
 import { Subject } from '../../utilities/reactive/subject';
 
-export class Signal<T extends Event> extends Subject<T['payload']> {
-  #eventBus: EventBusContract;
+import type {
+  Event,
+  EventBusContract,
+  EventRegistry,
+  InferEvent,
+} from '../../types/core/event';
+
+export class Signal<
+  T extends Event,
+  KnownEvents extends EventRegistry = EventRegistry
+> extends Subject<T['payload']> {
+  #eventBus: EventBusContract<KnownEvents>;
   #signalName: string;
 
   constructor(
-    eventBus: EventBusContract,
+    eventBus: EventBusContract<KnownEvents>,
     signalName: string,
     initialState: T['payload']
   ) {
@@ -29,6 +38,6 @@ export class Signal<T extends Event> extends Subject<T['payload']> {
     this.#eventBus.emit({
       eventName: this.#signalName,
       payload: newState,
-    });
+    } as InferEvent<T, KnownEvents>);
   }
 }
