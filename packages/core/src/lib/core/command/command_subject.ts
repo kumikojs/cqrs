@@ -40,7 +40,8 @@ export class CommandSubject {
    * @param client - The client instance for interacting with the cache.
    * @param handler - An optional command handler function or class implementing the {@link CommandHandler} interface.
    */
-  constructor(client: Client, handler?: CommandExecutorFunction) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(client: Client<any, any>, handler?: CommandExecutorFunction) {
     this.#client = client;
     this.#handlerFn = handler
       ? (command: Command) => client.command.execute(command, handler)

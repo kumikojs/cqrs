@@ -30,7 +30,7 @@ export function useCommand<
 
   function useCommand<CommandName extends keyof KnownCommands & string>(
     command: CommandWithoutPayload<CommandName, KnownCommands, KnownQueries>,
-    handler: CommandHandlerWithContext<
+    handler?: CommandHandlerWithContext<
       ExtractCommandByName<KnownCommands, CommandName>,
       KnownQueries,
       KnownEvents
@@ -38,7 +38,9 @@ export function useCommand<
   ): ReturnType<
     typeof useBaseCommand<ExtractCommandByName<KnownCommands, CommandName>>
   >;
-  function useCommand<CommandType extends Command>(
+  function useCommand<
+    CommandType extends Command = KnownCommands[keyof KnownCommands]
+  >(
     command: Omit<
       CommandForExecution<CommandType, KnownCommands, KnownQueries>,
       'payload'

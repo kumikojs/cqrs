@@ -2,10 +2,17 @@
 import { useCallback, useState, useSyncExternalStore } from 'react';
 
 import { CommandSubject, KumikoClient } from '@kumiko/core';
-import type { Command, CommandExecutorFunction } from '@kumiko/core/types';
+import type {
+  Command,
+  CommandExecutorFunction,
+  Feature,
+} from '@kumiko/core/types';
 
-export function useBaseCommand<TRequest extends Command>(
-  client: KumikoClient<any, any>,
+export function useBaseCommand<
+  TRequest extends Command,
+  FeatureList extends Feature[] = Feature[]
+>(
+  client: KumikoClient<FeatureList>,
   command: TRequest,
   handler?: CommandExecutorFunction
 ) {
