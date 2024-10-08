@@ -32,7 +32,7 @@ export type InferEvent<
 export interface EventEmitter<
   KnownEvents extends EventRegistry = EventRegistry
 > {
-  emit<EventType extends Event>(
+  emit<EventType extends Event = KnownEvents[keyof KnownEvents]>(
     event: InferEvent<EventType, KnownEvents>
   ): Promise<void>;
 }
@@ -46,7 +46,7 @@ export interface EventBusContract<
     eventName: EventName,
     handler: EventHandlerOrFunction<ExtractEventByName<KnownEvents, EventName>>
   ): VoidFunction;
-  on<EventType extends Event>(
+  on<EventType extends Event = KnownEvents[keyof KnownEvents]>(
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
   ): VoidFunction;
@@ -55,7 +55,7 @@ export interface EventBusContract<
     eventName: EventName,
     handler: EventHandlerOrFunction<ExtractEventByName<KnownEvents, EventName>>
   ): void;
-  off<EventType extends Event>(
+  off<EventType extends Event = KnownEvents[keyof KnownEvents]>(
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
   ): void;

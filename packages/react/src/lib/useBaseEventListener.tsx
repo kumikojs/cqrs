@@ -2,10 +2,17 @@
 import { useEffect } from 'react';
 
 import { KumikoClient } from '@kumiko/core';
-import type { Event, EventHandlerOrFunction } from '@kumiko/core/types';
+import type {
+  Event,
+  EventHandlerOrFunction,
+  Feature,
+} from '@kumiko/core/types';
 
-export const useBaseEventListener = <TEvent extends Event>(
-  client: KumikoClient<any, any>,
+export const useBaseEventListener = <
+  TEvent extends Event,
+  FeatureList extends Feature[] = Feature[]
+>(
+  client: KumikoClient<FeatureList>,
   eventName: TEvent['eventName'],
   handler: EventHandlerOrFunction<TEvent>
 ) => {
