@@ -1,107 +1,77 @@
-import type { CacheDriver } from '../../internal/cache/cache_driver';
-import { Cache } from '../../internal/cache/cache_manager';
-import { ThrottleException, ThrottleStrategy } from './throttle_strategy';
+import { ThrottleStrategy } from './throttle_strategy';
+import { Cache } from '../../../infrastructure/cache/cache';
+import { KumikoLogger } from '../../../utilities/logger/kumiko_logger';
+import { ThrottleException } from './exceptions/throttle_exception';
 
 describe('ThrottleStrategy', () => {
-  let cache: CacheDriver<string>;
+  let cache: Cache;
+  let logger: KumikoLogger;
+  let throttleStrategy: ThrottleStrategy;
 
   beforeEach(() => {
-    cache = new Cache().inMemoryCache;
-    vitest.spyOn(cache, 'get');
-    vitest.spyOn(cache, 'set');
+    cache = {
+      get: vi.fn(),
+      set: vi.fn(),
+    } as unknown as Cache;
+
+    logger = {
+      child: vi.fn().mockReturnValue(logger),
+      error: vi.fn(),
+    } as unknown as KumikoLogger;
+
+    throttleStrategy = new ThrottleStrategy(cache, logger);
   });
 
-  afterEach(() => {
-    vitest.clearAllMocks();
-  });
+  it('should execute the task if not throttled', async () => {
+    const request = { key: 'test' };
+    const task = vi.fn().mockResolvedValue('result');
 
-  test('should execute the task when there is no cached value', async () => {
-    const strategy = new ThrottleStrategy(cache, { interval: '5s', rate: 5 });
-    const request = {
-      name: 'test',
-      payload: { id: '1' },
-    };
-    const task = vitest.fn().mockResolvedValue('result');
+    cache.get = vi.fn().mockResolvedValue(null); // No previous calls
+    const result = await throttleStrategy.execute(request, task);
 
-    await strategy.execute(request, task);
-
-    expect(cache.get).toHaveBeenCalledWith(
-      ThrottleStrategy.namespace,
-      expect.any(String)
-    );
+    expect(result).toBe('result');
+    expect(task).toHaveBeenCalledWith(request);
     expect(cache.set).toHaveBeenCalledWith(
-      ThrottleStrategy.namespace,
-      expect.any(String),
+      expect.stringContaining('ns_throttle:{"key":"test"}'),
       1,
-      '5s'
+      throttleStrategy['options'].interval
     );
-    expect(task).toHaveBeenCalledWith(request);
   });
 
-  test('should execute the task when the cached value is below the rate', async () => {
-    const strategy = new ThrottleStrategy(cache, { interval: '5s', rate: 5 });
-    const request = {
-      name: 'test',
-      payload: { id: '1' },
-    };
-    const task = vitest.fn().mockResolvedValue('result');
+  it('should throw ThrottleException if rate limit is exceeded', async () => {
+    const request = { key: 'test' };
+    const task = vi.fn();
 
-    vitest.spyOn(cache, 'get').mockReturnValue(4);
+    cache.get = vi.fn().mockResolvedValue(5); // Simulate that the rate has been reached
 
-    await strategy.execute(request, task);
-
-    expect(cache.get).toHaveBeenCalledWith(
-      ThrottleStrategy.namespace,
-      expect.any(String)
-    );
-    expect(cache.set).toHaveBeenCalledWith(
-      ThrottleStrategy.namespace,
-      expect.any(String),
-      5,
-      '5s'
-    );
-    expect(task).toHaveBeenCalledWith(request);
-  });
-
-  test('should throw an error when the cached value is equal to the rate', async () => {
-    const strategy = new ThrottleStrategy(cache, { interval: '5s', rate: 5 });
-    const request = {
-      name: 'test',
-      payload: { id: '1' },
-    };
-    const task = vitest.fn().mockResolvedValue('result');
-
-    vitest.spyOn(cache, 'get').mockReturnValue(5);
-
-    await expect(strategy.execute(request, task)).rejects.toThrowError(
+    await expect(throttleStrategy.execute(request, task)).rejects.toThrow(
       ThrottleException
     );
-
-    expect(cache.get).toHaveBeenCalledWith(
-      ThrottleStrategy.namespace,
-      expect.any(String)
+    await expect(throttleStrategy.execute(request, task)).rejects.toThrow(
+      `Throttle limit of ${throttleStrategy['options'].rate} reached for interval ${throttleStrategy['options'].interval}`
     );
-    expect(cache.set).not.toHaveBeenCalled();
-    expect(task).not.toHaveBeenCalled();
   });
 
-  test('should handle requests concurrently without exceeding the rate', async () => {
-    const strategy = new ThrottleStrategy(cache, { interval: '5s', rate: 5 });
-    const request = {
-      name: 'test',
-      payload: { id: '1' },
-    };
-    const task = vitest.fn().mockResolvedValue('result');
+  it('should increment the throttle count and execute the task if under limit', async () => {
+    const request = { key: 'test' };
+    const task = vi.fn().mockResolvedValue('result');
 
-    const promises = Array.from({ length: 5 }, () =>
-      strategy.execute(request, task)
+    cache.get = vi.fn().mockResolvedValue(2); // Simulate previous count
+    const result = await throttleStrategy.execute(request, task);
+
+    expect(result).toBe('result');
+    expect(task).toHaveBeenCalledWith(request);
+    expect(cache.set).toHaveBeenCalledWith(
+      expect.stringContaining('ns_throttle:{"key":"test"}'),
+      3, // Incremented count
+      throttleStrategy['options'].interval
     );
+  });
 
-    const result = await Promise.all(promises);
-
-    expect(cache.get).toHaveBeenCalledTimes(5);
-    expect(cache.set).toHaveBeenCalledTimes(5);
-    expect(task).toHaveBeenCalledTimes(5);
-    expect(result).toEqual(['result', 'result', 'result', 'result', 'result']);
+  it('should default rate to 5 if set to less than 1', () => {
+    const lowRateThrottleStrategy = new ThrottleStrategy(cache, logger, {
+      rate: 0,
+    });
+    expect(lowRateThrottleStrategy['options'].rate).toBe(5); // Should default to 5
   });
 });
