@@ -5,45 +5,13 @@ import { Strategy } from './base_strategy';
 import type { RetryOptions } from '../../../types/core/options/resilience_options';
 import type { AsyncFunction } from '../../../types/helpers';
 
-/**
- * A strategy designed to handle task failures gracefully by retrying the task
- * up to a specified number of attempts with increasing delays between attempts.
- *
- * @example
- * ```ts
- * let counter = 0;
- * const throwError = () => {
- *    counter += 1;
- *    if (counter < 3) {
- *        throw new Error('error');
- *    }
- *    return counter;
- * };
- *
- * const strategy = new RetryStrategy();
- *
- * const result = await strategy.execute({}, throwError);
- *
- * console.log(result); // 3
- * ```
- */
 export class RetryStrategy extends Strategy<RetryOptions> {
-  /**
-   * Default configuration options for the retry strategy.
-   * @private
-   * @static
-   */
   static #defaultOptions: RetryOptions = {
     maxAttempts: 3,
     delay: '1s',
     shouldNotRetryErrors: [],
   };
 
-  /**
-   * Creates an instance of the retry strategy.
-   *
-   * @param options - The options for the retry strategy.
-   */
   public constructor(options?: Partial<RetryOptions>) {
     super({
       ...RetryStrategy.#defaultOptions,
@@ -51,23 +19,6 @@ export class RetryStrategy extends Strategy<RetryOptions> {
     });
   }
 
-  /**
-   * Executes a task with a retry mechanism.
-   *
-   * If the task fails, it will be retried up to the configured maximum number
-   * of attempts. The delay between retries increases exponentially with each attempt.
-   * Errors specified in the `shouldNotRetryErrors` option will be thrown immediately
-   * without retries.
-   *
-   * @template TRequest - The type of request data used for the task.
-   * @template TTask - The type of the task to be executed, constrained to be an async function.
-   * @template TResult - The expected type of the result produced by the task execution.
-   *
-   * @param request - The request data to be passed to the task.
-   * @param task - The async function representing the task to be executed.
-   * @returns A promise that resolves with the task's result upon successful execution.
-   * @throws {any} The error thrown by the last attempt if retries are exhausted.
-   */
   public async execute<
     TRequest,
     TTask extends AsyncFunction,
