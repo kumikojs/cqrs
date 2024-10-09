@@ -16,12 +16,9 @@ export type CacheOptions = {
   ttl?: DurationUnit;
 
   /**
-   * Determines whether cached values are stored persistently in local storage (true),
-   * or in memory for the current session (false).
-   * Defaults to false (in-memory).
-   *
+   * Flag to enable or disable L2 cache.
    * @type boolean
-   * @default false
+   * @default true
    */
   persist: boolean;
 
@@ -171,6 +168,7 @@ export type ResilienceBuilderOptions =
   | Partial<{
       timeout: TimeoutOptions['timeout'];
       throttle: Omit<Partial<ThrottleOptions>, 'serialize'>;
+      retry: Partial<RetryOptions>;
     }>
   | undefined;
 
@@ -184,28 +182,28 @@ export type ResilienceOptions = Partial<{
    *
    * @see RetryOptions for more information. {@link RetryOptions}
    */
-  retry: Partial<RetryOptions> | boolean;
+  retry: Partial<RetryOptions> | false;
 
   /**
    * The cache options for the query.
    *
    * @see CacheOptions for more information. {@link CacheOptions}
    */
-  cache: Omit<Partial<CacheOptions>, 'serialize' | 'invalidate'> | boolean;
+  cache: Omit<Partial<CacheOptions>, 'serialize' | 'invalidate'> | false;
 
   /**
    * The timeout options for the query.
    *
    * @see TimeoutOptions for more information. {@link TimeoutOptions}
    */
-  timeout: TimeoutOptions['timeout'] | boolean;
+  timeout: TimeoutOptions['timeout'] | false;
 
   /**
    * The throttle options for the query.
    *
    * @see ThrottleOptions for more information. {@link ThrottleOptions}
    */
-  throttle: Omit<Partial<ThrottleOptions>, 'serialize'> | boolean;
+  throttle: Omit<Partial<ThrottleOptions>, 'serialize'> | false;
 
   /**
    * The fallback options for the query.

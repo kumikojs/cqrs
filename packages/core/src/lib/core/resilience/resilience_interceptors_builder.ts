@@ -101,6 +101,10 @@ export class ResilienceInterceptorsBuilder<
     this.#interceptorManager.use(
       'kumiko.resilience.interceptors.retry',
       async (command, next) => {
+        if (command.options?.retry === false) {
+          return next?.(command);
+        }
+
         const strategy = this.#strategyBuilder.retry({
           ...(typeof command.options?.retry === 'boolean'
             ? {}
@@ -122,6 +126,10 @@ export class ResilienceInterceptorsBuilder<
     this.#interceptorManager.use(
       'kumiko.resilience.interceptors.timeout',
       async (command, next) => {
+        if (command.options?.timeout === false) {
+          return next?.(command);
+        }
+
         const strategy = this.#strategyBuilder.timeout({
           timeout:
             typeof command.options?.timeout === 'boolean'
@@ -144,6 +152,10 @@ export class ResilienceInterceptorsBuilder<
     this.#interceptorManager.use(
       'kumiko.resilience.interceptors.throttle',
       async (command, next) => {
+        if (command.options?.throttle === false) {
+          return next?.(command);
+        }
+
         const strategy = this.#strategyBuilder.throttle({
           ...(typeof command.options?.throttle === 'boolean'
             ? {}
@@ -189,6 +201,10 @@ export class ResilienceInterceptorsBuilder<
     this.#interceptorManager.use(
       'kumiko.resilience.interceptors.cache',
       async (command, next) => {
+        if (command.options?.cache === false) {
+          return next?.(command);
+        }
+
         const strategy = this.#strategyBuilder.cache({
           ...(typeof command.options?.cache === 'boolean'
             ? {}
