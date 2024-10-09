@@ -106,9 +106,7 @@ export class ResilienceInterceptorsBuilder<
         }
 
         const strategy = this.#strategyBuilder.retry({
-          ...(typeof command.options?.retry === 'boolean'
-            ? {}
-            : command.options?.retry),
+          ...(command.options?.retry || this.#options?.retry),
         });
         return strategy.execute(command, async (request) => next?.(request));
       }
@@ -131,10 +129,7 @@ export class ResilienceInterceptorsBuilder<
         }
 
         const strategy = this.#strategyBuilder.timeout({
-          timeout:
-            typeof command.options?.timeout === 'boolean'
-              ? undefined
-              : command.options?.timeout || this.#options?.timeout,
+          timeout: command.options?.timeout || this.#options?.timeout,
         });
         return strategy.execute(command, async (request) => next?.(request));
       }
@@ -157,9 +152,7 @@ export class ResilienceInterceptorsBuilder<
         }
 
         const strategy = this.#strategyBuilder.throttle({
-          ...(typeof command.options?.throttle === 'boolean'
-            ? {}
-            : command.options?.throttle || this.#options?.throttle),
+          ...(command.options?.throttle || this.#options?.throttle),
           serialize: this.#serializer,
         });
         return strategy.execute(command, async (request) => next?.(request));
