@@ -67,9 +67,11 @@ export class BusOptionsManager<TChannel> {
       case 'MAX_HANDLERS_PER_CHANNEL':
         return `Limit of ${
           this.#options.maxHandlersPerChannel
-        } handler(s) per channel reached: ${channel}`;
+        } handler(s) per channel reached. Channel: '${
+          channel ?? ''
+        }' not registered.`;
       case 'NO_HANDLER_FOUND':
-        return `No handler found for this channel: ${channel}`;
+        return `No handler found for this channel: '${channel ?? ''}'`;
       default:
         throw new Error(`Unknown Bus Error Key: ${key}`);
     }
