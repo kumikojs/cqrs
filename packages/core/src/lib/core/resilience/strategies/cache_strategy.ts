@@ -11,6 +11,7 @@ export class CacheStrategy extends Strategy<CacheOptions> {
 
   static #defaultOptions: CacheOptions = {
     persist: true,
+    ttl: '5m',
     serialize: (request) => {
       const key = CacheStrategy.#serializer.serialize(request);
 
