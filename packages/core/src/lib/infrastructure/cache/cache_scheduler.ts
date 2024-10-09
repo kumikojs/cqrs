@@ -2,9 +2,12 @@ import { ms } from '../../utilities/ms/ms';
 
 import type { DurationUnit } from '../../types/helpers';
 
+type TimerId = number | NodeJS.Timeout;
+
 export class CacheScheduler {
   #tasks: VoidFunction[];
   #interval: DurationUnit;
+  #intervalId?: TimerId;
 
   constructor(interval: DurationUnit) {
     this.#tasks = [];
@@ -18,17 +21,22 @@ export class CacheScheduler {
   }
 
   connect() {
-    setInterval(() => {
-      this.#tasks.forEach((task) => {
-        task();
-      });
-    }, ms(this.#interval));
+    if (!this.#intervalId) {
+      this.#intervalId = setInterval(() => {
+        this.#tasks.forEach((task) => {
+          task();
+        });
+      }, ms(this.#interval));
+    }
 
     return this;
   }
 
   disconnect() {
-    clearInterval(this.#interval);
+    if (this.#intervalId) {
+      clearInterval(this.#intervalId);
+      this.#intervalId = undefined;
+    }
 
     return this;
   }
