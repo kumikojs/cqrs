@@ -1,27 +1,64 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { DeduplicationStrategy } from './deduplication_strategy';
 
 describe('DeduplicationStrategy', () => {
-  it('should deduplicate tasks', async () => {
-    const serialize = vitest.fn((request: any) => JSON.stringify(request));
-    const task = vitest.fn((request: any) => Promise.resolve(request));
-    const task2 = vitest.fn((request: any) => Promise.resolve(request));
-    const task3 = vitest.fn((request: any) => Promise.resolve(request));
-    const strategy = new DeduplicationStrategy({ serialize });
+  let deduplicationStrategy: DeduplicationStrategy;
 
-    Promise.all([
-      strategy.execute({ id: 1 }, task),
-      strategy.execute({ id: 1 }, task),
-      strategy.execute({ id: 1 }, task),
-      strategy.execute({ id: 2 }, task2),
-      strategy.execute({ id: 2 }, task2),
-      strategy.execute({ id: 3 }, task3),
-    ]);
+  beforeEach(() => {
+    deduplicationStrategy = new DeduplicationStrategy({
+      serialize: (request) => JSON.stringify(request),
+    });
+  });
 
-    expect(task).toHaveBeenCalledOnce();
-    expect(task2).toHaveBeenCalledOnce();
-    expect(task3).toHaveBeenCalledOnce();
-    expect(serialize).toHaveBeenCalledTimes(6);
+  test('should execute task if no pending task exists', async () => {
+    const request = { key: 'value' };
+    const task = vitest.fn().mockResolvedValue('result');
+
+    const result = await deduplicationStrategy.execute(request, task);
+
+    expect(task).toHaveBeenCalledTimes(1);
+    expect(result).toEqual('result');
+  });
+
+  test('should return the result of the pending task if it exists', async () => {
+    const request = { key: 'value' };
+    const task = vitest.fn().mockResolvedValue('result');
+
+    // Call once to start a pending task
+    deduplicationStrategy.execute(request, task);
+
+    // Call again before the first task resolves
+    const result = await deduplicationStrategy.execute(request, task);
+
+    expect(task).toHaveBeenCalledTimes(1); // Task should only execute once
+    expect(result).toEqual('result');
+  });
+
+  test('should remove pending task after execution completes', async () => {
+    const request = { key: 'value' };
+    const task = vitest.fn().mockResolvedValue('result');
+
+    await deduplicationStrategy.execute(request, task);
+
+    // Call again after the task has resolved
+    const result = await deduplicationStrategy.execute(request, task);
+
+    expect(task).toHaveBeenCalledTimes(2); // Task should execute again
+    expect(result).toEqual('result');
+  });
+
+  test('should remove pending task even if task fails', async () => {
+    const request = { key: 'value' };
+    const task = vitest.fn().mockRejectedValue('task error');
+
+    await expect(deduplicationStrategy.execute(request, task)).rejects.toEqual(
+      'task error'
+    );
+
+    // Call again after the task has failed
+    const task2 = vitest.fn().mockResolvedValue('success result');
+    const result = await deduplicationStrategy.execute(request, task2);
+
+    expect(task2).toHaveBeenCalledTimes(1);
+    expect(result).toEqual('success result');
   });
 });
