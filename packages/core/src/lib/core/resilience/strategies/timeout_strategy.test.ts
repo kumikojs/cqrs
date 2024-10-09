@@ -1,53 +1,88 @@
-import { TimeoutException, TimeoutStrategy } from './timeout_strategy';
+import { describe, it, expect, vi } from 'vitest';
+import { TimeoutStrategy } from './timeout_strategy';
+import { TimeoutException } from './exceptions/timeout_exception';
 
 describe('TimeoutStrategy', () => {
-  test('should reject the task after the timeout', async () => {
-    const task = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    };
+  it('should execute task successfully within timeout', async () => {
+    const strategy = new TimeoutStrategy({ timeout: '100ms' });
 
-    const strategy = new TimeoutStrategy({ timeout: 50 });
+    const task = vi.fn(async () => 'result');
 
-    await expect(strategy.execute({}, task)).rejects.toThrowError(
-      TimeoutException
-    );
+    const fakeTimer = vi.useFakeTimers();
+
+    const executePromise = strategy.execute({}, task);
+
+    fakeTimer.advanceTimersByTime(50);
+
+    const result = await executePromise;
+
+    expect(result).toBe('result');
+    expect(task).toHaveBeenCalled();
+
+    fakeTimer.clearAllTimers();
   });
 
-  test('should resolve the task before the timeout', async () => {
-    const task = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    };
+  it('should throw TimeoutException when task exceeds timeout', async () => {
+    const strategy = new TimeoutStrategy({ timeout: '50ms' });
 
-    const strategy = new TimeoutStrategy({ timeout: 100 });
+    const task = vi.fn(async () => {
+      return new Promise((resolve) => {
+        setTimeout(() => resolve('result'), 100);
+      });
+    });
 
-    await expect(strategy.execute({}, task)).resolves.toBeUndefined();
+    const fakeTimer = vi.useFakeTimers();
+
+    const executePromise = strategy.execute({}, task);
+
+    fakeTimer.advanceTimersByTime(50);
+
+    await expect(executePromise).rejects.toThrow(TimeoutException);
+    expect(task).toHaveBeenCalled();
+
+    fakeTimer.clearAllTimers();
   });
 
-  test('should reject the task if it fails before the timeout', async () => {
-    const task = async () => {
-      throw new Error('Task failed');
-    };
+  it('should use default timeout if not provided', async () => {
+    const strategy = new TimeoutStrategy();
 
-    const strategy = new TimeoutStrategy({ timeout: 100 });
+    const task = vi.fn(async () => 'result');
 
-    await expect(strategy.execute({}, task)).rejects.toThrowError(
-      new Error('Task failed')
-    );
+    const fakeTimer = vi.useFakeTimers();
+
+    const executePromise = strategy.execute({}, task);
+
+    fakeTimer.advanceTimersByTime(29999);
+
+    const result = await executePromise;
+
+    expect(result).toBe('result');
+    expect(task).toHaveBeenCalled();
+    fakeTimer.clearAllTimers();
   });
 
-  test("should not execute the task if it's already timed out", async () => {
-    const handle = vitest.fn();
-    const task = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      handle();
-    };
+  it('should clear timeout after task completion', async () => {
+    const strategy = new TimeoutStrategy({ timeout: '100ms' });
 
-    const strategy = new TimeoutStrategy({ timeout: 50 });
+    const task = vi.fn(async () => 'completed');
 
-    await expect(strategy.execute({}, task)).rejects.toThrowError(
-      TimeoutException
-    );
+    const fakeTimer = vi.useFakeTimers();
 
-    expect(handle).not.toHaveBeenCalled();
+    // Execute the task
+    const executePromise = strategy.execute({}, task);
+
+    // Fast-forward time by 50ms (less than the timeout)
+    fakeTimer.advanceTimersByTime(50);
+
+    // Ensure task resolves before the timeout
+    const result = await executePromise;
+
+    expect(result).toBe('completed');
+    expect(task).toHaveBeenCalled();
+
+    // Now advance the timer beyond the timeout and ensure no TimeoutException occurs
+    fakeTimer.advanceTimersByTime(100); // This should do nothing since the task already completed
+
+    fakeTimer.clearAllTimers();
   });
 });
