@@ -10,7 +10,10 @@ export class JsonSerializer {
       return new Success(serializedData);
     } catch (error) {
       return new Failure(
-        error instanceof Error ? error : new Error('Failed to serialize data')
+        new Error(
+          'Failed to serialize data: ' +
+            (error instanceof Error ? error.message : 'Unknown error')
+        )
       );
     }
   }
@@ -21,7 +24,10 @@ export class JsonSerializer {
       return new Success(data);
     } catch (error) {
       return new Failure(
-        error instanceof Error ? error : new Error('Failed to deserialize data')
+        new Error(
+          'Failed to deserialize data: ' +
+            (error instanceof Error ? error.message : 'Unknown error')
+        )
       );
     }
   }
