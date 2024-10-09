@@ -157,7 +157,53 @@ describe('ResilienceInterceptorsBuilder', () => {
       await expect(interceptors.execute(request, handler)).rejects.toThrowError(
         'Test error'
       );
-      expect(handler).toHaveBeenCalledTimes(5); // The initial call + 4 retry attempts
+      expect(handler).toHaveBeenCalledTimes(4); // Max attempts reached including the initial call
+    });
+
+    it('should not apply retry when options.retry is false', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+        options: {
+          retry: false, // Explicitly set to false
+        },
+      };
+
+      const handler = vitest.fn().mockRejectedValue(new Error('Test error'));
+
+      const interceptors = resilienceInterceptorsBuilder
+        .addRetryInterceptor()
+        .build();
+
+      await expect(interceptors.execute(request, handler)).rejects.toThrowError(
+        'Test error'
+      );
+      expect(handler).toHaveBeenCalledTimes(1); // Only the initial call
+    });
+
+    it('should apply default retry when options.retry is undefined', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+        options: {
+          // retry is undefined (default 3 attempts, 1s delay)
+        },
+      };
+
+      const handler = vitest
+        .fn()
+        .mockRejectedValueOnce(new Error('Test error'))
+        .mockRejectedValueOnce(new Error('Test error'))
+        .mockResolvedValueOnce(undefined);
+
+      const interceptors = resilienceInterceptorsBuilder
+        .addRetryInterceptor()
+        .build();
+
+      await expect(
+        interceptors.execute(request, handler)
+      ).resolves.toBeUndefined();
+      expect(handler).toHaveBeenCalledTimes(3); // Max attempts reached including the initial call
     });
   });
 
@@ -182,6 +228,57 @@ describe('ResilienceInterceptorsBuilder', () => {
       await expect(interceptors.execute(request, handler)).rejects.toThrowError(
         new TimeoutException(request.options.timeout)
       );
+    });
+
+    it('should not apply timeout when options.timeout is false', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+        options: {
+          timeout: false, // Explicitly set to false
+        },
+      };
+
+      const handler = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return 'success';
+      };
+
+      const interceptors = resilienceInterceptorsBuilder
+        .addTimeoutInterceptor()
+        .build();
+
+      await expect(interceptors.execute(request, handler)).resolves.toBe(
+        'success'
+      );
+    });
+
+    it('should apply default timeout when options.timeout is undefined', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+        options: {
+          // timeout is undefined (default 30s)
+        },
+      };
+
+      vitest.useFakeTimers();
+
+      const handler = async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      };
+
+      const interceptors = resilienceInterceptorsBuilder
+        .addTimeoutInterceptor()
+        .build();
+
+      const executePromise = interceptors.execute(request, handler);
+
+      vitest.advanceTimersByTime(30000);
+
+      await expect(executePromise).rejects.toThrowError(TimeoutException);
+
+      vitest.clearAllTimers();
     });
   });
 
@@ -223,6 +320,79 @@ describe('ResilienceInterceptorsBuilder', () => {
       );
 
       expect(handler).toHaveBeenCalledTimes(3);
+    });
+
+    it('should not apply throttle when options.throttle is false', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+        options: {
+          throttle: false, // Explicitly set to false
+        },
+      };
+
+      const handler = vitest.fn();
+      const interceptors = resilienceInterceptorsBuilder
+        .addThrottleInterceptor()
+        .build();
+
+      await expect(
+        interceptors.execute(request, handler)
+      ).resolves.toBeUndefined();
+      expect(handler).toHaveBeenCalledTimes(1); // Only the initial call
+    });
+
+    it('should apply default throttle when options.throttle is undefined', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+        options: {
+          // throttle is undefined (default interval 5s, rate 5)
+        },
+      };
+
+      vitest.useFakeTimers();
+
+      const handler = vitest.fn();
+
+      const interceptors = resilienceInterceptorsBuilder
+        .addThrottleInterceptor()
+        .build();
+
+      // Execute the first five requests
+      await expect(
+        interceptors.execute(request, handler)
+      ).resolves.toBeUndefined();
+      await expect(
+        interceptors.execute(request, handler)
+      ).resolves.toBeUndefined();
+      await expect(
+        interceptors.execute(request, handler)
+      ).resolves.toBeUndefined();
+      await expect(
+        interceptors.execute(request, handler)
+      ).resolves.toBeUndefined();
+      await expect(
+        interceptors.execute(request, handler)
+      ).resolves.toBeUndefined();
+
+      // The sixth call should throw a ThrottleException
+      await expect(interceptors.execute(request, handler)).rejects.toThrowError(
+        new ThrottleException(5, '5s')
+      );
+
+      expect(handler).toHaveBeenCalledTimes(5);
+
+      // Advance time by 5.001 seconds
+      vitest.advanceTimersByTime(5001);
+
+      // The seventh call should pass
+      await expect(
+        interceptors.execute(request, handler)
+      ).resolves.toBeUndefined();
+      expect(handler).toHaveBeenCalledTimes(6);
+
+      vitest.clearAllTimers();
     });
   });
 
@@ -276,6 +446,67 @@ describe('ResilienceInterceptorsBuilder', () => {
       );
 
       expect(handler).toHaveBeenCalledOnce();
+    });
+
+    it('should not apply cache when options.cache is false', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+        options: {
+          cache: false, // Explicitly set to false
+        },
+      };
+
+      const handler = vitest.fn().mockResolvedValue('result');
+      const interceptors = resilienceInterceptorsBuilder
+        .addCacheInterceptor()
+        .build();
+
+      await expect(interceptors.execute(request, handler)).resolves.toBe(
+        'result'
+      );
+      await expect(interceptors.execute(request, handler)).resolves.toBe(
+        'result'
+      );
+
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
+
+    it('should apply default cache when options.cache is undefined', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+        options: {
+          // cache is undefined (default ttl 5m)
+        },
+      };
+
+      vitest.useFakeTimers();
+
+      const handler = vitest.fn().mockResolvedValue('result');
+      const interceptors = resilienceInterceptorsBuilder
+        .addCacheInterceptor()
+        .build();
+
+      await expect(interceptors.execute(request, handler)).resolves.toBe(
+        'result'
+      );
+      await expect(interceptors.execute(request, handler)).resolves.toBe(
+        'result'
+      );
+
+      expect(handler).toHaveBeenCalledOnce();
+
+      // Advance time by 5 minutes
+      vitest.advanceTimersByTime(300001);
+
+      await expect(interceptors.execute(request, handler)).resolves.toBe(
+        'result'
+      );
+
+      expect(handler).toHaveBeenCalledTimes(2);
+
+      vitest.clearAllTimers();
     });
   });
 });
