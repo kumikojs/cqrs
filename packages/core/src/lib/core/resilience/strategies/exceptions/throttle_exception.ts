@@ -7,7 +7,7 @@ import type { DurationUnit } from '../../../../types/helpers';
 export class ThrottleException extends Error {
   public constructor(rate: number, ttl: DurationUnit) {
     super(
-      `Rate limit exceeded. Limit: ${rate} requests per ${ttl}${ThrottleException.#suffix(
+      `Throttle limit of ${rate} reached for interval ${ttl}${ThrottleException.#suffix(
         ttl
       )}`
     );
