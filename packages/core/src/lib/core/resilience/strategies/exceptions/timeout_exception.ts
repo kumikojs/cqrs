@@ -3,6 +3,6 @@
  */
 export class TimeoutException extends Error {
   public constructor(timeout: number) {
-    super(`Task timed out after ${timeout}ms`);
+    super(`Task execution exceeded timeout of ${timeout}ms`);
   }
 }
