@@ -1,24 +1,36 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Cache } from '../internal/cache/cache_manager';
+import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
+import { QueryCache } from '../query/query_cache';
 import { ResilienceInterceptorsBuilder } from './resilience_interceptors_builder';
-import { ThrottleException } from './strategies/throttle_strategy';
-import { TimeoutException } from './strategies/timeout_strategy';
+import { ThrottleException } from './strategies/exceptions/throttle_exception';
+import { TimeoutException } from './strategies/exceptions/timeout_exception';
 
 describe('ResilienceInterceptorsBuilder', () => {
-  it('should intercept in the order they were added', async () => {
-    const cache = new Cache();
-    const resilienceInterceptorsBuilder = new ResilienceInterceptorsBuilder(
+  let resilienceInterceptorsBuilder: ResilienceInterceptorsBuilder<any>;
+  let cache: QueryCache;
+
+  beforeEach(() => {
+    cache = new QueryCache({
+      l2: {
+        driver: new MemoryStorageDriver(),
+      },
+    });
+    resilienceInterceptorsBuilder = new ResilienceInterceptorsBuilder(
       cache,
+      new KumikoLogger(),
       {
         serialize: (request) => JSON.stringify(request),
       }
     );
+  });
 
+  it('should intercept in the order they were added', async () => {
     const order: string[] = [];
 
+    // Adding interceptors in a specific order
     const interceptors = resilienceInterceptorsBuilder.build();
-
     interceptors.tap(
       () => true,
       async (command, next) => {
@@ -26,7 +38,6 @@ describe('ResilienceInterceptorsBuilder', () => {
         return next?.(command);
       }
     );
-
     interceptors.tap(
       () => true,
       async (command, next) => {
@@ -34,7 +45,6 @@ describe('ResilienceInterceptorsBuilder', () => {
         return next?.(command);
       }
     );
-
     interceptors.tap(
       () => true,
       async (command, next) => {
@@ -42,12 +52,10 @@ describe('ResilienceInterceptorsBuilder', () => {
         return next?.(command);
       }
     );
-
     interceptors.use(async (command, next) => {
       order.push('fallback');
       return next?.(command);
     });
-
     interceptors.tap(
       () => true,
       async (command, next) => {
@@ -55,7 +63,6 @@ describe('ResilienceInterceptorsBuilder', () => {
         return next?.(command);
       }
     );
-
     interceptors.use(async (command, next) => {
       order.push('deduplication');
       return next?.(command);
@@ -83,14 +90,11 @@ describe('ResilienceInterceptorsBuilder', () => {
       };
 
       const handler = vitest.fn();
-
-      const interceptors = new ResilienceInterceptorsBuilder(new Cache(), {
-        serialize: (request) => JSON.stringify(request),
-      })
+      const interceptors = resilienceInterceptorsBuilder
         .addDeduplicationInterceptor()
         .build();
 
-      Promise.all([
+      await Promise.all([
         interceptors.execute(request, handler),
         interceptors.execute(request, handler),
         interceptors.execute(request, handler),
@@ -123,17 +127,14 @@ describe('ResilienceInterceptorsBuilder', () => {
         .mockRejectedValueOnce(new Error('Test error'))
         .mockResolvedValueOnce(undefined);
 
-      const interceptors = new ResilienceInterceptorsBuilder(new Cache(), {
-        serialize: (request) => JSON.stringify(request),
-      })
+      const interceptors = resilienceInterceptorsBuilder
         .addRetryInterceptor()
         .build();
 
       await expect(
         interceptors.execute(request, handler)
       ).resolves.toBeUndefined();
-
-      expect(handler).toHaveBeenCalledTimes(6);
+      expect(handler).toHaveBeenCalledTimes(6); // The initial call + 5 retry attempts
     });
 
     it('should reject the task if it fails after all retries', async () => {
@@ -149,17 +150,13 @@ describe('ResilienceInterceptorsBuilder', () => {
       };
 
       const handler = vitest.fn().mockRejectedValue(new Error('Test error'));
-
-      const interceptors = new ResilienceInterceptorsBuilder(new Cache(), {
-        serialize: (request) => JSON.stringify(request),
-      })
+      const interceptors = resilienceInterceptorsBuilder
         .addRetryInterceptor()
         .build();
 
       await expect(interceptors.execute(request, handler)).rejects.toThrowError(
         'Test error'
       );
-
       expect(handler).toHaveBeenCalledTimes(5); // The initial call + 4 retry attempts
     });
   });
@@ -178,13 +175,11 @@ describe('ResilienceInterceptorsBuilder', () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
       };
 
-      const interceptors = new ResilienceInterceptorsBuilder(new Cache(), {
-        serialize: (request) => JSON.stringify(request),
-      })
+      const interceptors = resilienceInterceptorsBuilder
         .addTimeoutInterceptor()
         .build();
 
-      expect(interceptors.execute(request, handler)).rejects.toThrowError(
+      await expect(interceptors.execute(request, handler)).rejects.toThrowError(
         new TimeoutException(request.options.timeout)
       );
     });
@@ -204,13 +199,11 @@ describe('ResilienceInterceptorsBuilder', () => {
       };
 
       const handler = vitest.fn();
-
-      const interceptors = new ResilienceInterceptorsBuilder(new Cache(), {
-        serialize: (request) => JSON.stringify(request),
-      })
+      const interceptors = resilienceInterceptorsBuilder
         .addThrottleInterceptor()
         .build();
 
+      // Execute the first three requests
       await expect(
         interceptors.execute(request, handler)
       ).resolves.toBeUndefined();
@@ -220,6 +213,8 @@ describe('ResilienceInterceptorsBuilder', () => {
       await expect(
         interceptors.execute(request, handler)
       ).resolves.toBeUndefined();
+
+      // The fourth call should throw a ThrottleException
       await expect(interceptors.execute(request, handler)).rejects.toThrowError(
         new ThrottleException(
           request.options.throttle.rate,
@@ -237,21 +232,18 @@ describe('ResilienceInterceptorsBuilder', () => {
         name: 'test',
         payload: { id: '1' },
         options: {
-          fallback: async () => {
-            return 'fallback';
-          },
+          fallback: async () => 'fallback',
         },
       };
 
       const handler = vitest.fn().mockRejectedValue(new Error('Test error'));
-
-      const interceptors = new ResilienceInterceptorsBuilder(new Cache(), {
-        serialize: (request) => JSON.stringify(request),
-      })
+      const interceptors = resilienceInterceptorsBuilder
         .addFallbackInterceptor()
         .build();
 
-      expect(interceptors.execute(request, handler)).resolves.toBe('fallback');
+      await expect(interceptors.execute(request, handler)).resolves.toBe(
+        'fallback'
+      );
     });
   });
 
@@ -269,14 +261,8 @@ describe('ResilienceInterceptorsBuilder', () => {
 
       const handler = vitest.fn().mockResolvedValue('result');
       const handler2 = vitest.fn().mockResolvedValue('result2');
-
-      const interceptors = new ResilienceInterceptorsBuilder(new Cache(), {
-        serialize: (request) => JSON.stringify(request),
-      })
-        .addCacheInterceptor((request) => ({
-          ns: request.name,
-          key: request.payload.id,
-        }))
+      const interceptors = resilienceInterceptorsBuilder
+        .addCacheInterceptor()
         .build();
 
       await expect(interceptors.execute(request, handler)).resolves.toBe(
