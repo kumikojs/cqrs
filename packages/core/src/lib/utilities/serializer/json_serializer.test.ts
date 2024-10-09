@@ -1,75 +1,63 @@
-import { JsonSerializer } from './json_serializer';
+import { JsonSerializer } from './json_serializer'; // Adjust the path as necessary
+import { Success, Failure } from '../result/result';
 
 describe('JsonSerializer', () => {
-  let serializer: JsonSerializer;
+  let jsonSerializer: JsonSerializer;
 
   beforeEach(() => {
-    serializer = new JsonSerializer();
+    jsonSerializer = new JsonSerializer();
   });
 
   describe('serialize', () => {
-    it('should serialize data', () => {
-      const data = { key: 'value' };
-      const result = serializer.serialize(data);
+    it('should serialize an object correctly', () => {
+      const data = { b: 2, a: 1 };
+      const result = jsonSerializer.serialize(data);
 
-      expect(result.isSuccess()).toBeTruthy();
-      if (!result.isSuccess()) {
-        assert.fail('Expected success');
-      }
-      expect(result.value).toBe('{"key":"value"}');
+      expect(result).toBeInstanceOf(Success);
+      expect(result.isSuccess() && result.value).toEqual('{"a":1,"b":2}');
     });
 
-    it('should return a failure if serialization fails', () => {
-      const data = { key: 'value' };
-      const result = serializer.serialize(data);
+    it('should serialize an array correctly', () => {
+      const data = [3, 1, 2];
+      const result = jsonSerializer.serialize(data);
 
-      expect(result.isFailure()).toBeFalsy();
+      expect(result).toBeInstanceOf(Success);
+      expect(result.isSuccess() && result.value).toEqual('[3,1,2]');
+    });
 
-      vitest.spyOn(JSON, 'stringify').mockImplementation(() => {
-        throw new Error('Failed to serialize data');
-      });
+    it('should return a Failure if serialization fails', () => {
+      const circularData: { self?: unknown } = {};
+      circularData.self = circularData; // Circular reference
 
-      const failure = serializer.serialize(undefined);
+      const result = jsonSerializer.serialize(circularData);
 
-      expect(failure.isFailure()).toBeTruthy();
-
-      if (!failure.isFailure()) {
-        assert.fail('Expected failure');
-      }
-
-      expect(failure.error.message).toBe('Failed to serialize data');
+      expect(result).toBeInstanceOf(Failure);
+      expect(result.isFailure() && result.error).toBeInstanceOf(Error);
+      expect(result.isFailure() && result.error.message).toContain(
+        'Failed to serialize data'
+      );
     });
   });
 
   describe('deserialize', () => {
-    it('should deserialize data', () => {
-      const serializedData = '{"key":"value"}';
-      const result = serializer.deserialize(serializedData);
+    it('should deserialize a valid JSON string correctly', () => {
+      const serializedData = '{"a":1,"b":2}';
+      const result = jsonSerializer.deserialize(serializedData);
 
-      expect(result.isSuccess()).toBeTruthy();
-
-      if (!result.isSuccess()) {
-        assert.fail('Expected success');
-      }
-
-      expect(result.value).toEqual({ key: 'value' });
+      expect(result).toBeInstanceOf(Success);
+      expect(result.isSuccess() && result.value).toEqual({ a: 1, b: 2 });
     });
 
-    it('should return a failure if deserialization fails', () => {
-      const serializedData = '{"key":"value"}';
-      const result = serializer.deserialize(serializedData);
+    it('should return a Failure if deserialization fails', () => {
+      const invalidJson = '{a:1,b:2}'; // Invalid JSON
 
-      expect(result.isFailure()).toBeFalsy();
+      const result = jsonSerializer.deserialize(invalidJson);
 
-      const failure = serializer.deserialize('invalid');
-
-      expect(failure.isFailure()).toBeTruthy();
-
-      if (!failure.isFailure()) {
-        assert.fail('Expected failure');
-      }
-
-      expect(failure.error.message).toBe('Failed to deserialize data');
+      expect(result).toBeInstanceOf(Failure);
+      expect(result.isFailure() && result.error).toBeInstanceOf(Error);
+      expect(result.isFailure() && result.error.message).toContain(
+        'Failed to deserialize data'
+      );
     });
   });
 });
