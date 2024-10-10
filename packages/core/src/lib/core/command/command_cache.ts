@@ -51,14 +51,12 @@ export class CommandCache<KnownQueries extends QueryRegistry = QueryRegistry>
   }
 
   /**
-   * Updates the specified query in the cache optimistically.
+   * Optimistically updates a query and handles rollback in case of failure.
    *
    * @template TQuery - The type of the query to update.
-   * @template TResponse - The expected response type of the query.
    * @param queryOrName - The query or query name to update.
    * @param updater - The function to generate the new response based on the previous result.
    */
-
   async optimisticUpdate<TQuery extends Query>(
     queryOrName: TQuery['req'] | TQuery['req']['queryName'],
     updater: (prev: TQuery['res'] | null | undefined) => TQuery['res']
@@ -71,19 +69,52 @@ export class CommandCache<KnownQueries extends QueryRegistry = QueryRegistry>
     this.#logger.trace('Updating query', { query });
 
     const prevData = await this.#cache.get<TQuery['res']>(query);
-
     const nextData = updater(prevData);
 
+    await this.#attemptUpdate(query, nextData, prevData);
+    await this.#handlePromiseAndInvalidate(query);
+  }
+
+  /**
+   * Attempts to optimistically update the query and handles rollback on failure.
+   */
+  async #attemptUpdate<TQuery extends Query>(
+    query: TQuery['req'],
+    nextData: TQuery['res'],
+    prevData: TQuery['res'] | null | undefined
+  ): Promise<void> {
     try {
       await this.#cache.optimisticUpdate(query, nextData);
     } catch (error) {
       this.#logger.error('Failed to update query', { query });
-      await this.#cache.optimisticUpdate(query, prevData);
+      await this.#attemptRollback(query, prevData);
     }
+  }
 
+  /**
+   * Attempts to roll back the query to its previous state.
+   */
+  async #attemptRollback<TQuery extends Query>(
+    query: TQuery['req'],
+    prevData: TQuery['res'] | null | undefined
+  ): Promise<void> {
+    try {
+      await this.#cache.optimisticUpdate(query, prevData);
+    } catch (rollbackError) {
+      this.#logger.error('Failed to rollback query update', { query });
+    }
+  }
+
+  /**
+   * Handles the optional promise and invalidates queries when the promise resolves.
+   */
+  async #handlePromiseAndInvalidate<TQuery extends Query>(
+    query: TQuery['req']
+  ): Promise<void> {
     if (this.#promise) {
       try {
         await this.#promise;
+        this.#logger.trace('Promise resolved, invalidating queries');
         this.#cache.invalidateQueries(query);
       } catch (error) {
         this.#logger.error('Promise failed, skipping cache invalidation', {
@@ -91,6 +122,9 @@ export class CommandCache<KnownQueries extends QueryRegistry = QueryRegistry>
         });
       }
     } else {
+      this.#logger.trace(
+        'No promise provided, invalidating queries immediately'
+      );
       this.#cache.invalidateQueries(query);
     }
   }
