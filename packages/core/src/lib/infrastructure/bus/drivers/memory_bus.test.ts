@@ -123,4 +123,41 @@ describe('MemoryBusDriver', () => {
       expect(handler2).toHaveBeenCalledTimes(2); // Verify handler2 was called again
     });
   });
+
+  describe('disconnect functionality', () => {
+    it('should clear all subscriptions when disconnect is called', async () => {
+      const bus = new MemoryBusDriver<string>({ mode: 'soft' });
+      const handler = vitest.fn();
+
+      bus.subscribe(CHANNEL_NAME, handler);
+      await bus.publish(CHANNEL_NAME, 'test');
+
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      bus.disconnect();
+
+      await bus.publish(CHANNEL_NAME, 'test');
+      expect(handler).toHaveBeenCalledTimes(1); // Should not be called again after disconnect
+    });
+  });
+
+  describe('handler validation', () => {
+    it('should throw an error if a handler is of an invalid type', async () => {
+      const bus = new MemoryBusDriver<string>({
+        mode: 'hard',
+      });
+
+      // Invalid handler missing necessary methods
+      const invalidHandler: any = {
+        badMethod: vitest.fn(),
+      };
+
+      expect(() => bus.subscribe(CHANNEL_NAME, invalidHandler)).toThrowError(
+        new BusException('INVALID_HANDLER', {
+          message:
+            'Invalid handler provided. Must be a function or an object with an execute or handle method.',
+        })
+      );
+    });
+  });
 });
