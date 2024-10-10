@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { BusException } from '../../../infrastructure/bus/bus_exception';
 import { ms } from '../../../utilities/ms/ms';
 import { Strategy } from './base_strategy';
 
@@ -9,7 +10,7 @@ export class RetryStrategy extends Strategy<RetryOptions> {
   static #defaultOptions: RetryOptions = {
     maxAttempts: 3,
     delay: '1s',
-    shouldNotRetryErrors: [],
+    shouldNotRetryErrors: [BusException],
   };
 
   public constructor(options?: Partial<RetryOptions>) {
