@@ -1,99 +1,136 @@
-import { Cache } from '../../infrastructure/cache/cache';
-import { Command } from '../../types/core/command';
-import { InterceptorManagerContract } from '../../types/main';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
+import { QueryCache } from '../query/query_cache';
+import { ThrottleException } from '../resilience/strategies/exceptions/throttle_exception';
+import { TimeoutException } from '../resilience/strategies/exceptions/timeout_exception';
 import { CommandInterceptors } from './command_interceptors';
 
 describe('CommandInterceptors', () => {
-  let cache: Cache;
-  let interceptorManager: InterceptorManagerContract<any>;
+  let commandInterceptors: CommandInterceptors<any, any>;
+  let cache: QueryCache;
+  let logger: KumikoLogger;
 
   beforeEach(() => {
-    cache = new Cache();
-    interceptorManager = new CommandInterceptors(cache).buildInterceptors();
-
-    vi.useFakeTimers();
+    cache = new QueryCache({
+      l2: { driver: new MemoryStorageDriver() },
+    });
+    logger = new KumikoLogger();
+    commandInterceptors = new CommandInterceptors(cache, logger, {
+      timeout: 1000,
+      retry: { maxAttempts: 3, delay: 100 },
+      throttle: { rate: 5, interval: '1s' },
+    });
   });
 
-  it('should invalidate in-memory queries after the command is executed', async () => {
-    const invalidate = vitest.fn();
-    const handler = vitest.fn();
-
-    type TestCommand = Command<'test', { id: string }>;
-
-    const command: TestCommand = {
-      commandName: 'test',
-      payload: { id: '1' },
-      options: {
-        invalidateQueries: true,
-        queries: ['query'],
-      },
-    };
-
-    cache.inMemoryCache.set('query', 'cached_key', 'cached value');
-
-    cache.onInvalidate('query', invalidate);
-
-    await interceptorManager.execute(command, handler);
-
-    expect(handler).toHaveBeenCalledOnce();
-
-    // Invalidates the memory cache
-    expect(invalidate).toHaveBeenCalledTimes(1);
+  it('should build interceptors with retry, timeout, throttle, and fallback', () => {
+    const interceptors = commandInterceptors.buildInterceptors();
+    expect(interceptors).toBeDefined();
   });
 
-  it('should invalidate local queries after the command is executed', async () => {
-    const invalidate = vitest.fn();
-    const handler = vitest.fn();
+  describe('Retry Interceptor', () => {
+    it('should retry a failed command until it succeeds', async () => {
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+        options: { retry: { maxAttempts: 2, delay: 100 } },
+      };
+      const handler = vitest
+        .fn()
+        .mockRejectedValueOnce(new Error('Failed'))
+        .mockResolvedValueOnce('Success');
 
-    type TestCommand = Command<'test', { id: string }>;
+      const interceptors = commandInterceptors.buildInterceptors();
+      await expect(interceptors.execute(command, handler)).resolves.toBe(
+        'Success'
+      );
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
 
-    const command: TestCommand = {
-      commandName: 'test',
-      payload: { id: '1' },
-      options: {
-        invalidateQueries: true,
-        queries: ['query'],
-      },
-    };
+    it('should throw an error after all retry attempts fail', async () => {
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+        options: { retry: { maxAttempts: 2, delay: 100 } },
+      };
+      const handler = vitest.fn().mockRejectedValue(new Error('Failed'));
 
-    cache.localStorageCache.set('query', 'cached_key', 'cached value');
-
-    cache.onInvalidate('query', invalidate);
-
-    await interceptorManager.execute(command, handler);
-
-    expect(handler).toHaveBeenCalledOnce();
-
-    // Invalidates the local storage cache
-    expect(invalidate).toHaveBeenCalledTimes(1);
-
-    cache.localStorageCache.delete('query', 'cached_key');
+      const interceptors = commandInterceptors.buildInterceptors();
+      await expect(interceptors.execute(command, handler)).rejects.toThrow(
+        'Failed'
+      );
+      expect(handler).toHaveBeenCalledTimes(3); // initial call + 2 retries
+    });
   });
 
-  it('should invalidate both in-memory and local queries after the command is executed', async () => {
-    const invalidate = vitest.fn();
-    const handler = vitest.fn();
+  describe('Timeout Interceptor', () => {
+    it('should throw a TimeoutException if the command takes too long', async () => {
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+        options: { timeout: 50 },
+      };
+      const handler = async () =>
+        new Promise((resolve) => setTimeout(resolve, 100));
 
-    type TestCommand = Command<'test', { id: string }>;
+      const interceptors = commandInterceptors.buildInterceptors();
+      await expect(interceptors.execute(command, handler)).rejects.toThrow(
+        TimeoutException
+      );
+    });
+  });
 
-    const command: TestCommand = {
-      commandName: 'test',
-      payload: { id: '1' },
-      options: {
-        invalidateQueries: true,
-        queries: ['query'],
-      },
-    };
+  describe('Throttle Interceptor', () => {
+    it('should throttle command execution', async () => {
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+        options: { throttle: { rate: 1, interval: '1s' } },
+      };
+      const handler = vitest.fn();
 
-    cache.inMemoryCache.set('query', 'cached_key', 'cached value');
-    cache.localStorageCache.set('query', 'cached_key', 'cached value');
+      const interceptors = commandInterceptors.buildInterceptors();
+      await interceptors.execute(command, handler);
+      await expect(interceptors.execute(command, handler)).rejects.toThrow(
+        ThrottleException
+      );
+      expect(handler).toHaveBeenCalledOnce();
+    });
+  });
 
-    cache.onInvalidate('query', invalidate);
+  describe('Invalidating Queries Interceptor', () => {
+    it('should invalidate queries after a command is executed', async () => {
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+        options: { invalidation: { queries: ['Query1', 'Query2'] } },
+      };
+      const handler = vitest.fn().mockResolvedValue('Success');
+      const cacheSpy = vitest.spyOn(cache, 'invalidateQueries');
 
-    await interceptorManager.execute(command, handler);
+      const interceptors = commandInterceptors.buildInterceptors();
+      await interceptors.execute(command, handler);
 
-    expect(handler).toHaveBeenCalledOnce();
+      expect(cacheSpy).toHaveBeenCalledWith('Query1', 'Query2');
+      expect(handler).toHaveBeenCalled();
+    });
+  });
 
-    expect(invalidate).toHaveBeenCalledTimes(2);
+  describe('onMutate Interceptor', () => {
+    it('should call the onMutate option if provided', async () => {
+      const onMutate = vitest.fn();
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+        options: { onMutate },
+      };
+      const handler = vitest.fn().mockResolvedValue('Success');
+
+      const interceptors = commandInterceptors.buildInterceptors();
+      await interceptors.execute(command, handler);
+
+      expect(onMutate).toHaveBeenCalled();
+    });
   });
 });
