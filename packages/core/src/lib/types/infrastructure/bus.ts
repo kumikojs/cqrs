@@ -59,10 +59,10 @@ export interface BusDriver<TChannel> {
  * @param {...any} args - Additional arguments to pass to the handler.
  * @returns {Promise<TResponse>} The response from the handler.
  */
-export type BusHandler<TRequest, TResponse = any> = (
-  request: TRequest,
-  ...args: any[]
-) => Awaited<TResponse>;
+export type BusHandler<TRequest, TResponse = any> =
+  | ((request: TRequest, ...args: any[]) => Promise<TResponse>)
+  | { execute: (request: TRequest, ...args: any[]) => Promise<TResponse> }
+  | { handle: (request: TRequest, ...args: any[]) => Promise<TResponse> };
 
 /**
  * The options for the MemoryBusDriver
@@ -112,6 +112,7 @@ export interface BusErrorDetails {
 const BusErrorKeys = {
   MAX_HANDLERS_PER_CHANNEL: 'MAX_HANDLERS_PER_CHANNEL',
   NO_HANDLER_FOUND: 'NO_HANDLER_FOUND',
+  INVALID_HANDLER: 'INVALID_HANDLER',
 } as const;
 
 export type BusErrorKeys = (typeof BusErrorKeys)[keyof typeof BusErrorKeys];
