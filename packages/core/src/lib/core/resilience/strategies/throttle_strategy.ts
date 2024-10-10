@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Cache } from '../../../infrastructure/cache/cache';
 import { KumikoLogger } from '../../../utilities/logger/kumiko_logger';
+import { ms } from '../../../utilities/ms/ms';
 import { Strategy } from './base_strategy';
 import { ThrottleException } from './exceptions/throttle_exception';
 
@@ -8,45 +8,31 @@ import type { ThrottleOptions } from '../../../types/core/options/resilience_opt
 import type { AsyncFunction } from '../../../types/helpers';
 
 export class ThrottleStrategy extends Strategy<ThrottleOptions> {
-  /**
-   * The namespace for isolating throttle-related data in the cache.
-   */
   static readonly namespace = 'ns_throttle';
-
-  static #options: ThrottleOptions = {
+  static #defaultOptions: ThrottleOptions = {
     interval: '5s',
     rate: 5,
     serialize: (request) => JSON.stringify(request),
   };
 
-  #cache: Cache;
+  readonly #cache: Cache;
+  readonly #logger: KumikoLogger;
 
-  #logger: KumikoLogger;
+  static readonly #RATE_LIMIT_LOG_MESSAGE =
+    'Rate must be greater than or equal to 1. Defaulting to 5.';
 
   constructor(
     cache: Cache,
     logger: KumikoLogger,
     options?: Partial<ThrottleOptions>
   ) {
-    super({
-      ...ThrottleStrategy.#options,
-      ...options,
-    });
-
-    this.#logger = logger.child({});
-
-    if (this.options.rate < 1) {
-      this.#logger.error(
-        `Throttle rate must be greater than or equal to 1. Received: ${this.options.rate}`,
-        {
-          topics: ['interceptors', 'resilience'],
-          data: { rate: this.options.rate },
-        }
-      );
-      this.options.rate = ThrottleStrategy.#options.rate;
-    }
+    const mergedOptions = { ...ThrottleStrategy.#defaultOptions, ...options };
+    super(mergedOptions);
 
     this.#cache = cache;
+    this.#logger = logger.child({ topics: ['resilience', 'throttle'] });
+
+    this.#validateRate(mergedOptions.rate);
   }
 
   async execute<
@@ -56,30 +42,61 @@ export class ThrottleStrategy extends Strategy<ThrottleOptions> {
   >(request: TRequest, task: TTask): Promise<TResult> {
     const key = this.options.serialize(request);
 
-    const cachedValue = await this.#cache.get<number>(
-      `${ThrottleStrategy.namespace}:${key}`
+    await this.#increment(key);
+
+    return await task(request);
+  }
+
+  async #increment(key: string): Promise<void> {
+    const cacheKey = this.#getCacheKey(key);
+    const currentData = await this.#getCachedTimestamps(cacheKey);
+
+    const now = Date.now();
+    const intervalInMillis = ms(this.options.interval);
+    const filteredTimestamps = this.#filterTimestamps(
+      currentData,
+      now,
+      intervalInMillis
     );
 
-    if (cachedValue === null) {
-      await this.#cache.set(
-        `${ThrottleStrategy.namespace}:${key}`,
-        1,
-        this.options.interval
-      );
+    this.#checkRateLimit(filteredTimestamps.length);
 
-      return task(request);
-    }
+    filteredTimestamps.push(now);
 
-    if (cachedValue >= this.options.rate) {
+    await this.#cache.set(cacheKey, filteredTimestamps, intervalInMillis);
+  }
+
+  #getCacheKey(key: string): string {
+    return `${ThrottleStrategy.namespace}:${key}`;
+  }
+
+  async #getCachedTimestamps(cacheKey: string): Promise<number[]> {
+    return (await this.#cache.get<number[]>(cacheKey)) ?? [];
+  }
+
+  #filterTimestamps(
+    timestamps: number[],
+    now: number,
+    intervalInMillis: number
+  ): number[] {
+    return timestamps.filter(
+      (timestamp) => now - timestamp <= intervalInMillis
+    );
+  }
+
+  #checkRateLimit(count: number): void {
+    if (count >= this.options.rate) {
       throw new ThrottleException(this.options.rate, this.options.interval);
     }
+  }
 
-    await this.#cache.set(
-      `${ThrottleStrategy.namespace}:${key}`,
-      cachedValue + 1,
-      this.options.interval
-    );
-
-    return task(request);
+  #validateRate(rate: number) {
+    if (rate < 1) {
+      this.#logger.error(ThrottleStrategy.#RATE_LIMIT_LOG_MESSAGE, {
+        topics: ['interceptors', 'resilience'],
+        data: { rate: this.options.rate },
+      });
+      this.options.rate = ThrottleStrategy.#defaultOptions.rate;
+    }
   }
 }

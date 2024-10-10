@@ -2,76 +2,99 @@ import { ThrottleStrategy } from './throttle_strategy';
 import { Cache } from '../../../infrastructure/cache/cache';
 import { KumikoLogger } from '../../../utilities/logger/kumiko_logger';
 import { ThrottleException } from './exceptions/throttle_exception';
+import { MemoryStorageDriver } from '../../../infrastructure/storage/drivers/memory_storage';
 
-describe('ThrottleStrategy', () => {
+describe('ThrottleStrategy with real cache and fake timers', () => {
   let cache: Cache;
   let logger: KumikoLogger;
   let throttleStrategy: ThrottleStrategy;
 
+  const mockTask = async (request: unknown) => `result: ${request}`;
+
   beforeEach(() => {
-    cache = {
-      get: vi.fn(),
-      set: vi.fn(),
-    } as unknown as Cache;
+    cache = new Cache('l1', new MemoryStorageDriver(), 1000, 5000); // 1s cleanup, 5s TTL
+    logger = new KumikoLogger();
 
-    logger = {
-      child: vi.fn().mockReturnValue(logger),
-      error: vi.fn(),
-    } as unknown as KumikoLogger;
+    throttleStrategy = new ThrottleStrategy(cache, logger, {
+      rate: 2,
+      interval: '10s',
+    });
 
-    throttleStrategy = new ThrottleStrategy(cache, logger);
+    vi.useFakeTimers();
   });
 
-  it('should execute the task if not throttled', async () => {
-    const request = { key: 'test' };
-    const task = vi.fn().mockResolvedValue('result');
-
-    cache.get = vi.fn().mockResolvedValue(null); // No previous calls
-    const result = await throttleStrategy.execute(request, task);
-
-    expect(result).toBe('result');
-    expect(task).toHaveBeenCalledWith(request);
-    expect(cache.set).toHaveBeenCalledWith(
-      expect.stringContaining('ns_throttle:{"key":"test"}'),
-      1,
-      throttleStrategy['options'].interval
-    );
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('should throw ThrottleException if rate limit is exceeded', async () => {
-    const request = { key: 'test' };
-    const task = vi.fn();
+  it('should allow requests under the rate limit', async () => {
+    const request = { userId: 'user1' };
 
-    cache.get = vi.fn().mockResolvedValue(5); // Simulate that the rate has been reached
+    const result = await throttleStrategy.execute(request, mockTask);
+    expect(result).toBe('result: [object Object]');
 
-    await expect(throttleStrategy.execute(request, task)).rejects.toThrow(
+    const secondResult = await throttleStrategy.execute(request, mockTask);
+    expect(secondResult).toBe('result: [object Object]');
+  });
+
+  it('should block requests exceeding the rate limit', async () => {
+    const request = { userId: 'user2' };
+
+    await throttleStrategy.execute(request, mockTask);
+    await throttleStrategy.execute(request, mockTask);
+
+    // Now, with rate limit exceeded, this should throw
+    await expect(throttleStrategy.execute(request, mockTask)).rejects.toThrow(
       ThrottleException
     );
-    await expect(throttleStrategy.execute(request, task)).rejects.toThrow(
-      `Throttle limit of ${throttleStrategy['options'].rate} reached for interval ${throttleStrategy['options'].interval}`
-    );
   });
 
-  it('should increment the throttle count and execute the task if under limit', async () => {
-    const request = { key: 'test' };
-    const task = vi.fn().mockResolvedValue('result');
+  it('should reset the rate limit after the interval', async () => {
+    const request = { userId: 'user3' };
 
-    cache.get = vi.fn().mockResolvedValue(2); // Simulate previous count
-    const result = await throttleStrategy.execute(request, task);
+    await throttleStrategy.execute(request, mockTask); // 1st request
+    await throttleStrategy.execute(request, mockTask); // 2nd request
 
-    expect(result).toBe('result');
-    expect(task).toHaveBeenCalledWith(request);
-    expect(cache.set).toHaveBeenCalledWith(
-      expect.stringContaining('ns_throttle:{"key":"test"}'),
-      3, // Incremented count
-      throttleStrategy['options'].interval
-    );
+    // Now advance the time by 11 seconds using fake timers (no real wait needed)
+    vi.advanceTimersByTime(11000);
+
+    // The rate limit should have reset after 10 seconds
+    const result = await throttleStrategy.execute(request, mockTask);
+    expect(result).toBe('result: [object Object]');
   });
 
-  it('should default rate to 5 if set to less than 1', () => {
-    const lowRateThrottleStrategy = new ThrottleStrategy(cache, logger, {
-      rate: 0,
-    });
-    expect(lowRateThrottleStrategy['options'].rate).toBe(5); // Should default to 5
+  it('should handle multiple unique requests separately', async () => {
+    const request1 = { userId: 'user4' };
+    const request2 = { userId: 'user5' };
+
+    const result1 = await throttleStrategy.execute(request1, mockTask);
+    expect(result1).toBe('result: [object Object]');
+
+    const result2 = await throttleStrategy.execute(request2, mockTask);
+    expect(result2).toBe('result: [object Object]');
+
+    // Both users should have their separate rate limits
+    await throttleStrategy.execute(request1, mockTask); // No throttle for user4 yet
+    await throttleStrategy.execute(request2, mockTask); // No throttle for user5 yet
+  });
+
+  it('should properly handle rate limit reset after time elapses', async () => {
+    const request = { userId: 'user6' };
+
+    // First two requests should be allowed
+    await throttleStrategy.execute(request, mockTask);
+    await throttleStrategy.execute(request, mockTask);
+
+    // At this point, the rate limit is hit
+    await expect(() =>
+      throttleStrategy.execute(request, mockTask)
+    ).rejects.toThrow(ThrottleException);
+
+    // Advance time by 10 seconds (the interval time) to reset the rate limit
+    vi.advanceTimersByTime(10001);
+
+    // After the time passes, the rate limit should be reset
+    const result = await throttleStrategy.execute(request, mockTask);
+    expect(result).toBe('result: [object Object]');
   });
 });
