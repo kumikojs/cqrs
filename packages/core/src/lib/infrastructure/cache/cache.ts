@@ -9,6 +9,7 @@ import type {
   AsyncStorageDriver,
   SyncStorageDriver,
 } from '../../types/infrastructure/storage';
+import { LockManager } from '../lock/lock_manager';
 
 /**
  * Defines the event types for the cache.
@@ -51,6 +52,8 @@ export class Cache {
   #scheduler: CacheScheduler;
 
   #layer: 'l1' | 'l2';
+
+  #lockManager = new LockManager();
 
   /**
    * Creates a new instance of the Cache class.
@@ -108,23 +111,28 @@ export class Cache {
    * @returns The value associated with the key, or null if the key does not exist or the item has expired.
    */
   async get<TValue>(key: string): Promise<TValue | null> {
-    const item = await this.#cache.getItem(key);
+    await this.#lockManager.lock(key);
 
-    console.log('item', item);
-    if (!item) return null;
+    try {
+      const item = await this.#cache.getItem(key);
 
-    const deserialized = CacheEntry.deserialize<TValue>(key, item);
-    if (!deserialized) {
-      return null;
+      if (!item) return null;
+
+      const deserialized = CacheEntry.deserialize<TValue>(key, item);
+      if (!deserialized) {
+        return null;
+      }
+
+      if (deserialized.hasExpired()) {
+        await this.#cache.removeItem(key);
+
+        return null;
+      }
+
+      return deserialized.value ?? null;
+    } finally {
+      this.#lockManager.unlock(key);
     }
-
-    if (deserialized.hasExpired()) {
-      await this.#cache.removeItem(key);
-
-      return null;
-    }
-
-    return deserialized.value ?? null;
   }
 
   /**
@@ -138,13 +146,19 @@ export class Cache {
     value: TValue,
     ttl: DurationUnit = this.#defaultTTL
   ): Promise<void> {
-    const entry = new CacheEntry(key, value, ttl);
-    const serialized = entry.serialize();
-    if (!serialized) {
-      return;
-    }
+    await this.#lockManager.lock(key);
 
-    await this.#cache.setItem(key, serialized);
+    try {
+      const entry = new CacheEntry(key, value, ttl);
+      const serialized = entry.serialize();
+      if (!serialized) {
+        return;
+      }
+
+      await this.#cache.setItem(key, serialized);
+    } finally {
+      this.#lockManager.unlock(key);
+    }
   }
 
   /**
@@ -186,7 +200,12 @@ export class Cache {
    * @param key The key of the item to delete.
    */
   async delete(key: string): Promise<void> {
-    await this.#cache.removeItem(key);
+    await this.#lockManager.lock(key);
+    try {
+      await this.#cache.removeItem(key);
+    } finally {
+      this.#lockManager.unlock(key);
+    }
   }
 
   /**
@@ -241,12 +260,14 @@ export class Cache {
    * @param key The key of the item to invalidate.
    */
   async invalidate(key: string) {
+    console.log('invalidate', key);
     if (this.#layer === 'l2') {
       return;
     }
 
+    console.log('invalidate', key);
     await this.#cache.removeItem(key);
-    this.#emit('invalidated', key);
+    await this.#emit(CACHE_EVENT_TYPES.INVALIDATED, key);
   }
 
   /**
@@ -258,14 +279,12 @@ export class Cache {
     const item = await this.#cache.getItem(key);
     if (!item) return;
 
-    this.#emit('optimistic_update_began', key);
+    await this.#emit(CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_BEGAN, key);
 
-    const { ttl } = CacheEntry.deserialize<TValue>(key, item) ?? {};
-    const ttlToUse = ttl ?? this.#defaultTTL;
-
+    const ttlToUse = await this.ttl(key);
     await this.set(key, value, ttlToUse);
 
-    this.#emit('optimistic_update_ended', key);
+    await this.#emit(CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_ENDED, key);
   }
 
   /**
@@ -282,19 +301,15 @@ export class Cache {
       if (!item) continue;
 
       const deserialized = CacheEntry.deserialize(key, item);
-      if (!deserialized) {
-        await this.#cache.removeItem(key);
-        continue;
-      }
 
-      if (deserialized.hasExpired()) {
+      if (!deserialized || deserialized.hasExpired()) {
         await this.#cache.removeItem(key);
-        this.#emit('expired', key);
+        await this.#emit(CACHE_EVENT_TYPES.EXPIRED, key);
       }
     }
   }
 
-  #emit(eventName: CacheEvent, key: string) {
-    this.#emitter.publish(eventName, key);
+  async #emit(eventName: CacheEvent, key: string) {
+    await this.#emitter.publish(eventName, key);
   }
 }
