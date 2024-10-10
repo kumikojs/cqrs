@@ -157,7 +157,7 @@ describe('ResilienceInterceptorsBuilder', () => {
       await expect(interceptors.execute(request, handler)).rejects.toThrowError(
         'Test error'
       );
-      expect(handler).toHaveBeenCalledTimes(4); // Max attempts reached including the initial call
+      expect(handler).toHaveBeenCalledTimes(5); // The initial call + 4 retry attempts
     });
 
     it('should not apply retry when options.retry is false', async () => {
@@ -194,18 +194,20 @@ describe('ResilienceInterceptorsBuilder', () => {
         .fn()
         .mockRejectedValueOnce(new Error('Test error'))
         .mockRejectedValueOnce(new Error('Test error'))
+        .mockRejectedValueOnce(new Error('Test error'))
         .mockResolvedValueOnce(undefined);
 
       const interceptors = resilienceInterceptorsBuilder
         .addRetryInterceptor()
         .build();
 
-      await expect(
-        interceptors.execute(request, handler)
-      ).resolves.toBeUndefined();
-      expect(handler).toHaveBeenCalledTimes(3); // Max attempts reached including the initial call
+      const executePromise = interceptors.execute(request, handler);
+
+      await expect(executePromise).resolves.toBeUndefined();
+
+      expect(handler).toHaveBeenCalledTimes(4);
     });
-  });
+  }, 10000);
 
   describe('TimeoutInterceptor', () => {
     it('should reject the task after the timeout', async () => {

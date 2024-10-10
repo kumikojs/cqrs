@@ -29,7 +29,7 @@ export class RetryStrategy extends Strategy<RetryOptions> {
     let attempts = 0;
     let lastError: any;
 
-    while (attempts < maxAttempts) {
+    while (attempts <= maxAttempts) {
       try {
         const result = await task(request);
         return result;

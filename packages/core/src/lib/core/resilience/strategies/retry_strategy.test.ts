@@ -44,7 +44,7 @@ describe('RetryStrategy', () => {
     await expect(retryStrategy.execute(request, failingTask)).rejects.toThrow(
       'Permanent error'
     );
-    expect(failingTask).toHaveBeenCalledTimes(3); // Should attempt 3 times
+    expect(failingTask).toHaveBeenCalledTimes(4); // Should retry 3 times (maxAttempts) + 1 (initial attempt)
   });
 
   test('should not retry on non-retryable errors', async () => {
