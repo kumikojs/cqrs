@@ -49,13 +49,13 @@ export class QueryCache {
   #serializer: JsonSerializer = new JsonSerializer();
 
   constructor(options: QueryCacheOptions) {
-    this.#l1 = createCache({
+    this.#l1 = createCache('l1', {
       ttl: options?.l1?.ttl ?? '1m',
       driver: new MemoryStorageDriver(),
       gcInterval: options?.l1?.gcInterval ?? '5m',
     });
 
-    this.#l2 = createCache({
+    this.#l2 = createCache('l2', {
       ttl: options?.l2?.ttl ?? '1m',
       driver: options.l2.driver,
       gcInterval: options?.l2?.gcInterval ?? '5m',
@@ -120,11 +120,13 @@ export class QueryCache {
     return persistedValue;
   }
 
-  set<TValue>(query: QueryInput, value: TValue, ttl?: DurationUnit) {
+  async set<TValue>(query: QueryInput, value: TValue, ttl?: DurationUnit) {
     const key = this.getCacheKey(query);
 
-    this.#l1.set(key, value, ttl);
-    this.#l2.set(key, value, ttl);
+    await Promise.all([
+      this.#l1.set(key, value, ttl),
+      this.#l2.set(key, value, ttl),
+    ]);
   }
 
   async delete(query: QueryInput) {
@@ -215,6 +217,7 @@ export class QueryCache {
 }
 
 function createCache(
+  layer: 'l1' | 'l2',
   options: QueryCacheOptions['l1'] & {
     driver: SyncStorageDriver | AsyncStorageDriver;
   }
@@ -222,5 +225,5 @@ function createCache(
   const ttl = options?.ttl ?? '1m';
   const gcInterval = options?.gcInterval ?? '1m';
 
-  return new Cache(options.driver, ttl, gcInterval);
+  return new Cache(layer, options.driver, ttl, gcInterval);
 }

@@ -50,15 +50,20 @@ export class Cache {
    */
   #scheduler: CacheScheduler;
 
+  #layer: 'l1' | 'l2';
+
   /**
    * Creates a new instance of the Cache class.
    * @param cache The cache to use for caching.
    */
   constructor(
+    layer: 'l1' | 'l2',
     storage: SyncStorageDriver | AsyncStorageDriver,
     defaultTTL: DurationUnit,
     gcInterval: DurationUnit
   ) {
+    this.#layer = layer;
+
     /**
      * Type check the storage to determine if it is an async or sync storage.
      * If the storage has an `getAllKeys` method, it is an async storage.
@@ -121,6 +126,26 @@ export class Cache {
   }
 
   /**
+   * Sets the value associated with the specified key in the cache.
+   * @param key The key of the item.
+   * @param value The value to set.
+   * @param ttl The time-to-live (TTL) of the item.
+   */
+  async set<TValue>(
+    key: string,
+    value: TValue,
+    ttl: DurationUnit = this.#defaultTTL
+  ): Promise<void> {
+    const entry = new CacheEntry(key, value, ttl);
+    const serialized = entry.serialize();
+    if (!serialized) {
+      return;
+    }
+
+    await this.#cache.setItem(key, serialized);
+  }
+
+  /**
    * Gets the expiration timestamp of the item with the specified key.
    * @param key The key of the item.
    * @returns The expiration timestamp of the item, or -Infinity if the item does not exist or has expired.
@@ -142,36 +167,16 @@ export class Cache {
    * @param key The key of the item.
    * @returns The time-to-live (TTL) of the item, or undefined if the item does not exist.
    */
-  async ttl(key: string): Promise<DurationUnit | undefined> {
+  async ttl(key: string): Promise<DurationUnit> {
     const item = await this.#cache.getItem(key);
-    if (!item) return undefined;
+    if (!item) return this.#defaultTTL;
 
     const deserialized = CacheEntry.deserialize(key, item);
     if (!deserialized) {
-      return undefined;
+      return this.#defaultTTL;
     }
 
     return deserialized.ttl;
-  }
-
-  /**
-   * Sets the value associated with the specified key in the cache.
-   * @param key The key of the item.
-   * @param value The value to set.
-   * @param ttl The time-to-live (TTL) of the item.
-   */
-  async set<TValue>(
-    key: string,
-    value: TValue,
-    ttl: DurationUnit = this.#defaultTTL
-  ): Promise<void> {
-    const entry = new CacheEntry(key, value, ttl);
-    const serialized = entry.serialize();
-    if (!serialized) {
-      return;
-    }
-
-    await this.#cache.setItem(key, serialized);
   }
 
   /**
@@ -234,6 +239,11 @@ export class Cache {
    * @param key The key of the item to invalidate.
    */
   invalidate(key: string) {
+    if (this.#layer === 'l2') {
+      return;
+    }
+
+    this.#cache.removeItem(key);
     this.#emit('invalidated', key);
   }
 
@@ -243,11 +253,20 @@ export class Cache {
    * @param value The new value for the item.
    */
   async optimisticUpdate<TValue>(key: string, value: TValue) {
+    if (this.#layer === 'l2') {
+      return;
+    }
+
     this.#emit('optimistic_update_began', key);
 
-    const ttl = await this.ttl(key);
+    const existing = await this.#cache.getItem(key);
 
-    await this.set(key, value, ttl);
+    if (existing !== null) {
+      const ttlToUse = await this.ttl(key);
+
+      // Force update the cache with the new value, keeping the current TTL
+      await this.set(key, value, ttlToUse);
+    }
 
     this.#emit('optimistic_update_ended', key);
   }
