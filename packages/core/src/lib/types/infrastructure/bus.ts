@@ -60,9 +60,9 @@ export interface BusDriver<TChannel> {
  * @returns {Promise<TResponse>} The response from the handler.
  */
 export type BusHandler<TRequest, TResponse = any> =
-  | ((request: TRequest, ...args: any[]) => Promise<TResponse>)
-  | { execute: (request: TRequest, ...args: any[]) => Promise<TResponse> }
-  | { handle: (request: TRequest, ...args: any[]) => Promise<TResponse> };
+  | ((request: TRequest, ...args: any[]) => Awaited<TResponse>)
+  | { execute: (request: TRequest, ...args: any[]) => Awaited<TResponse> }
+  | { handle: (request: TRequest, ...args: any[]) => Awaited<TResponse> };
 
 /**
  * The options for the MemoryBusDriver
