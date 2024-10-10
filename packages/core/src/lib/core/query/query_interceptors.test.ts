@@ -6,7 +6,7 @@ import { QueryCache } from './query_cache';
 import { QueryInterceptors } from './query_interceptors';
 
 describe('QueryInterceptors', () => {
-  let queryInterceptors: QueryInterceptors<any, any>;
+  let queryInterceptors: QueryInterceptors<never, never>;
   let cache: QueryCache;
   let logger: KumikoLogger;
 
