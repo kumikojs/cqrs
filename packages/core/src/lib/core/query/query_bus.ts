@@ -74,9 +74,7 @@ export class QueryBus<
     queryName: TQuery['req']['queryName'],
     handler: QueryHandler<TQuery>
   ): VoidFunction {
-    const handlerFn = typeof handler === 'function' ? handler : handler.execute;
-
-    this.#driver.subscribe(queryName, handlerFn);
+    this.#driver.subscribe(queryName, handler);
 
     return () => this.unregister(queryName, handler);
   }
@@ -85,9 +83,7 @@ export class QueryBus<
     queryName: TQuery['req']['queryName'],
     handler: QueryHandler<TQuery>
   ): void {
-    const handlerFn = typeof handler === 'function' ? handler : handler.execute;
-
-    this.#driver.unsubscribe(queryName, handlerFn);
+    this.#driver.unsubscribe(queryName, handler);
   }
 
   async execute<TQuery extends Query>(

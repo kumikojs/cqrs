@@ -73,15 +73,7 @@ export class CommandBus<
     commandName: CommandType['commandName'],
     handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
   ): VoidFunction {
-    const handlerFn = (command: CommandType) =>
-      typeof handler === 'function'
-        ? handler(command, { emit: this.#emitter.emit, cache: this.#cache })
-        : handler.execute(command, {
-            emit: this.#emitter.emit,
-            cache: this.#cache,
-          });
-
-    this.#driver.subscribe(commandName, handlerFn);
+    this.#driver.subscribe(commandName, handler);
 
     return () => this.unregister(commandName, handler);
   }
@@ -90,9 +82,7 @@ export class CommandBus<
     commandName: TCommand['commandName'],
     handler: CommandHandlerWithContext<TCommand, KnownQueries, KnownEvents>
   ): void {
-    const handlerFn = typeof handler === 'function' ? handler : handler.execute;
-
-    this.#driver.unsubscribe(commandName, handlerFn);
+    this.#driver.unsubscribe(commandName, handler);
   }
 
   async execute<TCommand extends Command>(

@@ -37,9 +37,7 @@ export class EventBus<KnownEvents extends EventRegistry = EventRegistry>
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
   ): VoidFunction {
-    const handlerFn = typeof handler === 'function' ? handler : handler.handle;
-
-    this.#driver.subscribe(eventName, handlerFn);
+    this.#driver.subscribe(eventName, handler);
 
     return () => this.off(eventName, handler);
   }
@@ -48,9 +46,7 @@ export class EventBus<KnownEvents extends EventRegistry = EventRegistry>
     eventName: EventType['eventName'],
     handler: EventHandlerOrFunction<EventType>
   ): void {
-    const handlerFn = typeof handler === 'function' ? handler : handler.handle;
-
-    this.#driver.unsubscribe(eventName, handlerFn);
+    this.#driver.unsubscribe(eventName, handler);
   }
 
   async emit<TEvent extends Event>(event: TEvent): Promise<void> {
