@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { EventBus } from '../event/event_bus';
 import { Saga } from './saga';
 
@@ -7,7 +8,7 @@ describe('Saga', () => {
   let eventBus: EventBus;
 
   beforeEach(() => {
-    eventBus = new EventBus();
+    eventBus = new EventBus(new KumikoLogger());
     saga = new Saga(eventBus);
   });
 

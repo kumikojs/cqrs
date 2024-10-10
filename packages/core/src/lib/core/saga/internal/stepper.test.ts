@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Stepper } from './stepper';
-
-import type { EventContract } from '../../event/event_contracts';
+import type { Event } from '../../../types/core/event';
 
 describe('Stepper', () => {
   let executor: Stepper;
-  let event: EventContract;
+  let event: Event;
 
   beforeEach(() => {
     executor = new Stepper();
