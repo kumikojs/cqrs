@@ -114,7 +114,7 @@ export class QueryCache {
      * we store it in the l1 cache for faster access next time. (cache promotion)
      */
     if (persistedValue) {
-      this.#l1.set(key, persistedValue);
+      await this.#l1.set(key, persistedValue);
     }
 
     return persistedValue;
@@ -182,17 +182,20 @@ export class QueryCache {
   async optimisticUpdate(previousQuery: QueryInput, value: unknown) {
     const key = this.getCacheKey(previousQuery);
 
-    this.#l1.optimisticUpdate(key, value);
+    await this.#l1.optimisticUpdate(key, value);
   }
 
-  #invalidate(cache: Cache, { queryName, payload }: QueryInput): void {
+  async #invalidate(
+    cache: Cache,
+    { queryName, payload }: QueryInput
+  ): Promise<void> {
     if (!payload) {
-      this.#invalidateAll(cache, queryName);
+      await this.#invalidateAll(cache, queryName);
       return;
     }
 
     const key = this.getCacheKey({ queryName, payload });
-    cache.invalidate(key);
+    await cache.invalidate(key);
   }
 
   async #invalidateAll(cache: Cache, queryName: string): Promise<void> {

@@ -109,6 +109,8 @@ export class Cache {
    */
   async get<TValue>(key: string): Promise<TValue | null> {
     const item = await this.#cache.getItem(key);
+
+    console.log('item', item);
     if (!item) return null;
 
     const deserialized = CacheEntry.deserialize<TValue>(key, item);
@@ -238,35 +240,30 @@ export class Cache {
    * Invalidates the item with the specified key in the cache.
    * @param key The key of the item to invalidate.
    */
-  invalidate(key: string) {
+  async invalidate(key: string) {
     if (this.#layer === 'l2') {
       return;
     }
 
-    this.#cache.removeItem(key);
+    await this.#cache.removeItem(key);
     this.#emit('invalidated', key);
   }
 
   /**
-   * Performs an optimistic update of the item with the specified key in the cache.
-   * @param key The key of the item to update.
-   * @param value The new value for the item.
+   * Updates the item with the specified key in the cache optimistically.
    */
   async optimisticUpdate<TValue>(key: string, value: TValue) {
-    if (this.#layer === 'l2') {
-      return;
-    }
+    if (this.#layer === 'l2') return;
+
+    const item = await this.#cache.getItem(key);
+    if (!item) return;
 
     this.#emit('optimistic_update_began', key);
 
-    const existing = await this.#cache.getItem(key);
+    const { ttl } = CacheEntry.deserialize<TValue>(key, item) ?? {};
+    const ttlToUse = ttl ?? this.#defaultTTL;
 
-    if (existing !== null) {
-      const ttlToUse = await this.ttl(key);
-
-      // Force update the cache with the new value, keeping the current TTL
-      await this.set(key, value, ttlToUse);
-    }
+    await this.set(key, value, ttlToUse);
 
     this.#emit('optimistic_update_ended', key);
   }
