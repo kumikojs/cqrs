@@ -1,39 +1,157 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
+import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
+import { ThrottleException } from '../resilience/strategies/exceptions/throttle_exception';
+import { TimeoutException } from '../resilience/strategies/exceptions/timeout_exception';
 import { QueryCache } from './query_cache';
 import { QueryInterceptors } from './query_interceptors';
 
-import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
-import type { Query } from '../../types/core/query';
-
 describe('QueryInterceptors', () => {
+  let queryInterceptors: QueryInterceptors<any, any>;
   let cache: QueryCache;
-  let interceptorManager: InterceptorManagerContract<any>;
+  let logger: KumikoLogger;
 
   beforeEach(() => {
-    cache = new QueryCache();
-    interceptorManager = new QueryInterceptors(cache).buildInterceptors();
+    cache = new QueryCache({
+      l2: { driver: new MemoryStorageDriver() },
+    });
+    logger = new KumikoLogger();
+    queryInterceptors = new QueryInterceptors(cache, logger, {
+      timeout: 1000,
+      retry: { maxAttempts: 3, delay: 100 },
+      throttle: { rate: 5, interval: '1s' },
+    });
   });
 
-  it('cache key should be the serialized query', async () => {
-    const query: Query<'test', { id: string }> = {
-      queryName: 'test',
-      payload: { id: '1' },
-      options: {
-        cache: true,
-      },
-    };
+  it('should build interceptors with retry, timeout, throttle, and cache', () => {
+    const interceptors = queryInterceptors.buildInterceptors();
+    expect(interceptors).toBeDefined();
+  });
 
-    const serializedQuery = JSON.stringify({
-      queryName: query.queryName,
-      payload: query.payload,
+  describe('Cache Interceptor', () => {
+    it('should return a cached result if available', async () => {
+      const query = {
+        queryName: 'TestQuery',
+        payload: { id: 1 },
+      };
+      const handler = vitest.fn();
+      vitest.spyOn(cache, 'get').mockResolvedValueOnce('CachedResult');
+
+      const interceptors = queryInterceptors.buildInterceptors();
+      const result = await interceptors.execute(query, handler);
+
+      expect(result).toBe('CachedResult');
+      expect(handler).not.toHaveBeenCalled();
     });
 
-    await interceptorManager.execute(query, async () => {
-      return 'cached value';
+    it('should cache the result of the query after execution and respect TTL', async () => {
+      vitest.useFakeTimers();
+
+      const query = {
+        queryName: 'TestQuery',
+        payload: { id: 1 },
+        options: {
+          cache: {
+            ttl: 1000,
+          },
+        },
+      };
+
+      const handler = vitest.fn().mockResolvedValue('CachedResult'); // Query handler
+
+      const interceptors = queryInterceptors.buildInterceptors();
+
+      // First execution should cache the result
+      const firstResult = await interceptors.execute(query, handler);
+      expect(firstResult).toBe('CachedResult');
+      expect(handler).toHaveBeenCalledTimes(1); // Handler should be called
+
+      // Simulate time passing within the TTL (500ms)
+      vitest.advanceTimersByTime(500);
+
+      // Second execution should return the cached result
+      const secondResult = await interceptors.execute(query, handler);
+      expect(secondResult).toBe('CachedResult');
+      expect(handler).toHaveBeenCalledTimes(1); // Handler should NOT be called again (cache hit)
+
+      // Simulate time passing beyond the TTL (1000ms total)
+      vitest.advanceTimersByTime(1000);
+
+      // Now the cache should be expired, so the handler should be called again
+      const thirdResult = await interceptors.execute(query, handler);
+      expect(thirdResult).toBe('CachedResult');
+      expect(handler).toHaveBeenCalledTimes(2); // Handler should be called again (cache expired)
+
+      vitest.useRealTimers();
+    });
+  });
+
+  describe('Retry Interceptor', () => {
+    it('should retry a failed query until it succeeds', async () => {
+      const query = {
+        queryName: 'TestQuery',
+        payload: { id: 1 },
+        options: { retry: { maxAttempts: 2, delay: 100 } },
+      };
+      const handler = vitest
+        .fn()
+        .mockRejectedValueOnce(new Error('Failed'))
+        .mockResolvedValueOnce('Success');
+
+      const interceptors = queryInterceptors.buildInterceptors();
+      await expect(interceptors.execute(query, handler)).resolves.toBe(
+        'Success'
+      );
+      expect(handler).toHaveBeenCalledTimes(2);
     });
 
-    const cacheValue = cache.l1.get(query.queryName, serializedQuery);
+    it('should throw an error after all retry attempts fail', async () => {
+      const query = {
+        queryName: 'TestQuery',
+        payload: { id: 1 },
+        options: { retry: { maxAttempts: 2, delay: 100 } },
+      };
+      const handler = vitest.fn().mockRejectedValue(new Error('Failed'));
 
-    expect(cacheValue).toBe('cached value');
+      const interceptors = queryInterceptors.buildInterceptors();
+      await expect(interceptors.execute(query, handler)).rejects.toThrow(
+        'Failed'
+      );
+      expect(handler).toHaveBeenCalledTimes(3); // initial call + 2 retries
+    });
+  });
+
+  describe('Timeout Interceptor', () => {
+    it('should throw a TimeoutException if the query takes too long', async () => {
+      const query = {
+        queryName: 'TestQuery',
+        payload: { id: 1 },
+        options: { timeout: 50 },
+      };
+      const handler = async () =>
+        new Promise((resolve) => setTimeout(resolve, 100));
+
+      const interceptors = queryInterceptors.buildInterceptors();
+      await expect(interceptors.execute(query, handler)).rejects.toThrow(
+        TimeoutException
+      );
+    });
+  });
+
+  describe('Throttle Interceptor', () => {
+    it('should throttle query execution', async () => {
+      const query = {
+        queryName: 'TestQuery',
+        payload: { id: 1 },
+        options: { throttle: { rate: 1, interval: '1s' } },
+      };
+      const handler = vitest.fn();
+
+      const interceptors = queryInterceptors.buildInterceptors();
+      await interceptors.execute(query, handler);
+      await expect(interceptors.execute(query, handler)).rejects.toThrow(
+        ThrottleException
+      );
+      expect(handler).toHaveBeenCalledOnce();
+    });
   });
 });
