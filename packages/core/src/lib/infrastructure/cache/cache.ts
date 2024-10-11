@@ -256,17 +256,21 @@ export class Cache {
   }
 
   /**
-   * Invalidates the item with the specified key in the cache.
-   * @param key The key of the item to invalidate.
+   * The logic is different for each layer:
+   * - For the l1 cache, we simply remove the item from the cache.
+   * - For the l2 cache, we emit an event to notify the subscribers that the item has been invalidated.
+   *
+   * Reason:
+   * - When get is called, the l1 cache is checked first.
+   * - If the item is not found in the l1 cache, the l2 cache is checked.
+   * - If the item is found in the l2 cache, it is promoted to the l1 cache.
    */
   async invalidate(key: string) {
-    console.log('invalidate', key);
-    if (this.#layer === 'l2') {
+    if (this.#layer === 'l1') {
+      await this.#cache.removeItem(key);
       return;
     }
 
-    console.log('invalidate', key);
-    await this.#cache.removeItem(key);
     await this.#emit(CACHE_EVENT_TYPES.INVALIDATED, key);
   }
 

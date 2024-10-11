@@ -163,18 +163,43 @@ describe('Cache', () => {
     });
   });
 
-  describe('Invalidation', async () => {
-    it('should invalidate a key in the cache', async () => {
+  describe('Invalidation', () => {
+    it('should remove the item from the cache if layer is l1', async () => {
       const key = 'testKey';
       const value = 'testValue';
 
+      cache = new Cache(
+        'l1',
+        new MemoryStorageDriver(),
+        defaultTTL,
+        gcInterval
+      );
       await cache.set(key, value);
 
-      cache.invalidate(key);
+      await cache.invalidate(key);
 
       const result = await cache.get<string>(key);
-
       expect(result).toBeNull();
+    });
+
+    it('should emit an invalidated event if layer is l2', async () => {
+      const key = 'testKey';
+      const value = 'testValue';
+
+      cache = new Cache(
+        'l2',
+        new MemoryStorageDriver(),
+        defaultTTL,
+        gcInterval
+      );
+      await cache.set(key, value);
+
+      const invalidatedHandler = vi.fn();
+      cache.on(CACHE_EVENT_TYPES.INVALIDATED, invalidatedHandler);
+
+      await cache.invalidate(key);
+
+      expect(invalidatedHandler).toHaveBeenCalledWith(key);
     });
   });
 
