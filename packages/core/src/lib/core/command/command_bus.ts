@@ -30,6 +30,10 @@ export class CommandBus<
   #emitter: EventBusContract<KnownEvents>;
   #cache: CommandCacheContract<KnownQueries>;
   #logger: KumikoLogger;
+  #handlerMap: WeakMap<
+    CommandHandlerWithContext<any, any, any>,
+    CommandHandlerWithContext<any, any, any>
+  > = new WeakMap();
 
   constructor(
     cache: QueryCache,
@@ -73,7 +77,19 @@ export class CommandBus<
     commandName: CommandType['commandName'],
     handler: CommandHandlerWithContext<CommandType, KnownQueries, KnownEvents>
   ): VoidFunction {
-    this.#driver.subscribe(commandName, handler);
+    const wrappedHandler = async (resolvedCmd: CommandType) => {
+      const context = {
+        emit: this.#emitter.emit,
+        cache: this.#cache,
+      };
+      return typeof handler === 'function'
+        ? handler(resolvedCmd, context)
+        : handler.execute(resolvedCmd, context);
+    };
+
+    this.#driver.subscribe(commandName, wrappedHandler);
+
+    this.#handlerMap.set(handler, wrappedHandler);
 
     return () => this.unregister(commandName, handler);
   }
@@ -82,7 +98,14 @@ export class CommandBus<
     commandName: TCommand['commandName'],
     handler: CommandHandlerWithContext<TCommand, KnownQueries, KnownEvents>
   ): void {
-    this.#driver.unsubscribe(commandName, handler);
+    const wrappedHandler = this.#handlerMap.get(handler);
+
+    if (wrappedHandler) {
+      this.#driver.unsubscribe(commandName, wrappedHandler);
+      this.#handlerMap.delete(handler);
+    } else {
+      this.#driver.unsubscribe(commandName, handler);
+    }
   }
 
   async execute<TCommand extends Command>(
@@ -93,20 +116,19 @@ export class CommandBus<
       KnownEvents
     >
   ): Promise<void> {
+    const context = {
+      emit: this.#emitter.emit,
+      cache: this.#cache,
+    };
+
     return await this.#interceptorManager.execute<
       CommandForExecution<TCommand, KnownCommands, KnownQueries>,
       void
-    >(cmd, async (resolvedCmd) =>
-      typeof handler === 'function'
-        ? handler(resolvedCmd, {
-            emit: this.#emitter.emit,
-            cache: this.#cache,
-          })
-        : handler.execute(resolvedCmd, {
-            emit: this.#emitter.emit,
-            cache: this.#cache,
-          })
-    );
+    >(cmd, async (resolvedCmd) => {
+      return typeof handler === 'function'
+        ? handler(resolvedCmd, context)
+        : handler.execute(resolvedCmd, context);
+    });
   }
 
   async dispatch<TCommand extends Command>(
