@@ -1,133 +1,165 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Mock } from 'vitest';
 import { Client } from '../../client';
+import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
+import { QueryInput } from '../../types/core/query';
 import { QuerySubject } from './query_subject';
 
-import type { Query } from '../../types/core/query';
-
 describe('QuerySubject', () => {
-  type TestQuery = Query<'test', { id: string }>;
   let client: Client;
+  let query: QueryInput;
+  let handler: Mock;
 
   beforeEach(() => {
-    client = new Client();
+    client = new Client({
+      resilience: {
+        query: {
+          timeout: 0,
+        },
+      },
+      cache: {
+        l2: {
+          driver: new MemoryStorageDriver(),
+        },
+      },
+    });
+
+    query = {
+      queryName: 'testQuery',
+      payload: { id: '1' },
+      options: {
+        retry: false,
+      },
+    };
+
+    handler = vi.fn().mockResolvedValue('result');
+    client.query.dispatch = vi.fn().mockResolvedValue('result');
   });
 
-  describe('execute', () => {
-    it('should execute the query', async () => {
-      const query: TestQuery = {
-        queryName: 'test',
-      };
-      const handlerFn = vitest.fn().mockResolvedValue('result');
-
-      const querySubject = new QuerySubject(query, client, handlerFn);
-
-      const result = await querySubject.execute(query);
-
-      expect(result).toBe('result');
-      expect(handlerFn).toHaveBeenCalledWith(query);
-    });
+  afterEach(() => {
+    vi.clearAllMocks();
   });
 
-  describe('subscribe', () => {
-    it('should subscribe to the query state changes', async () => {
-      const onStateChange = vitest.fn();
+  describe('Execution', () => {
+    it('should execute a query using the provided handler', async () => {
+      const subject = new QuerySubject(query, client, handler);
+      await subject.execute(query);
 
-      const querySubject = new QuerySubject(
-        {
-          queryName: 'test',
-        },
-        client,
-        async () => {
-          return 'result';
-        }
-      );
-
-      const unsubscribe = querySubject.subscribe(onStateChange);
-
-      querySubject.execute({
-        queryName: 'test',
-      });
-
-      expect(onStateChange).toHaveBeenCalledTimes(1);
-
-      unsubscribe();
-
-      expect(onStateChange).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(query);
     });
 
-    it('should subscribe to the cache invalidation events', () => {
-      const onInvalidate = vitest.fn();
+    it('should fall back to client dispatch if no handler is provided', async () => {
+      const subject = new QuerySubject(query, client);
+      await subject.execute(query);
 
-      client.cache.onInvalidate('test', () => {
-        onInvalidate();
-      });
-
-      const querySubject = new QuerySubject(
-        {
-          queryName: 'test',
-        },
-        client,
-        async () => {
-          return 'result';
-        }
-      );
-
-      client.cache.inMemoryCache.set('test', 'queryName:test', 'result');
-
-      querySubject.execute({
-        queryName: 'test',
-      });
-
-      expect(onInvalidate).not.toHaveBeenCalled();
-
-      client.cache.invalidate('test');
-
-      expect(onInvalidate).toHaveBeenCalledTimes(1);
+      expect(client.query.dispatch).toHaveBeenCalledTimes(1);
+      expect(client.query.dispatch).toHaveBeenCalledWith(query);
     });
 
-    it('should re-execute the query when the cache is invalidated', async () => {
-      const handlerFn = vitest.fn();
+    it('should handle query execution errors and update state accordingly', async () => {
+      const error = new Error('Execution failed');
+      handler.mockRejectedValue(error);
 
-      const querySubject = new QuerySubject(
-        {
-          queryName: 'test',
-        },
-        client,
-        async () => {
-          handlerFn();
-          return 'result';
-        }
-      );
+      const subject = new QuerySubject(query, client, handler);
 
-      await querySubject.execute({
-        queryName: 'test',
-      });
-
-      client.cache.invalidate('test');
-
-      expect(handlerFn).toHaveBeenCalledTimes(1);
+      await expect(subject.execute(query)).rejects.toThrow('Execution failed');
+      expect(subject.state.isRejected).toBe(true);
+      expect(subject.state.isFulfilled).toBe(false);
+      expect(subject.state.error).toBe(error);
     });
   });
 
-  describe('state', () => {
-    it('should return the operation state', async () => {
-      const querySubject = new QuerySubject(
-        {
-          queryName: 'test',
-        },
-        client,
-        async () => {
-          return 'result';
-        }
-      );
+  describe('State Management', () => {
+    it('should initialize with idle state', () => {
+      const subject = new QuerySubject(query, client);
 
-      expect(querySubject.state.isIdle).toBeTruthy();
+      expect(subject.state.isIdle).toBe(true);
+      expect(subject.state.isPending).toBe(false);
+      expect(subject.state.isFulfilled).toBe(false);
+      expect(subject.state.isRejected).toBe(false);
+    });
 
-      await querySubject.execute({
-        queryName: 'test',
-      });
+    it('should update state to pending while executing a query', async () => {
+      const subject = new QuerySubject(query, client, handler);
+      const stateSpy = vi.fn();
+      subject.subscribe(stateSpy);
 
-      expect(querySubject.state.isFulfilled).toBeTruthy();
+      const executePromise = subject.execute(query);
+
+      expect(subject.state.isPending).toBe(true);
+      expect(subject.state.isIdle).toBe(false);
+
+      await executePromise;
+
+      expect(subject.state.isPending).toBe(false);
+    });
+
+    it('should update state to fulfilled after successful query execution', async () => {
+      const subject = new QuerySubject(query, client, handler);
+      await subject.execute(query);
+
+      expect(subject.state.isFulfilled).toBe(true);
+      expect(subject.state.isPending).toBe(false);
+      expect(subject.state.isRejected).toBe(false);
+    });
+  });
+
+  describe('Subscription', () => {
+    it('should allow subscribing to state changes during execution', async () => {
+      const subject = new QuerySubject(query, client, handler);
+      const stateChanges = vi.fn();
+      subject.subscribe(stateChanges);
+
+      await subject.execute(query);
+
+      expect(stateChanges).toHaveBeenCalledTimes(2); // Called once for pending, once for fulfilled
+    });
+
+    it('should unsubscribe from state changes correctly', async () => {
+      const subject = new QuerySubject(query, client, handler);
+      const stateChanges = vi.fn();
+
+      const unsubscribe = subject.subscribe(stateChanges);
+      await subject.execute(query);
+
+      unsubscribe(); // Unsubscribe from further state changes
+      await subject.execute(query);
+
+      expect(stateChanges).toHaveBeenCalledTimes(2); // Only subscribed during the first query
+    });
+  });
+
+  describe('Cache Handling', () => {
+    it('should handle optimistic updates via cache and update state accordingly', async () => {
+      const subject = new QuerySubject(query, client, handler);
+      const optimisticUpdateSpy = vi.fn();
+
+      subject.subscribe(optimisticUpdateSpy);
+      await subject.execute(query);
+      await client.cache.optimisticUpdate(query, 'optimisticValue');
+
+      expect(subject.state.isFulfilled).toBe(false);
+      expect(subject.state.isStale).toBe(true);
+      expect(subject.state.response).toBe('optimisticValue');
+    });
+
+    it('should handle cache invalidation and re-execute the handler with different results', async () => {
+      handler.mockResolvedValueOnce('initialResult');
+      handler.mockResolvedValueOnce('newResultAfterInvalidation');
+
+      const subject = new QuerySubject(query, client, handler);
+      const stateChanges = vi.fn();
+      subject.subscribe(stateChanges);
+
+      await subject.execute(query);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(subject.state.response).toBe('initialResult');
+
+      await client.cache.invalidateQueries(query.queryName);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(subject.state.response).toBe('newResultAfterInvalidation');
+      expect(handler).toHaveBeenCalledTimes(2);
     });
   });
 });
