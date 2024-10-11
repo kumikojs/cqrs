@@ -31,7 +31,9 @@ export class CommandBus<
   #cache: CommandCacheContract<KnownQueries>;
   #logger: KumikoLogger;
   #handlerMap: WeakMap<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     CommandHandlerWithContext<any, any, any>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     CommandHandlerWithContext<any, any, any>
   > = new WeakMap();
 
