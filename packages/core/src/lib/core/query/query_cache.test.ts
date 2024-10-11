@@ -66,7 +66,7 @@ describe('QueryCache', () => {
     const query: QueryInput = { queryName: 'testQuery', payload: { id: 1 } };
     const value = { data: 'testData' };
 
-    queryCache.set(query, value);
+    await queryCache.set(query, value);
     await queryCache.clear();
 
     const l1CachedValue = await l1Cache.get<typeof value>(

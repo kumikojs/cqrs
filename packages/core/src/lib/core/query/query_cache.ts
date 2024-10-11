@@ -1,4 +1,4 @@
-import { Cache } from '../../infrastructure/cache/cache';
+import { Cache, CACHE_EVENT_TYPES } from '../../infrastructure/cache/cache';
 import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
 import { JsonSerializer } from '../../utilities/serializer/json_serializer';
 import { SubscriptionManager } from '../../utilities/subscription/subscription_manager';
@@ -11,74 +11,53 @@ import type {
   SyncStorageDriver,
 } from '../../types/infrastructure/storage';
 
-/**
- * A cache for storing query results.
+/*
+ * ---------------------------------------------------------------------------
+ * QueryCache Class
+ * ---------------------------------------------------------------------------
+ * A dual-layer caching mechanism designed to store and manage query results
+ * efficiently. The QueryCache utilizes:
  *
- * The cache is divided into two layers:
- * - The memory cache (L1) is used for fast access to the most recent query results.
- * - The persisted cache (L2) is used for long-term storage of query results.
+ * - **L1 Memory Cache**: Provides fast access to the most recent query results
+ *   for quick retrieval.
+ * - **L2 Persisted Cache**: Offers long-term storage for query results, ensuring
+ *   that data persists beyond the lifecycle of the application.
  *
- * The cache is also responsible for invalidating query results when necessary.
+ * The QueryCache automatically handles cache invalidation, ensuring that
+ * outdated results are removed and fresh data is fetched when needed.
  *
+ * Key Features:
+ * - Optimistic updates for immediate UI responsiveness.
+ * - Subscription management for monitoring cache state changes.
+ * - Flexible configuration options for cache duration and garbage collection.
+ *
+ * ---------------------------------------------------------------------------
  */
 export class QueryCache {
   #QUERY_CACHE_KEY_PREFIX = '__k__';
   #QUERY_CACHE_KEY_SUFFIX = '__v__';
 
-  /**
-   * The memory cache.
-   * It's the first layer of the cache. It's used for fast access to the most recent query results.
-   */
   #l1: Cache;
-
-  /**
-   * The persisted cache.
-   * It's the second layer of the cache. It's used for long-term storage of query results.
-   */
   #l2: Cache;
-
-  /**
-   * The subscription manager for managing cache subscriptions.
-   * It's used for invalidating cache entries when necessary.
-   */
   #subscriptionManager = new SubscriptionManager();
-
-  /**
-   * The serializer used for serializing query payloads.
-   */
   #serializer: JsonSerializer = new JsonSerializer();
 
   constructor(options: QueryCacheOptions) {
-    this.#l1 = createCache('l1', {
-      ttl: options?.l1?.ttl ?? '1m',
+    this.#l1 = QueryCache.#createCache('l1', {
+      ...options.l1,
       driver: new MemoryStorageDriver(),
-      gcInterval: options?.l1?.gcInterval ?? '5m',
     });
 
-    this.#l2 = createCache('l2', {
-      ttl: options?.l2?.ttl ?? '1m',
-      driver: options.l2.driver,
-      gcInterval: options?.l2?.gcInterval ?? '5m',
-    });
+    this.#l2 = QueryCache.#createCache('l2', options.l2);
 
     this.#subscriptionManager
       .subscribe(
-        this.#l1.on('invalidated', (key) => {
-          this.#l1.delete(key);
-        })
-      )
-      .subscribe(
-        this.#l2.on('invalidated', (key) => {
-          this.#l2.delete(key);
-        })
-      )
-      .subscribe(
-        this.#l1.on('expired', (key) => {
+        this.#l1.on(CACHE_EVENT_TYPES.EXPIRED, (key) => {
           this.#l1.invalidate(key);
         })
       )
       .subscribe(
-        this.#l2.on('expired', (key) => {
+        this.#l2.on(CACHE_EVENT_TYPES.EXPIRED, (key) => {
           this.#l2.invalidate(key);
         })
       );
@@ -86,40 +65,41 @@ export class QueryCache {
     this.getCacheKey = this.getCacheKey.bind(this);
   }
 
+  /*
+   * ---------------------------------------------------------------------------
+   * Public Methods
+   * ---------------------------------------------------------------------------
+   */
+
+  // Public getters for accessing L1 and L2 caches
   get l1(): Cache {
     return this.#l1;
   }
-
   get l2(): Cache {
     return this.#l2;
   }
 
+  /**
+   * Retrieves a cached value for the provided query from the L1 or L2 cache.
+   * If found in L2, promotes it to L1 for future faster access.
+   */
   async get<TValue>(query: QueryInput | string): Promise<TValue | null> {
     const key = typeof query === 'string' ? query : this.getCacheKey(query);
 
-    /**
-     * Check the l1 cache first,
-     * because it's faster than the l2 cache.
-     */
     const cachedValue = await this.#l1.get<TValue>(key);
-
-    if (cachedValue) {
-      return cachedValue;
-    }
+    if (cachedValue) return cachedValue;
 
     const persistedValue = await this.#l2.get<TValue>(key);
-
-    /**
-     * If the value is found in the l2 cache,
-     * we store it in the l1 cache for faster access next time. (cache promotion)
-     */
     if (persistedValue) {
-      await this.#l1.set(key, persistedValue);
+      await this.#l1.set(key, persistedValue); // Promote to L1
     }
 
     return persistedValue;
   }
 
+  /**
+   * Sets a value in both L1 and L2 caches with optional TTL (time to live).
+   */
   async set<TValue>(query: QueryInput, value: TValue, ttl?: DurationUnit) {
     const key = this.getCacheKey(query);
 
@@ -129,16 +109,25 @@ export class QueryCache {
     ]);
   }
 
+  /**
+   * Deletes a query result from both L1 and L2 caches.
+   */
   async delete(query: QueryInput) {
     const key = this.getCacheKey(query);
 
     await Promise.all([this.#l1.delete(key), this.#l2.delete(key)]);
   }
 
+  /**
+   * Clears all entries in both L1 and L2 caches.
+   */
   async clear() {
     await Promise.all([this.#l1.clear(), this.#l2.clear()]);
   }
 
+  /**
+   * Subscribes to cache events (e.g., expiration) for both L1 and L2 caches.
+   */
   on(event: CacheEvent, handler: (key: string) => void) {
     const subscriptions = [
       this.#l1.on(event, handler),
@@ -152,21 +141,45 @@ export class QueryCache {
     };
   }
 
-  invalidateQueries(
+  /**
+   * Invalidates specified queries across both L1 and L2 caches.
+   */
+  async invalidateQueries(
     ...queries: (QueryInput | QueryInput['queryName'])[]
-  ): void {
+  ): Promise<void> {
     for (const query of queries) {
-      this.#invalidate(
-        this.#l1,
-        typeof query === 'string' ? { queryName: query } : query
-      );
-      this.#invalidate(
-        this.#l2,
-        typeof query === 'string' ? { queryName: query } : query
-      );
+      const queryInput =
+        typeof query === 'string'
+          ? {
+              queryName: query,
+            }
+          : query;
+
+      await this.#invalidate(this.#l1, queryInput);
+      await this.#invalidate(this.#l2, queryInput);
     }
   }
 
+  /**
+   * Performs an optimistic update of a cached value for a given query in the L1 cache.
+   */
+  async optimisticUpdate(previousQuery: QueryInput, value: unknown) {
+    const key = this.getCacheKey(previousQuery);
+    await this.#l1.optimisticUpdate(key, value);
+  }
+
+  /**
+   * Disconnects caches and subscription manager, ensuring proper cleanup.
+   */
+  disconnect() {
+    this.#l1.disconnect();
+    this.#l2.disconnect();
+    this.#subscriptionManager.disconnect();
+  }
+
+  /**
+   * Constructs a unique cache key for a query, serializing its payload if present.
+   */
   getCacheKey({ queryName, payload }: QueryInput): string {
     const serializedPayload = this.#serializer.serialize(payload);
 
@@ -179,12 +192,15 @@ export class QueryCache {
     return `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
   }
 
-  async optimisticUpdate(previousQuery: QueryInput, value: unknown) {
-    const key = this.getCacheKey(previousQuery);
+  /*
+   * ---------------------------------------------------------------------------
+   * Private Methods
+   * ---------------------------------------------------------------------------
+   */
 
-    await this.#l1.optimisticUpdate(key, value);
-  }
-
+  /**
+   * Invalidates a cache entry based on the query's cache key.
+   */
   async #invalidate(
     cache: Cache,
     { queryName, payload }: QueryInput
@@ -198,6 +214,9 @@ export class QueryCache {
     await cache.invalidate(key);
   }
 
+  /**
+   * Invalidates all entries for a given query in the specified cache.
+   */
   async #invalidateAll(cache: Cache, queryName: string): Promise<void> {
     const prefix = `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
     const length = await cache.length();
@@ -207,26 +226,26 @@ export class QueryCache {
       if (!key) continue;
 
       if (key.startsWith(prefix)) {
-        cache.invalidate(key);
+        await cache.invalidate(key);
       }
     }
   }
 
-  disconnect() {
-    this.#l1.disconnect();
-    this.#l2.disconnect();
-    this.#subscriptionManager.disconnect();
-  }
-}
+  /*
+   * ---------------------------------------------------------------------------
+   * Static Methods
+   * ---------------------------------------------------------------------------
+   */
 
-function createCache(
-  layer: 'l1' | 'l2',
-  options: QueryCacheOptions['l1'] & {
-    driver: SyncStorageDriver | AsyncStorageDriver;
-  }
-) {
-  const ttl = options?.ttl ?? '1m';
-  const gcInterval = options?.gcInterval ?? '1m';
+  static #createCache(
+    layer: 'l1' | 'l2',
+    options: QueryCacheOptions['l1'] & {
+      driver: SyncStorageDriver | AsyncStorageDriver;
+    }
+  ) {
+    const ttl = options?.ttl ?? '1m';
+    const gcInterval = options?.gcInterval ?? '5m';
 
-  return new Cache(layer, options.driver, ttl, gcInterval);
+    return new Cache(layer, options.driver, ttl, gcInterval);
+  }
 }
