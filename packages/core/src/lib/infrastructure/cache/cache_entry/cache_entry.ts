@@ -1,6 +1,5 @@
 import { ms } from '../../../utilities/ms/ms';
 import { JsonSerializer } from '../../../utilities/serializer/json_serializer';
-
 import type { DurationUnit } from '../../../types/helpers';
 
 /**
@@ -10,37 +9,58 @@ type CacheEntryData<TValue> = {
   key: string;
   value?: TValue;
   expiration: number;
-  ttl: DurationUnit;
+  validityPeriod: DurationUnit;
+  gracePeriod?: DurationUnit;
 };
 
 /**
- * Represents a cache entry.
+ * Represents the properties of a cache entry.
+ */
+type CacheEntryProps<TValue> = {
+  key: string;
+  value?: TValue;
+  validityPeriod?: DurationUnit;
+  expiration?: number;
+  gracePeriod?: DurationUnit;
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * **CacheEntry Class**
+ * ---------------------------------------------------------------------------
+ * A utility for managing cache entries with expiration and stale states.
+ *
+ * Key features:
+ * - **State Management**: Defines valid, stale, and invalid states for cache entries.
+ * - **Graceful Handling**: Allows using stale entries temporarily while refreshing.
+ *
+ * ---------------------------------------------------------------------------
  */
 export class CacheEntry<TValue> {
   #key: string;
   #value?: TValue;
   #expiration: number;
-  #ttl: DurationUnit;
+  #validityPeriod: DurationUnit;
+  #gracePeriod?: DurationUnit;
+  #staleUntil?: number;
 
   static #serializer: JsonSerializer = new JsonSerializer();
 
-  /**
-   * Creates a new instance of CacheEntry.
-   * @param key - The key of the cache entry.
-   * @param value - The value of the cache entry.
-   * @param ttl - The time-to-live duration of the cache entry.
-   * @param expiration - The expiration timestamp of the cache entry.
-   */
-  constructor(
-    key: string,
-    value?: TValue,
-    ttl?: DurationUnit,
-    expiration?: number
-  ) {
+  constructor({
+    key,
+    value,
+    validityPeriod,
+    expiration,
+    gracePeriod,
+  }: CacheEntryProps<TValue>) {
     this.#key = key;
     this.#value = value;
-    this.#ttl = ttl ?? Infinity;
-    this.#expiration = expiration ?? Date.now() + ms(this.#ttl);
+    this.#validityPeriod = validityPeriod ?? Infinity;
+    this.#expiration = expiration ?? Date.now() + ms(this.#validityPeriod);
+    this.#gracePeriod = gracePeriod;
+    this.#staleUntil = gracePeriod
+      ? this.#expiration + ms(gracePeriod)
+      : undefined;
   }
 
   /**
@@ -67,16 +87,34 @@ export class CacheEntry<TValue> {
   /**
    * Gets the time-to-live duration of the cache entry.
    */
-  get ttl() {
-    return this.#ttl;
+  get validityPeriod() {
+    return this.#validityPeriod;
   }
 
   /**
-   * Checks if the cache entry has expired.
+   * Checks if the cache entry has expired and is no longer usable.
    * @returns True if the cache entry has expired, false otherwise.
    */
   hasExpired() {
     return Date.now() > this.#expiration;
+  }
+
+  /**
+   * Checks if the cache entry is stale.
+   * @returns True if the cache entry is stale, false otherwise.
+   */
+  isStale() {
+    if (!this.#staleUntil) return false; // If no stale threshold, not stale
+    const now = Date.now();
+    return now > this.#expiration && now <= this.#staleUntil;
+  }
+
+  /**
+   * Checks if the cache entry is defunct (expired and not stale).
+   * @returns True if the cache entry is defunct, false otherwise.
+   */
+  isDefunct() {
+    return this.hasExpired() && !this.isStale();
   }
 
   /**
@@ -88,7 +126,9 @@ export class CacheEntry<TValue> {
       key: this.#key,
       value: this.#value,
       expiration: this.#expiration,
-      ttl: this.#ttl,
+      validityPeriod: this.#validityPeriod,
+      gracePeriod: this.#gracePeriod,
+      staleUntil: this.#staleUntil,
     });
 
     if (serialized.isFailure()) {
@@ -119,11 +159,12 @@ export class CacheEntry<TValue> {
       return undefined;
     }
 
-    return new CacheEntry<TValue>(
+    return new CacheEntry<TValue>({
       key,
-      deserialized.value.value,
-      deserialized.value.ttl,
-      deserialized.value.expiration
-    );
+      value: deserialized.value.value,
+      expiration: deserialized.value.expiration,
+      validityPeriod: deserialized.value.validityPeriod,
+      gracePeriod: deserialized.value.gracePeriod,
+    });
   }
 }

@@ -4,11 +4,16 @@ import { Cache, CACHE_EVENT_TYPES } from './cache';
 
 describe('Cache', () => {
   let cache: Cache;
-  const defaultTTL: DurationUnit = 1000;
+  const validityPeriod: DurationUnit = 1000;
   const gcInterval: DurationUnit = 5000;
 
   beforeEach(() => {
-    cache = new Cache('l1', new MemoryStorageDriver(), defaultTTL, gcInterval);
+    cache = new Cache({
+      layer: 'l1',
+      storage: new MemoryStorageDriver(),
+      validityPeriod,
+      gcInterval,
+    });
   });
 
   afterEach(() => {
@@ -71,47 +76,18 @@ describe('Cache', () => {
     const ttl = 2000;
 
     await cache.set(key, value, ttl);
-    const resultTTL = await cache.ttl(key);
+    const resultTTL = await cache.validityPeriod(key);
 
     expect(resultTTL).toBe(ttl);
-  });
-
-  it('should emit events when items are invalidated or updated optimistically', async () => {
-    const key = 'testKey';
-    const newValue = 'newValue';
-
-    const invalidatedHandler = vi.fn();
-    const optimisticUpdateBeganHandler = vi.fn();
-    const optimisticUpdateEndedHandler = vi.fn();
-
-    cache.on(CACHE_EVENT_TYPES.INVALIDATED, invalidatedHandler);
-    cache.on(
-      CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_BEGAN,
-      optimisticUpdateBeganHandler
-    );
-    cache.on(
-      CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_ENDED,
-      optimisticUpdateEndedHandler
-    );
-
-    await cache.invalidate(key);
-
-    // set a value to test optimistic update
-    await cache.set(key, 'testValue');
-
-    await cache.optimisticUpdate(key, newValue);
-
-    expect(invalidatedHandler).toHaveBeenCalled();
-    expect(optimisticUpdateBeganHandler).toHaveBeenCalled();
-    expect(optimisticUpdateEndedHandler).toHaveBeenCalled();
   });
 
   it('should clear expired items from the cache', async () => {
     const key = 'testKey';
     const value = 'testValue';
-    const ttl = 1; // 1 ms TTL for quick expiration
+    const validityPeriod = 1; // 1 ms TTL for quick expiration
+    const gracePeriod = 0; // no stale threshold
 
-    await cache.set(key, value, ttl);
+    await cache.set(key, value, validityPeriod, gracePeriod);
     await new Promise((resolve) => setTimeout(resolve, 10)); // wait for item to expire
 
     await cache.clearExpired();
@@ -120,20 +96,45 @@ describe('Cache', () => {
     expect(result).toBeNull();
   });
 
-  describe('Garbage Collection', () => {
-    it('should clear expired items on a regular interval', async () => {
+  describe('Grace Period', () => {
+    it('should not clear an item if it is within the grace period', async () => {
       const key = 'testKey';
       const value = 'testValue';
-      const ttl = 1; // 1 ms TTL for quick expiration
+      const validityPeriod = 1; // 1 ms TTL for quick expiration
+      const gracePeriod = 10; // 10 ms grace period
 
-      await cache.set(key, value, ttl);
-      await new Promise((resolve) => setTimeout(resolve, 10)); // wait for item to expire
+      vitest.useFakeTimers();
 
-      await new Promise((resolve) => setTimeout(resolve, 10)); // wait for GC to run
+      await cache.set(key, value, validityPeriod, gracePeriod);
+
+      // Advance time within the grace period
+      vitest.advanceTimersByTime(5);
 
       const result = await cache.get<string>(key);
 
-      expect(result).toBeNull();
+      expect(result).toBe(value);
+
+      vitest.advanceTimersByTime(gracePeriod);
+
+      const resultAfterGracePeriod = await cache.get<string>(key);
+
+      expect(resultAfterGracePeriod).toBeNull();
+    });
+  });
+
+  describe('Garbage Collection', () => {
+    it('should clear expired items on a regular interval', async () => {
+      cache = new Cache({
+        layer: 'l1',
+        storage: new MemoryStorageDriver(),
+        gcInterval: 5,
+      });
+
+      const clearExpiredSpy = vitest.spyOn(cache, 'clearExpired');
+
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      expect(clearExpiredSpy).toHaveBeenCalled();
     });
   });
 
@@ -161,6 +162,30 @@ describe('Cache', () => {
 
       expect(result).toBeNull();
     });
+
+    it('should emit an optimistic update event', async () => {
+      const key = 'testKey';
+      const value = 'testValue';
+      const newValue = 'newValue';
+
+      await cache.set(key, value);
+
+      const optimisticUpdateBeganHandler = vi.fn();
+      const optimisticUpdateEndedHandler = vi.fn();
+      cache.on(
+        CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_BEGAN,
+        optimisticUpdateBeganHandler
+      );
+      cache.on(
+        CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_ENDED,
+        optimisticUpdateEndedHandler
+      );
+
+      await cache.optimisticUpdate(key, newValue);
+
+      expect(optimisticUpdateBeganHandler).toHaveBeenCalledWith(key);
+      expect(optimisticUpdateEndedHandler).toHaveBeenCalledWith(key);
+    });
   });
 
   describe('Invalidation', () => {
@@ -168,12 +193,6 @@ describe('Cache', () => {
       const key = 'testKey';
       const value = 'testValue';
 
-      cache = new Cache(
-        'l1',
-        new MemoryStorageDriver(),
-        defaultTTL,
-        gcInterval
-      );
       await cache.set(key, value);
 
       await cache.invalidate(key);
@@ -186,12 +205,13 @@ describe('Cache', () => {
       const key = 'testKey';
       const value = 'testValue';
 
-      cache = new Cache(
-        'l2',
-        new MemoryStorageDriver(),
-        defaultTTL,
-        gcInterval
-      );
+      cache = new Cache({
+        layer: 'l2',
+        storage: new MemoryStorageDriver(),
+        validityPeriod,
+        gcInterval,
+      });
+
       await cache.set(key, value);
 
       const invalidatedHandler = vi.fn();

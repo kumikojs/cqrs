@@ -1,6 +1,6 @@
-import type { DurationUnit } from '../helpers';
 import type {
   AsyncStorageDriver,
+  CacheOptions,
   InterceptorManagerContract,
   SyncStorageDriver,
 } from '../main';
@@ -171,11 +171,6 @@ export type QueryCacheOptions = {
   l2: CacheOptions & {
     driver: SyncStorageDriver | AsyncStorageDriver;
   };
-};
-
-type CacheOptions = {
-  ttl?: DurationUnit;
-  gcInterval?: DurationUnit;
 };
 
 export type ExtractQuery<Queries, QueryName> = QueryName extends keyof Queries

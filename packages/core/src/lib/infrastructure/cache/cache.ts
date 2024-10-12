@@ -3,13 +3,19 @@ import { CacheEntry } from './cache_entry/cache_entry';
 import { CacheScheduler } from './cache_scheduler';
 import { AsyncCache } from './facades/async_cache';
 import { SyncCache } from './facades/sync_cache';
+import { LockManager } from '../lock/lock_manager';
 
 import type { DurationUnit } from '../../types/helpers';
 import type {
   AsyncStorageDriver,
   SyncStorageDriver,
 } from '../../types/infrastructure/storage';
-import { LockManager } from '../lock/lock_manager';
+import type { CacheOptions } from '../../types/infrastructure/cache';
+
+type CacheProps = {
+  layer: 'l1' | 'l2';
+  storage: SyncStorageDriver | AsyncStorageDriver;
+} & CacheOptions;
 
 /**
  * Defines the event types for the cache.
@@ -36,7 +42,13 @@ export class Cache {
   /**
    * The default time-to-live (TTL) for items in the cache.
    */
-  #defaultTTL: DurationUnit;
+  #validityPeriod: DurationUnit;
+
+  /**
+   * The default stale threshold for items in the cache
+   * after which they are considered stale.
+   */
+  #gracePeriod: DurationUnit;
 
   /**
    * The emitter used for caching events.
@@ -59,12 +71,13 @@ export class Cache {
    * Creates a new instance of the Cache class.
    * @param cache The cache to use for caching.
    */
-  constructor(
-    layer: 'l1' | 'l2',
-    storage: SyncStorageDriver | AsyncStorageDriver,
-    defaultTTL: DurationUnit,
-    gcInterval: DurationUnit
-  ) {
+  constructor({
+    layer,
+    storage,
+    validityPeriod = '1m',
+    gcInterval = '5m',
+    gracePeriod = '1m',
+  }: CacheProps) {
     this.#layer = layer;
 
     /**
@@ -79,7 +92,8 @@ export class Cache {
       this.#cache = new SyncCache(storage);
     }
 
-    this.#defaultTTL = defaultTTL;
+    this.#validityPeriod = validityPeriod;
+    this.#gracePeriod = gracePeriod;
 
     /**
      * Schedule a garbage collection task to run at regular intervals.
@@ -123,13 +137,36 @@ export class Cache {
         return null;
       }
 
-      if (deserialized.hasExpired()) {
+      if (deserialized.isDefunct()) {
         await this.#cache.removeItem(key);
-
         return null;
       }
 
       return deserialized.value ?? null;
+    } finally {
+      this.#lockManager.unlock(key);
+    }
+  }
+
+  async getEntry<TValue>(key: string): Promise<CacheEntry<TValue> | null> {
+    await this.#lockManager.lock(key);
+
+    try {
+      const item = await this.#cache.getItem(key);
+
+      if (!item) return null;
+
+      const deserialized = CacheEntry.deserialize<TValue>(key, item);
+      if (!deserialized) {
+        return null;
+      }
+
+      if (deserialized.isDefunct()) {
+        await this.#cache.removeItem(key);
+        return null;
+      }
+
+      return deserialized;
     } finally {
       this.#lockManager.unlock(key);
     }
@@ -144,12 +181,18 @@ export class Cache {
   async set<TValue>(
     key: string,
     value: TValue,
-    ttl: DurationUnit = this.#defaultTTL
+    validityPeriod: DurationUnit = this.#validityPeriod,
+    gracePeriod: DurationUnit = this.#gracePeriod
   ): Promise<void> {
     await this.#lockManager.lock(key);
 
     try {
-      const entry = new CacheEntry(key, value, ttl);
+      const entry = new CacheEntry({
+        key,
+        value,
+        validityPeriod,
+        gracePeriod,
+      });
       const serialized = entry.serialize();
       if (!serialized) {
         return;
@@ -183,16 +226,16 @@ export class Cache {
    * @param key The key of the item.
    * @returns The time-to-live (TTL) of the item, or undefined if the item does not exist.
    */
-  async ttl(key: string): Promise<DurationUnit> {
+  async validityPeriod(key: string): Promise<DurationUnit> {
     const item = await this.#cache.getItem(key);
-    if (!item) return this.#defaultTTL;
+    if (!item) return this.#validityPeriod;
 
     const deserialized = CacheEntry.deserialize(key, item);
     if (!deserialized) {
-      return this.#defaultTTL;
+      return this.#validityPeriod;
     }
 
-    return deserialized.ttl;
+    return deserialized.validityPeriod;
   }
 
   /**
@@ -285,7 +328,7 @@ export class Cache {
 
     await this.#emit(CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_BEGAN, key);
 
-    const ttlToUse = await this.ttl(key);
+    const ttlToUse = await this.validityPeriod(key);
     await this.set(key, value, ttlToUse);
 
     await this.#emit(CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_ENDED, key);
@@ -306,7 +349,7 @@ export class Cache {
 
       const deserialized = CacheEntry.deserialize(key, item);
 
-      if (!deserialized || deserialized.hasExpired()) {
+      if (!deserialized || deserialized.isDefunct()) {
         await this.#cache.removeItem(key);
         await this.#emit(CACHE_EVENT_TYPES.EXPIRED, key);
       }

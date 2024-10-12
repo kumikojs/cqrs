@@ -118,7 +118,6 @@ export class QuerySubject<
         this.execute({
           ...this.#lastQuery,
           options: {
-            ...this.#lastQuery.options,
             cache: {
               ...(typeof this.#lastQuery.options?.cache === 'boolean'
                 ? {}

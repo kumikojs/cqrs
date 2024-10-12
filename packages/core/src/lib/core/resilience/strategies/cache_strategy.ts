@@ -1,17 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { JsonSerializer } from '../../../utilities/serializer/json_serializer';
 import { QueryCache } from '../../query/query_cache';
 import { Strategy } from './base_strategy';
 
-import type { CacheOptions } from '../../../types/core/options/resilience_options';
+import type { ResilienceCacheOptions } from '../../../types/core/options/resilience_options';
 import type { AsyncFunction } from '../../../types/helpers';
 
-export class CacheStrategy extends Strategy<CacheOptions> {
+export class CacheStrategy extends Strategy<ResilienceCacheOptions> {
   static #serializer: JsonSerializer = new JsonSerializer();
 
-  static #defaultOptions: CacheOptions = {
+  static #defaultOptions: ResilienceCacheOptions = {
     persist: true,
-    ttl: '5m',
+    validityPeriod: '1m',
+    gracePeriod: '1m',
     serialize: (request) => {
       const key = CacheStrategy.#serializer.serialize(request);
 
@@ -29,7 +29,7 @@ export class CacheStrategy extends Strategy<CacheOptions> {
 
   #cache: QueryCache;
 
-  constructor(cache: QueryCache, options?: Partial<CacheOptions>) {
+  constructor(cache: QueryCache, options?: Partial<ResilienceCacheOptions>) {
     super({
       ...CacheStrategy.#defaultOptions,
       ...options,
@@ -46,19 +46,30 @@ export class CacheStrategy extends Strategy<CacheOptions> {
     const key = this.options.serialize(request);
 
     if (!this.options.invalidate) {
-      const cachedValue = await this.#cache.get<TResult>(key);
+      const cachedEntry = await this.#cache.getEntry<TResult>(key);
 
-      if (cachedValue) {
-        return cachedValue;
+      if (cachedEntry && !cachedEntry.isDefunct()) {
+        if (cachedEntry.isStale()) {
+          this.#refreshCache(request, task, key);
+        }
+
+        return cachedEntry.value as TResult;
       }
     }
 
-    const result = await task(request);
+    return this.#refreshCache(request, task, key);
+  }
 
-    await this.#cache.l1.set(key, result, this.options.ttl);
+  async #refreshCache<TRequest, TTask extends AsyncFunction, TResult>(
+    request: TRequest,
+    task: TTask,
+    key: string
+  ): Promise<TResult> {
+    const result = await task(request);
+    await this.#cache.l1.set(key, result, this.options.validityPeriod);
 
     if (this.options.persist) {
-      await this.#cache.l2.set(key, result, this.options.ttl);
+      await this.#cache.l2.set(key, result, this.options.validityPeriod);
     }
 
     return result;

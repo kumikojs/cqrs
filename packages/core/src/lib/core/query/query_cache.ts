@@ -4,12 +4,8 @@ import { JsonSerializer } from '../../utilities/serializer/json_serializer';
 import { SubscriptionManager } from '../../utilities/subscription/subscription_manager';
 
 import type { CacheEvent } from '../../infrastructure/cache/cache';
-import type { QueryInput, QueryCacheOptions } from '../../types/core/query';
+import type { QueryCacheOptions, QueryInput } from '../../types/core/query';
 import type { DurationUnit } from '../../types/helpers';
-import type {
-  AsyncStorageDriver,
-  SyncStorageDriver,
-} from '../../types/infrastructure/storage';
 
 /*
  * ---------------------------------------------------------------------------
@@ -43,12 +39,17 @@ export class QueryCache {
   #serializer: JsonSerializer = new JsonSerializer();
 
   constructor(options: QueryCacheOptions) {
-    this.#l1 = QueryCache.#createCache('l1', {
+    this.#l1 = new Cache({
       ...options.l1,
-      driver: new MemoryStorageDriver(),
+      layer: 'l1',
+      storage: new MemoryStorageDriver(),
     });
 
-    this.#l2 = QueryCache.#createCache('l2', options.l2);
+    this.#l2 = new Cache({
+      ...options.l2,
+      layer: 'l2',
+      storage: options.l2.driver,
+    });
 
     this.#subscriptionManager
       .subscribe(
@@ -97,15 +98,33 @@ export class QueryCache {
     return persistedValue;
   }
 
+  async getEntry<TValue>(query: QueryInput | string) {
+    const key = typeof query === 'string' ? query : this.getCacheKey(query);
+
+    const cachedValue = await this.#l1.getEntry<TValue>(key);
+    if (cachedValue) return cachedValue;
+
+    const persistedValue = await this.#l2.getEntry<TValue>(key);
+    if (persistedValue) {
+      await this.#l1.set(key, persistedValue.value); // Promote to L1
+    }
+
+    return persistedValue;
+  }
+
   /**
    * Sets a value in both L1 and L2 caches with optional TTL (time to live).
    */
-  async set<TValue>(query: QueryInput, value: TValue, ttl?: DurationUnit) {
+  async set<TValue>(
+    query: QueryInput,
+    value: TValue,
+    validityPeriod?: DurationUnit
+  ) {
     const key = this.getCacheKey(query);
 
     await Promise.all([
-      this.#l1.set(key, value, ttl),
-      this.#l2.set(key, value, ttl),
+      this.#l1.set(key, value, validityPeriod),
+      this.#l2.set(key, value, validityPeriod),
     ]);
   }
 
@@ -229,23 +248,5 @@ export class QueryCache {
         await cache.invalidate(key);
       }
     }
-  }
-
-  /*
-   * ---------------------------------------------------------------------------
-   * Static Methods
-   * ---------------------------------------------------------------------------
-   */
-
-  static #createCache(
-    layer: 'l1' | 'l2',
-    options: QueryCacheOptions['l1'] & {
-      driver: SyncStorageDriver | AsyncStorageDriver;
-    }
-  ) {
-    const ttl = options?.ttl ?? '1m';
-    const gcInterval = options?.gcInterval ?? '5m';
-
-    return new Cache(layer, options.driver, ttl, gcInterval);
   }
 }

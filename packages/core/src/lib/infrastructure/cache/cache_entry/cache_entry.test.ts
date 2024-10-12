@@ -8,7 +8,13 @@ describe('CacheEntry', () => {
   let entry: CacheEntry<string>;
 
   beforeEach(() => {
-    entry = new CacheEntry('key', 'value', '1s');
+    entry = new CacheEntry({
+      key: 'key',
+      value: 'value',
+      validityPeriod: '1s',
+      gracePeriod: '500ms',
+    });
+    vitest.useFakeTimers();
   });
 
   afterEach(() => {
@@ -22,20 +28,48 @@ describe('CacheEntry', () => {
     });
 
     it('should be expired if the expiration time is in the past', () => {
-      entry = new CacheEntry('key', 'value', '1ms');
-
-      vitest.useFakeTimers({ now: Date.now() + ms('1s') });
-
+      entry = new CacheEntry({
+        key: 'key',
+        value: 'value',
+        validityPeriod: '1ms',
+      });
+      vitest.setSystemTime(Date.now() + ms('1s'));
       expect(entry.hasExpired()).toBe(true);
+    });
+  });
+
+  describe('Staleness Check', () => {
+    it('should not be stale if the staleness time has not been reached', () => {
+      vitest.advanceTimersByTime(ms('1s') - ms('300ms'));
+      expect(entry.isStale()).toBe(false);
+    });
+
+    it('should be stale if the staleness time has passed', () => {
+      vitest.advanceTimersByTime(ms('1s') + ms('300ms'));
+      expect(entry.isStale()).toBe(true);
+    });
+
+    it('should not be invalid if it’s stale but within the expiration time', () => {
+      vitest.advanceTimersByTime(ms('1s') + ms('100ms'));
+      expect(entry.isStale()).toBe(true);
+      expect(entry.isDefunct()).toBe(false);
+    });
+
+    it('should expire if both the expiration time and staleness time have passed', () => {
+      vitest.advanceTimersByTime(ms('1.5s') + ms('100ms'));
+      expect(entry.hasExpired()).toBe(true);
+      expect(entry.isStale()).toBe(false);
+      expect(entry.isDefunct()).toBe(true);
     });
   });
 
   describe('Serialization', () => {
     it('should correctly serialize the cache entry', () => {
       const serialized = entry.serialize();
-      expect(serialized).toBeTruthy(); // Check that it's not null or undefined
+
+      expect(serialized).toBeTruthy();
       expect(serialized).toMatch(
-        /^{"expiration":\d+,"key":"key","ttl":"1s","value":"value"}$/
+        /^{"expiration":\d+,"gracePeriod":"\d+ms","key":"key","staleUntil":\d+,"validityPeriod":"\d+s","value":"value"}$/
       );
     });
 
@@ -60,7 +94,7 @@ describe('CacheEntry', () => {
 
       const deserialized = CacheEntry.deserialize('key', serialized);
 
-      expect(deserialized).toBeTruthy(); // Check that it's not undefined
+      expect(deserialized).toBeTruthy();
       expect(deserialized).toEqual(entry);
     });
 

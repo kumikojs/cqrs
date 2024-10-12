@@ -6,36 +6,33 @@ import type { DurationUnit } from '../../helpers';
 /**
  * Configuration options for tailoring cache behavior.
  */
-export type CacheOptions = {
+export type ResilienceCacheOptions = {
   /**
-   * Specifies the duration for which cached values remain valid before expiration.
-   * Defaults to '30s'.
-   *
-   * @see {@link DurationUnit}
+   * The time to live (TTL) for cached values in a duration format.
+   * Defaults to '5m'.
    */
-  ttl?: DurationUnit;
+  validityPeriod?: DurationUnit;
+
+  /**
+   * The time to consider a cached value stale and in need of refresh in a duration format.
+   * Defaults to '5m'.
+   */
+  gracePeriod?: DurationUnit;
 
   /**
    * Flag to enable or disable L2 cache.
-   * @type boolean
-   * @default true
+   * Defaults to 'true'.
    */
   persist: boolean;
 
   /**
    * Serializes a request into a namespace and key pair for cache lookup and storage.
-   *
-   * @param request - The request to serialize.
-   * @returns An object containing a `ns` (namespace) and `key` property for cache operations.
    */
   serialize: (request: any) => string;
 
   /**
    * Determines whether to invalidate cached values after retrieval.
    * Defaults to false.
-   *
-   * @type boolean
-   * @default false
    */
   invalidate: boolean;
 };
@@ -46,9 +43,6 @@ export type CacheOptions = {
 export type DeduplicationOptions = {
   /**
    * Serializes a request into a unique string representation for deduplication purposes.
-   *
-   * @param request - The request to serialize.
-   * @returns A string key used for tracking pending requests.
    */
   serialize: (request: any) => string;
 };
@@ -186,10 +180,10 @@ export type ResilienceOptions = Partial<{
 
   /**
    * The cache options for the query.
-   *
-   * @see CacheOptions for more information. {@link CacheOptions}
    */
-  cache: Omit<Partial<CacheOptions>, 'serialize' | 'invalidate'> | false;
+  cache:
+    | Omit<Partial<ResilienceCacheOptions>, 'serialize' | 'invalidate'>
+    | false;
 
   /**
    * The timeout options for the query.
@@ -224,7 +218,9 @@ export type ResilienceStrategiesBuilder = {
    * @param options - Partial configuration options for the CacheStrategy.
    * @returns A newly constructed CacheStrategy instance.
    */
-  cache: (options: Partial<CacheOptions>) => Strategy<CacheOptions>;
+  cache: (
+    options: Partial<ResilienceCacheOptions>
+  ) => Strategy<ResilienceCacheOptions>;
 
   /**
    * Creates a retry strategy for retries the task on failure.

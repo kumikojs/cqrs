@@ -10,8 +10,8 @@ describe('QueryCache', () => {
 
   beforeEach(() => {
     const options: QueryCacheOptions = {
-      l1: { ttl: '1m', gcInterval: '5m' },
-      l2: { ttl: '1m', gcInterval: '5m', driver: new MemoryStorageDriver() },
+      l1: {},
+      l2: { driver: new MemoryStorageDriver() },
     };
 
     queryCache = new QueryCache(options);

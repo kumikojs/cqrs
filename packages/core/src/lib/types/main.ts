@@ -13,6 +13,7 @@ export type * from './core/query';
 export type * from './helpers';
 export type * from './infrastructure/interceptor';
 export type * from './infrastructure/storage';
+export type * from './infrastructure/cache';
 
 export type ClientOptions = {
   resilience?: {

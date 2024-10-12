@@ -32,18 +32,21 @@ describe('QueryInterceptors', () => {
       const query = {
         queryName: 'TestQuery',
         payload: { id: 1 },
+        options: { cache: { validityPeriod: 1000 } },
       };
-      const handler = vitest.fn();
-      vitest.spyOn(cache, 'get').mockResolvedValueOnce('CachedResult');
+      const handler = vitest.fn().mockResolvedValue('CachedResult');
 
       const interceptors = queryInterceptors.buildInterceptors();
       const result = await interceptors.execute(query, handler);
-
       expect(result).toBe('CachedResult');
-      expect(handler).not.toHaveBeenCalled();
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      const secondResult = await interceptors.execute(query, handler);
+      expect(secondResult).toBe('CachedResult');
+      expect(handler).toHaveBeenCalledTimes(1);
     });
 
-    it('should cache the result of the query after execution and respect TTL', async () => {
+    it('should cache the result of the query after execution and respect validityPeriod', async () => {
       vitest.useFakeTimers();
 
       const query = {
@@ -51,7 +54,8 @@ describe('QueryInterceptors', () => {
         payload: { id: 1 },
         options: {
           cache: {
-            ttl: 1000,
+            validityPeriod: 1000,
+            gracePeriod: 0, // Disable stale cache
           },
         },
       };

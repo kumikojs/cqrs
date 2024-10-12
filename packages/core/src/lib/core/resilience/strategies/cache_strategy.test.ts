@@ -75,7 +75,7 @@ describe('CacheStrategy', () => {
 
   test('should handle custom TTL when provided', async () => {
     vitest.useFakeTimers();
-    cacheStrategy = new CacheStrategy(cache, { ttl: 1000 });
+    cacheStrategy = new CacheStrategy(cache, { validityPeriod: 1000 });
 
     const request = { key: 'value' };
     const task = vitest.fn().mockResolvedValue('result');
