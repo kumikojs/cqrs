@@ -6,7 +6,7 @@ import type {
   BusHandler,
   BusOptions,
 } from '../../../types/infrastructure/bus';
-import { BusException } from '../bus_exception';
+import { InvalidHandlerException } from '../bus_exception';
 
 /**
  * The MemoryBusDriver is a simple in-memory bus driver that allows you to publish
@@ -57,7 +57,7 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
 
     const responses = await Promise.all(
       handlers.map((handler) =>
-        this.#invokeHandler<TRequest, TResponse>(handler, request)
+        this.#invokeHandler<TRequest, TResponse>(channel, handler, request)
       )
     );
 
@@ -78,7 +78,7 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
 
     this.#optionsManager.verifyHandlerLimit(channel, handlers.length);
 
-    this.#verifyHandler(handler);
+    this.#verifyHandler(channel, handler);
 
     handlers.push(handler);
     this.#subscriptions.set(channel, handlers);
@@ -126,10 +126,11 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
   }
 
   #invokeHandler<TRequest, TResponse>(
+    channel: TChannel,
     handler: BusHandler<TRequest>,
     request: TRequest
   ): Promise<TResponse | void> {
-    this.#verifyHandler(handler);
+    this.#verifyHandler(channel, handler);
 
     if (typeof handler === 'function') {
       return handler(request);
@@ -142,13 +143,10 @@ export class MemoryBusDriver<TChannel> implements BusDriver<TChannel> {
     return handler.execute(request);
   }
 
-  #verifyHandler(handler: BusHandler<any>): void {
+  #verifyHandler(channel: TChannel, handler: BusHandler<any>): void {
     if (typeof handler !== 'function') {
       if (!('handle' in handler || 'execute' in handler)) {
-        throw new BusException('INVALID_HANDLER', {
-          message:
-            'Invalid handler provided. Must be a function or an object with an execute or handle method.',
-        });
+        throw new InvalidHandlerException(channel);
       }
     }
   }

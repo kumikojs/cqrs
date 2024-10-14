@@ -96,19 +96,6 @@ export type BusOptions = {
   logger?: KumikoLogger;
 };
 
-/**
- * The BusErrorDetails interface defines the details of a bus error.
- * It includes a message and an optional channel.
- *
- * @interface
- * @property {string} message - The error message.
- * @property {unknown} [channel] - The channel related to the error.
- */
-export interface BusErrorDetails {
-  message: string;
-  channel?: unknown;
-}
-
 const BusErrorKeys = {
   MAX_HANDLERS_PER_CHANNEL: 'MAX_HANDLERS_PER_CHANNEL',
   NO_HANDLER_FOUND: 'NO_HANDLER_FOUND',

@@ -6,6 +6,10 @@ import { EventBus } from '../event/event_bus';
 
 import type { EventBusContract } from '../../types/core/event';
 import type { ResilienceBuilderOptions } from '../../types/core/options/resilience_options';
+import {
+  MaxHandlersPerChannelException,
+  NoHandlerFoundException,
+} from '../../infrastructure/bus/bus_exception';
 
 describe('CommandBus', () => {
   let bus: CommandBus;
@@ -81,9 +85,7 @@ describe('CommandBus', () => {
 
       expect(() => {
         bus.register('test', handler2);
-      }).toThrowError(
-        `Limit of 1 handler(s) per channel reached. Channel: 'test' not registered.`
-      );
+      }).toThrowError(MaxHandlersPerChannelException);
     });
   });
 
@@ -193,9 +195,7 @@ describe('CommandBus', () => {
           commandName: 'nonexistent_command',
           payload: {},
         })
-      ).rejects.toThrowError(
-        `No handler found for this channel: 'nonexistent_command'`
-      );
+      ).rejects.toThrowError(NoHandlerFoundException);
     });
 
     it('should handle execution errors within command handlers', async () => {

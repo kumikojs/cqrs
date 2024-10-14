@@ -1,12 +1,11 @@
 import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
-import { BusException } from './bus_exception';
-
+import {
+  BusException,
+  MaxHandlersPerChannelException,
+  NoHandlerFoundException,
+} from './bus_exception';
 import type { BusErrorKeys, BusOptions } from '../../types/infrastructure/bus';
 
-/**
- * The BusOptionsManager class acts as a facade for options and error handling functionalities
- * used by the different bus drivers (e.g. MemoryBusDriver).
- */
 export class BusOptionsManager<TChannel> {
   #options: BusOptions;
   #logger: KumikoLogger | undefined;
@@ -39,16 +38,12 @@ export class BusOptionsManager<TChannel> {
     }
   }
 
-  /**
-   * Throws a BusException based on the provided error key and channel (optional).
-   *
-   * @param {BusErrorKeys} key - The error key from the BusErrorKeys enumeration.
-   * @param {TChannel} channel - The channel related to the error (optional).
-   */
-  throwError(key: BusErrorKeys, channel?: TChannel): void | never {
-    const message = this.#getErrorMessage(key, channel);
+  throwError(key: BusErrorKeys, channel: TChannel): void | never {
+    const details = { channel: channel ? channel : 'N/A' };
 
     if (this.#options.mode === 'soft') {
+      const message = `Bus error: ${key} - ${details.channel}`;
+
       this.#logger?.warn(message, {
         topics: ['bus'],
         data: { channel_name: channel },
@@ -56,24 +51,16 @@ export class BusOptionsManager<TChannel> {
       return;
     }
 
-    throw new BusException(key, {
-      channel: channel ? channel : 'N/A',
-      message,
-    });
-  }
-
-  #getErrorMessage(key: BusErrorKeys, channel?: TChannel): string {
     switch (key) {
       case 'MAX_HANDLERS_PER_CHANNEL':
-        return `Limit of ${
+        throw new MaxHandlersPerChannelException(
+          channel,
           this.#options.maxHandlersPerChannel
-        } handler(s) per channel reached. Channel: '${
-          channel ?? ''
-        }' not registered.`;
+        );
       case 'NO_HANDLER_FOUND':
-        return `No handler found for this channel: '${channel ?? ''}'`;
+        throw new NoHandlerFoundException(channel);
       default:
-        throw new Error(`Unknown Bus Error Key: ${key}`);
+        throw new BusException(`Bus error: ${key} - ${details.channel}`);
     }
   }
 }

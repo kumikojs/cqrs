@@ -1,5 +1,5 @@
 import { EventBus } from './event_bus';
-import { BusException } from '../../infrastructure/bus/bus_exception';
+import { NoHandlerFoundException } from '../../infrastructure/bus/bus_exception';
 import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 
 describe('EventBus', () => {
@@ -75,12 +75,7 @@ describe('EventBus', () => {
           eventName: 'user.created',
           payload: { id: 4, name: 'Bob' },
         })
-      ).rejects.toThrowError(
-        new BusException('NO_HANDLER_FOUND', {
-          message: `No handler found for this channel: 'user.created'`,
-          channel: 'user.created',
-        })
-      );
+      ).rejects.toThrowError(NoHandlerFoundException);
 
       expect(handler).not.toHaveBeenCalled();
     });
@@ -93,12 +88,7 @@ describe('EventBus', () => {
           eventName: 'user.created',
           payload: { id: 5, name: 'Unknown' },
         })
-      ).rejects.toThrowError(
-        new BusException('NO_HANDLER_FOUND', {
-          message: `No handler found for this channel: 'user.created'`,
-          channel: 'user.created',
-        })
-      );
+      ).rejects.toThrowError(NoHandlerFoundException);
     });
 
     it('should emit to all handlers and not fail on unsubscription', async () => {
@@ -123,12 +113,7 @@ describe('EventBus', () => {
           eventName: 'user.created',
           payload: { id: 7, name: 'Zoe' },
         })
-      ).rejects.toThrowError(
-        new BusException('NO_HANDLER_FOUND', {
-          message: `No handler found for this channel: 'user.created'`,
-          channel: 'user.created',
-        })
-      );
+      ).rejects.toThrowError(NoHandlerFoundException);
 
       expect(handler1).toHaveBeenCalledTimes(1); // Ensure handlers were unsubscribed
       expect(handler2).toHaveBeenCalledTimes(1);
@@ -147,12 +132,7 @@ describe('EventBus', () => {
           eventName: 'user.created',
           payload: { id: 9, name: 'Disconnected User' },
         })
-      ).rejects.toThrowError(
-        new BusException('NO_HANDLER_FOUND', {
-          message: `No handler found for this channel: 'user.created'`,
-          channel: 'user.created',
-        })
-      );
+      ).rejects.toThrowError(NoHandlerFoundException);
 
       expect(handler).not.toHaveBeenCalled();
     });

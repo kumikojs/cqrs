@@ -1,21 +1,29 @@
-import type {
-  BusErrorDetails,
-  BusErrorKeys,
-} from '../../types/infrastructure/bus';
-
-/**
- * The BusException class is a custom exception class that extends the Error class.
- * It holds error details including a key and message.
- *
- * @extends Error
- * @class
- */
 export class BusException extends Error {
-  constructor(
-    public readonly key: BusErrorKeys,
-    public readonly details: BusErrorDetails
-  ) {
-    super(details.message);
+  constructor(message: string) {
+    super(message);
     this.name = 'BusException';
+  }
+}
+
+export class MaxHandlersPerChannelException<TChannel> extends BusException {
+  constructor(channel: TChannel, maxHandlers: number) {
+    super(
+      `Limit of ${maxHandlers} handler(s) per channel reached. Channel: '${channel}' not registered.`
+    );
+    this.name = 'MaxHandlersPerChannelException';
+  }
+}
+
+export class NoHandlerFoundException<TChannel> extends BusException {
+  constructor(channel: TChannel) {
+    super(`No handler found for this channel: '${channel}'`);
+    this.name = 'NoHandlerFoundException';
+  }
+}
+
+export class InvalidHandlerException<TChannel> extends BusException {
+  constructor(channel: TChannel) {
+    super(`Invalid handler found for this channel: '${channel}'`);
+    this.name = 'InvalidHandlerException';
   }
 }

@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { BusException } from '../bus_exception';
+import {
+  InvalidHandlerException,
+  MaxHandlersPerChannelException,
+  NoHandlerFoundException,
+} from '../bus_exception';
 import { MemoryBusDriver } from './memory_bus';
 
 const CHANNEL_NAME = 'channel';
@@ -13,10 +17,7 @@ describe('MemoryBusDriver', () => {
 
       bus.subscribe(CHANNEL_NAME, handler1);
       expect(() => bus.subscribe(CHANNEL_NAME, vitest.fn())).toThrowError(
-        new BusException('MAX_HANDLERS_PER_CHANNEL', {
-          message: `Limit of 1 handler(s) per channel reached. Channel: '${CHANNEL_NAME}' not registered.`,
-          channel: CHANNEL_NAME,
-        })
+        new MaxHandlersPerChannelException(CHANNEL_NAME, 1)
       );
     });
 
@@ -37,10 +38,7 @@ describe('MemoryBusDriver', () => {
       const bus = new MemoryBusDriver<string>({ mode: 'hard' });
 
       await expect(bus.publish(CHANNEL_NAME, {})).rejects.toThrowError(
-        new BusException('NO_HANDLER_FOUND', {
-          message: `No handler found for this channel: '${CHANNEL_NAME}'`,
-          channel: CHANNEL_NAME,
-        })
+        new NoHandlerFoundException(CHANNEL_NAME)
       );
     });
 
@@ -56,10 +54,7 @@ describe('MemoryBusDriver', () => {
       const handler = vitest.fn();
 
       expect(() => bus.unsubscribe(CHANNEL_NAME, handler)).toThrowError(
-        new BusException('NO_HANDLER_FOUND', {
-          message: `No handler found for this channel: '${CHANNEL_NAME}'`,
-          channel: CHANNEL_NAME,
-        })
+        new NoHandlerFoundException(CHANNEL_NAME)
       );
     });
 
@@ -153,10 +148,7 @@ describe('MemoryBusDriver', () => {
       };
 
       expect(() => bus.subscribe(CHANNEL_NAME, invalidHandler)).toThrowError(
-        new BusException('INVALID_HANDLER', {
-          message:
-            'Invalid handler provided. Must be a function or an object with an execute or handle method.',
-        })
+        new InvalidHandlerException(CHANNEL_NAME)
       );
     });
   });

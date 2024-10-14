@@ -1,3 +1,7 @@
+import {
+  MaxHandlersPerChannelException,
+  NoHandlerFoundException,
+} from '../../infrastructure/bus/bus_exception';
 import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
 import { ResilienceBuilderOptions } from '../../types/core/options/resilience_options';
 import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
@@ -54,9 +58,7 @@ describe('QueryBus', () => {
 
       expect(() => {
         bus.register('test_query', handler2);
-      }).toThrowError(
-        `Limit of 1 handler(s) per channel reached. Channel: 'test_query' not registered.`
-      );
+      }).toThrowError(MaxHandlersPerChannelException);
     });
   });
 
@@ -166,9 +168,7 @@ describe('QueryBus', () => {
           queryName: 'nonexistent_query',
           payload: {},
         })
-      ).rejects.toThrowError(
-        `No handler found for this channel: 'nonexistent_query'`
-      );
+      ).rejects.toThrowError(NoHandlerFoundException);
     });
 
     it('should handle execution errors within query handlers', async () => {

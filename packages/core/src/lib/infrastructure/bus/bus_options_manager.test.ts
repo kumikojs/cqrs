@@ -1,20 +1,20 @@
-import { BusException } from './bus_exception';
+import {
+  MaxHandlersPerChannelException,
+  NoHandlerFoundException,
+} from './bus_exception';
 import { BusOptionsManager } from './bus_options_manager';
 
 const CHANNEL_NAME = 'channel';
 
 describe('BusOptionsManager', () => {
   describe('Handler Limit Verification', () => {
-    it('should throw an error when the maximum handler limit is reached', () => {
+    it('should throw MaxHandlersPerChannelException when the maximum handler limit is reached', () => {
       const manager = new BusOptionsManager<string>({
         maxHandlersPerChannel: 1,
       });
 
       expect(() => manager.verifyHandlerLimit(CHANNEL_NAME, 1)).toThrowError(
-        new BusException('MAX_HANDLERS_PER_CHANNEL', {
-          message: `Limit of 1 handler(s) per channel reached. Channel: '${CHANNEL_NAME}' not registered.`,
-          channel: CHANNEL_NAME,
-        })
+        new MaxHandlersPerChannelException(CHANNEL_NAME, 1)
       );
     });
 
@@ -28,17 +28,12 @@ describe('BusOptionsManager', () => {
   });
 
   describe('Handler Requirement Validation', () => {
-    it('should throw an error when no handlers are found', () => {
+    it('should throw NoHandlerFoundException when no handlers are found', () => {
       const manager = new BusOptionsManager<string>();
 
       expect(() =>
         manager.requireAtLeastOneHandler(CHANNEL_NAME, 0)
-      ).toThrowError(
-        new BusException('NO_HANDLER_FOUND', {
-          message: `No handler found for this channel: '${CHANNEL_NAME}'`,
-          channel: CHANNEL_NAME,
-        })
-      );
+      ).toThrowError(new NoHandlerFoundException(CHANNEL_NAME));
     });
 
     it('should not throw an error when at least one handler is found', () => {
@@ -51,17 +46,19 @@ describe('BusOptionsManager', () => {
   });
 
   describe('Error Throwing Behavior', () => {
-    it('should throw an error when in hard mode', () => {
+    it('should throw the appropriate exception when in hard mode', () => {
       const manager = new BusOptionsManager<string>({
         mode: 'hard',
+        maxHandlersPerChannel: 1,
       });
 
-      expect(() => manager.throwError('NO_HANDLER_FOUND')).toThrowError(
-        new BusException('NO_HANDLER_FOUND', {
-          message: `No handler found for this channel: ''`,
-          channel: 'N/A',
-        })
-      );
+      expect(() =>
+        manager.throwError('NO_HANDLER_FOUND', CHANNEL_NAME)
+      ).toThrowError(new NoHandlerFoundException(CHANNEL_NAME));
+
+      expect(() =>
+        manager.throwError('MAX_HANDLERS_PER_CHANNEL', CHANNEL_NAME)
+      ).toThrowError(new MaxHandlersPerChannelException(CHANNEL_NAME, 1));
     });
 
     it('should not throw an error when in soft mode', () => {
@@ -69,7 +66,13 @@ describe('BusOptionsManager', () => {
         mode: 'soft',
       });
 
-      expect(() => manager.throwError('NO_HANDLER_FOUND')).not.toThrow();
+      expect(() =>
+        manager.throwError('NO_HANDLER_FOUND', CHANNEL_NAME)
+      ).not.toThrow();
+
+      expect(() =>
+        manager.throwError('MAX_HANDLERS_PER_CHANNEL', CHANNEL_NAME)
+      ).not.toThrow();
     });
   });
 });
