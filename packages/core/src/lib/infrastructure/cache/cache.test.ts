@@ -124,15 +124,16 @@ describe('Cache', () => {
 
   describe('Garbage Collection', () => {
     it('should clear expired items on a regular interval', async () => {
+      vitest.useFakeTimers();
+
       cache = new Cache({
         layer: 'l1',
         storage: new MemoryStorageDriver(),
         gcInterval: 5,
       });
-
       const clearExpiredSpy = vitest.spyOn(cache, 'clearExpired');
 
-      await new Promise((resolve) => setTimeout(resolve, 5));
+      vitest.advanceTimersByTime(10);
 
       expect(clearExpiredSpy).toHaveBeenCalled();
     });
