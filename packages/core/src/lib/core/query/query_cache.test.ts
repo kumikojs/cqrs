@@ -128,4 +128,36 @@ describe('QueryCache', () => {
     expect(l1DisconnectSpy).toHaveBeenCalled();
     expect(l2DisconnectSpy).toHaveBeenCalled();
   });
+
+  it('should retrieve an entry from the cache', async () => {
+    const query: QueryInput = { queryName: 'testQuery', payload: { id: 1 } };
+    const value = { data: 'testData' };
+
+    await queryCache.set(query, value);
+
+    const cachedEntry = await queryCache.getEntry<typeof value>(query);
+    expect(cachedEntry?.value).toEqual(value);
+  });
+
+  it('should promote an entry from l2 to l1 cache', async () => {
+    const query: QueryInput = { queryName: 'testQuery', payload: { id: 1 } };
+    const value = { data: 'testData' };
+
+    await l2Cache.set(queryCache.getCacheKey(query), value);
+
+    const cachedEntry = await queryCache.getEntry<typeof value>(query);
+    expect(cachedEntry?.value).toEqual(value);
+
+    const l1CachedEntry = await l1Cache.getEntry<typeof value>(
+      queryCache.getCacheKey(query)
+    );
+    expect(l1CachedEntry?.value).toEqual(value);
+  });
+
+  it('should return null if entry is not found in both caches', async () => {
+    const query: QueryInput = { queryName: 'testQuery', payload: { id: 1 } };
+
+    const cachedEntry = await queryCache.getEntry<typeof query>(query);
+    expect(cachedEntry).toBeNull();
+  });
 });
