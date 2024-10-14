@@ -1,3 +1,5 @@
+import { AbortException } from './exceptions/abort_exception';
+
 /**
  * Manages ongoing requests and provides functionality to add, cancel, and execute requests with abort capability.
  */
@@ -42,9 +44,7 @@ export class AbortManager {
 
     return new Promise<TResponse>((resolve, reject) => {
       abortController.signal.addEventListener('abort', () => {
-        reject(
-          new DOMException(`Request ${requestId} was aborted`, 'AbortError')
-        );
+        reject(new AbortException(`Request ${requestId} was aborted`));
       });
 
       operation(abortController).then(resolve, reject);

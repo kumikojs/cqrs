@@ -5,12 +5,13 @@ import { Strategy } from './base_strategy';
 
 import type { RetryOptions } from '../../../types/core/options/resilience_options';
 import type { AsyncFunction } from '../../../types/helpers';
+import { AbortException } from '../../../infrastructure/middleware/exceptions/abort_exception';
 
 export class RetryStrategy extends Strategy<RetryOptions> {
   static #defaultOptions: RetryOptions = {
     maxAttempts: 3,
     delay: '1s',
-    shouldNotRetryErrors: [BusException],
+    shouldNotRetryErrors: [BusException, AbortException],
   };
 
   public constructor(options?: Partial<RetryOptions>) {
