@@ -1,6 +1,6 @@
 import { ms } from '../../utilities/ms/ms';
 
-import type { DurationUnit } from '../../types/helpers';
+import type { DurationUnit } from '../../utilities/ms/types';
 
 type TimerId = number | NodeJS.Timeout;
 

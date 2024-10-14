@@ -1,4 +1,4 @@
-import type { DurationUnit } from '../helpers';
+import type { DurationUnit } from '../../utilities/ms/types';
 
 export type CacheOptions = {
   gcInterval?: DurationUnit;

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Strategy } from '../../../core/resilience/strategies/base_strategy';
 
-import type { DurationUnit } from '../../helpers';
+import type { DurationUnit } from '../../../utilities/ms/types';
 
 /**
  * Configuration options for tailoring cache behavior.

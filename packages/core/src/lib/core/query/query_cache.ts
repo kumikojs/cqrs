@@ -5,7 +5,7 @@ import { SubscriptionManager } from '../../utilities/subscription/subscription_m
 
 import type { CacheEvent } from '../../infrastructure/cache/cache';
 import type { QueryCacheOptions, QueryInput } from '../../types/core/query';
-import type { DurationUnit } from '../../types/helpers';
+import type { DurationUnit } from '../../utilities/ms/types';
 
 /*
  * ---------------------------------------------------------------------------

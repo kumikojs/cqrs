@@ -1,16 +1,16 @@
 import { MemoryBusDriver } from '../bus/drivers/memory_bus';
+import { LockManager } from '../lock/lock_manager';
 import { CacheEntry } from './cache_entry/cache_entry';
 import { CacheScheduler } from './cache_scheduler';
 import { AsyncCache } from './facades/async_cache';
 import { SyncCache } from './facades/sync_cache';
-import { LockManager } from '../lock/lock_manager';
 
-import type { DurationUnit } from '../../types/helpers';
+import type { CacheOptions } from '../../types/infrastructure/cache';
 import type {
   AsyncStorageDriver,
   SyncStorageDriver,
 } from '../../types/infrastructure/storage';
-import type { CacheOptions } from '../../types/infrastructure/cache';
+import type { DurationUnit } from '../../utilities/ms/types';
 
 type CacheProps = {
   layer: 'l1' | 'l2';

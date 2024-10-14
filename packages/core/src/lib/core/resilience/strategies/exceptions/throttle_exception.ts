@@ -1,4 +1,4 @@
-import type { DurationUnit } from '../../../../types/helpers';
+import type { DurationUnit } from '../../../../utilities/ms/types';
 
 /**
  * A custom exception thrown when the request rate limit is exceeded.

@@ -1,4 +1,4 @@
-import type { DurationUnit } from '../../types/helpers';
+import type { DurationUnit } from '../../utilities/ms/types';
 import { MemoryStorageDriver } from '../storage/drivers/memory_storage';
 import { Cache, CACHE_EVENT_TYPES } from './cache';
 
