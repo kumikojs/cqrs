@@ -2,6 +2,7 @@ import { Cache, CACHE_EVENT_TYPES } from '../../infrastructure/cache/cache';
 import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
 import { JsonSerializer } from '../../utilities/serializer/json_serializer';
 import { SubscriptionManager } from '../../utilities/subscription/subscription_manager';
+import { QueryKeyResolver } from './query_key_resolver';
 
 import type { CacheEvent } from '../../infrastructure/cache/cache';
 import type { QueryCacheOptions, QueryInput } from '../../types/core/query';
@@ -29,14 +30,34 @@ import type { DurationUnit } from '../../utilities/ms/types';
  *
  * ---------------------------------------------------------------------------
  */
+/*
+ * ---------------------------------------------------------------------------
+ * QueryCache Class
+ * ---------------------------------------------------------------------------
+ * A dual-layer caching mechanism designed to store and manage query results
+ * efficiently. The QueryCache utilizes:
+ *
+ * - **L1 Memory Cache**: Provides fast access to the most recent query results
+ *   for quick retrieval.
+ * - **L2 Persisted Cache**: Offers long-term storage for query results, ensuring
+ *   that data persists beyond the lifecycle of the application.
+ *
+ * The QueryCache automatically handles cache invalidation, ensuring that
+ * outdated results are removed and fresh data is fetched when needed.
+ *
+ * Key Features:
+ * - Optimistic updates for immediate UI responsiveness.
+ * - Subscription management for monitoring cache state changes.
+ * - Flexible configuration options for cache duration and garbage collection.
+ *
+ * ---------------------------------------------------------------------------
+ */
 export class QueryCache {
-  #QUERY_CACHE_KEY_PREFIX = '__k__';
-  #QUERY_CACHE_KEY_SUFFIX = '__v__';
-
   #l1: Cache;
   #l2: Cache;
   #subscriptionManager = new SubscriptionManager();
   #serializer: JsonSerializer = new JsonSerializer();
+  #keyResolver: QueryKeyResolver = new QueryKeyResolver();
 
   constructor(options: QueryCacheOptions) {
     this.#l1 = new Cache({
@@ -62,8 +83,6 @@ export class QueryCache {
           this.#l2.invalidate(key);
         })
       );
-
-    this.getCacheKey = this.getCacheKey.bind(this);
   }
 
   /*
@@ -84,8 +103,11 @@ export class QueryCache {
    * Retrieves a cached value for the provided query from the L1 or L2 cache.
    * If found in L2, promotes it to L1 for future faster access.
    */
-  async get<TValue>(query: QueryInput | string): Promise<TValue | null> {
-    const key = typeof query === 'string' ? query : this.getCacheKey(query);
+  async get<TValue>(queryOrKey: QueryInput | string): Promise<TValue | null> {
+    const key =
+      typeof queryOrKey === 'string'
+        ? queryOrKey
+        : this.#keyResolver.generateKey(queryOrKey);
 
     const cachedValue = await this.#l1.get<TValue>(key);
     if (cachedValue) return cachedValue;
@@ -98,8 +120,11 @@ export class QueryCache {
     return persistedValue;
   }
 
-  async getEntry<TValue>(query: QueryInput | string) {
-    const key = typeof query === 'string' ? query : this.getCacheKey(query);
+  async getEntry<TValue>(queryOrKey: QueryInput | string) {
+    const key =
+      typeof queryOrKey === 'string'
+        ? queryOrKey
+        : this.#keyResolver.generateKey(queryOrKey);
 
     const cachedValue = await this.#l1.getEntry<TValue>(key);
     if (cachedValue) return cachedValue;
@@ -120,7 +145,7 @@ export class QueryCache {
     value: TValue,
     validityPeriod?: DurationUnit
   ) {
-    const key = this.getCacheKey(query);
+    const key = this.#keyResolver.generateKey(query);
 
     await Promise.all([
       this.#l1.set(key, value, validityPeriod),
@@ -132,7 +157,7 @@ export class QueryCache {
    * Deletes a query result from both L1 and L2 caches.
    */
   async delete(query: QueryInput) {
-    const key = this.getCacheKey(query);
+    const key = this.#keyResolver.generateKey(query);
 
     await Promise.all([this.#l1.delete(key), this.#l2.delete(key)]);
   }
@@ -183,7 +208,8 @@ export class QueryCache {
    * Performs an optimistic update of a cached value for a given query in the L1 cache.
    */
   async optimisticUpdate(previousQuery: QueryInput, value: unknown) {
-    const key = this.getCacheKey(previousQuery);
+    const key = this.#keyResolver.generateKey(previousQuery);
+
     await this.#l1.optimisticUpdate(key, value);
   }
 
@@ -194,21 +220,6 @@ export class QueryCache {
     this.#l1.disconnect();
     this.#l2.disconnect();
     this.#subscriptionManager.disconnect();
-  }
-
-  /**
-   * Constructs a unique cache key for a query, serializing its payload if present.
-   */
-  getCacheKey({ queryName, payload }: QueryInput): string {
-    const serializedPayload = this.#serializer.serialize(payload);
-
-    if (serializedPayload.isSuccess() && serializedPayload.value) {
-      return `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}${
-        this.#QUERY_CACHE_KEY_SUFFIX
-      }${serializedPayload.value}`;
-    }
-
-    return `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
   }
 
   /*
@@ -229,7 +240,7 @@ export class QueryCache {
       return;
     }
 
-    const key = this.getCacheKey({ queryName, payload });
+    const key = this.#keyResolver.generateKey({ queryName, payload });
     await cache.invalidate(key);
   }
 
@@ -237,15 +248,25 @@ export class QueryCache {
    * Invalidates all entries for a given query in the specified cache.
    */
   async #invalidateAll(cache: Cache, queryName: string): Promise<void> {
-    const prefix = `${this.#QUERY_CACHE_KEY_PREFIX}${queryName}`;
     const length = await cache.length();
+    const allKeys = [];
 
+    // Fix: State of the cache is not consistent when iterating over the keys
+    // and invalidating them in the same loop. Instead, we first collect all
+    // keys and then invalidate them in a separate loop.
+    // This ensures that the cache state remains consistent during iteration.
     for (let i = 0; i < length; i++) {
-      const key = await cache.key(i);
-      if (!key) continue;
+      const iteratorKey = await cache.key(i);
+      if (iteratorKey) {
+        allKeys.push(iteratorKey);
+      }
+    }
 
-      if (key.startsWith(prefix)) {
-        await cache.invalidate(key);
+    for (const iteratorKey of allKeys) {
+      const cacheKeyQueryName = this.#keyResolver.extractQueryName(iteratorKey);
+
+      if (cacheKeyQueryName === queryName) {
+        await cache.invalidate(iteratorKey);
       }
     }
   }

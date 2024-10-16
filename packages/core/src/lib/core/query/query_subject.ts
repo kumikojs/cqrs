@@ -11,6 +11,7 @@ import type {
   QueryInput,
   QueryProcessorFunction,
 } from '../../types/core/query';
+import { QueryKeyResolver } from './query_key_resolver';
 
 /*
  * ---------------------------------------------------------------------------
@@ -48,6 +49,7 @@ export class QuerySubject<
   #handlerFn: QueryProcessorFunction<TRequest>;
   #client: Client;
   #subscriptionManager: SubscriptionManager = new SubscriptionManager();
+  #keyResolver: QueryKeyResolver = new QueryKeyResolver();
 
   constructor(
     query: TRequest['req'],
@@ -114,7 +116,7 @@ export class QuerySubject<
     return this.#client.cache.on(
       CACHE_EVENT_TYPES.INVALIDATED,
       (key: string) => {
-        if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
+        if (key !== this.#keyResolver.generateKey(this.#lastQuery)) return;
         this.execute({
           ...this.#lastQuery,
           options: {
@@ -137,7 +139,7 @@ export class QuerySubject<
     const optimisticUpdateBegan = this.#client.cache.on(
       CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_BEGAN,
       (key) => {
-        if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
+        if (key !== this.#keyResolver.generateKey(this.#lastQuery)) return;
 
         /**
          * Before updating the cache, we need to cancel the query to
@@ -150,7 +152,7 @@ export class QuerySubject<
     const optimisticUpdateEnded = this.#client.cache.on(
       CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_ENDED,
       async (key) => {
-        if (key !== this.#client.cache.getCacheKey(this.#lastQuery)) return;
+        if (key !== this.#keyResolver.generateKey(this.#lastQuery)) return;
 
         const result = await this.#client.cache.get<TRequest['res']>(
           this.#lastQuery
