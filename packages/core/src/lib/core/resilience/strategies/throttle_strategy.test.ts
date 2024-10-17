@@ -12,7 +12,12 @@ describe('ThrottleStrategy with real cache and fake timers', () => {
   const mockTask = async (request: unknown) => `result: ${request}`;
 
   beforeEach(() => {
-    cache = new Cache('l1', new MemoryStorageDriver(), 1000, 5000); // 1s cleanup, 5s TTL
+    cache = new Cache({
+      layer: 'l1',
+      storage: new MemoryStorageDriver(),
+      gcInterval: 1000,
+      validityPeriod: 5000,
+    });
     logger = new KumikoLogger();
 
     throttleStrategy = new ThrottleStrategy(cache, logger, {
