@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { NoHandlerFoundException } from '../../infrastructure/bus/bus_exception';
 import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
 import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { QueryCache } from '../query/query_cache';
@@ -509,6 +510,53 @@ describe('ResilienceInterceptorsBuilder', () => {
       expect(handler).toHaveBeenCalledTimes(2);
 
       vitest.clearAllTimers();
+    });
+  });
+
+  describe('DefaultHandlerInterceptor', () => {
+    beforeEach(() => {
+      resilienceInterceptorsBuilder = new ResilienceInterceptorsBuilder(
+        cache,
+        new KumikoLogger(),
+        {
+          serialize: (request) => JSON.stringify(request),
+          defaultHandler: async () => 'default',
+        }
+      );
+    });
+
+    it('should call the default handler if the task throws a NoHandlerFoundException and the defaultHandler is not provided', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+      };
+
+      const handler = vitest
+        .fn()
+        .mockRejectedValue(new NoHandlerFoundException('channel'));
+      const interceptors = resilienceInterceptorsBuilder
+        .addDefaultHandlerInterceptor()
+        .build();
+
+      await expect(interceptors.execute(request, handler)).resolves.toBe(
+        'default'
+      );
+    });
+
+    it('should not call the default handler if the task throws an error that is not NoHandlerFoundException', async () => {
+      const request = {
+        name: 'test',
+        payload: { id: '1' },
+      };
+
+      const handler = vitest.fn().mockRejectedValue(new Error('Test error'));
+      const interceptors = resilienceInterceptorsBuilder
+        .addDefaultHandlerInterceptor()
+        .build();
+
+      await expect(interceptors.execute(request, handler)).rejects.toThrowError(
+        'Test error'
+      );
     });
   });
 });

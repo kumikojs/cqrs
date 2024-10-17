@@ -28,6 +28,44 @@ describe('QueryInterceptors', () => {
     expect(interceptors).toBeDefined();
   });
 
+  describe('Deduplication Interceptor', () => {
+    it('should deduplicate queries', async () => {
+      const query = {
+        queryName: 'TestQuery',
+        payload: { id: 1 },
+        options: { cache: false },
+      };
+      const handler = vitest.fn().mockResolvedValue('Success');
+
+      const interceptors = queryInterceptors.buildInterceptors();
+
+      await Promise.all([
+        interceptors.execute(query, handler),
+        interceptors.execute(query, handler),
+        interceptors.execute(query, handler),
+      ]);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Fallback Interceptor', () => {
+    it('should call the fallback handler if the query handler throws an error', async () => {
+      const query = {
+        queryName: 'TestQuery',
+        payload: { id: 1 },
+        options: { fallback: () => 'FallbackHandler' },
+      };
+      const handler = vitest.fn().mockRejectedValue(new Error('Failed'));
+
+      const interceptors = queryInterceptors.buildInterceptors();
+
+      await expect(interceptors.execute(query, handler)).resolves.toBe(
+        'FallbackHandler'
+      );
+    });
+  });
+
   describe('Cache Interceptor', () => {
     it('should return a cached result if available', async () => {
       const query = {
@@ -162,7 +200,7 @@ describe('QueryInterceptors', () => {
     });
   });
 
-  describe('Default Handler', () => {
+  describe('Default Handler Interceptor', () => {
     it('should call defaultHandler when NoHandlerFoundException is thrown', async () => {
       const query = {
         queryName: 'TestQuery',

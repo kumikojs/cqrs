@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { NoHandlerFoundException } from '../../infrastructure/bus/bus_exception';
 import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
 import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { QueryCache } from '../query/query_cache';
@@ -27,6 +28,60 @@ describe('CommandInterceptors', () => {
   it('should build interceptors with retry, timeout, throttle, and fallback', () => {
     const interceptors = commandInterceptors.buildInterceptors();
     expect(interceptors).toBeDefined();
+  });
+
+  describe('Deduplication Interceptor', () => {
+    it('should deduplicate commands', async () => {
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+      };
+      const handler = vitest.fn().mockResolvedValue('Success');
+
+      const interceptors = commandInterceptors.buildInterceptors();
+
+      await Promise.all([
+        interceptors.execute(command, handler),
+        interceptors.execute(command, handler),
+        interceptors.execute(command, handler),
+      ]);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Fallback Interceptor', () => {
+    it('should call the fallback handler if the command handler throws an error', async () => {
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+        options: { fallback: () => 'FallbackHandler' },
+      };
+      const handler = vitest.fn().mockRejectedValue(new Error('Failed'));
+
+      const interceptors = commandInterceptors.buildInterceptors();
+      await expect(interceptors.execute(command, handler)).resolves.toBe(
+        'FallbackHandler'
+      );
+      expect(handler).toHaveBeenCalled();
+    });
+
+    it('should call the fallback handler if the command handler throws a NoHandlerFoundException and the defaultHandler is not provided', async () => {
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+        options: { fallback: () => 'FallbackHandler' },
+      };
+      const handler = vitest
+        .fn()
+        .mockRejectedValue(new NoHandlerFoundException('channel'));
+
+      const interceptors = commandInterceptors.buildInterceptors();
+      await expect(interceptors.execute(command, handler)).resolves.toBe(
+        'FallbackHandler'
+      );
+      expect(handler).toHaveBeenCalled();
+    });
   });
 
   describe('Retry Interceptor', () => {
@@ -131,6 +186,35 @@ describe('CommandInterceptors', () => {
       await interceptors.execute(command, handler);
 
       expect(onMutate).toHaveBeenCalled();
+    });
+  });
+
+  describe('Default Handler Interceptor', () => {
+    it('should call defaultHandler when NoHandlerFoundException is thrown', async () => {
+      const command = {
+        commandName: 'TestCommand',
+        payload: { id: 1 },
+      };
+      const handler = vitest
+        .fn()
+        .mockRejectedValue(new NoHandlerFoundException('channel'));
+
+      const defaultHandler = vitest.fn().mockResolvedValue('DefaultHandler');
+
+      commandInterceptors = new CommandInterceptors(cache, logger, {
+        timeout: 1000,
+        retry: { maxAttempts: 3, delay: 100 },
+        throttle: { rate: 5, interval: '1s' },
+        defaultHandler,
+      });
+
+      const interceptors = commandInterceptors.buildInterceptors();
+
+      await expect(interceptors.execute(command, handler)).resolves.toBe(
+        'DefaultHandler'
+      );
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(defaultHandler).toHaveBeenCalledTimes(1);
     });
   });
 });

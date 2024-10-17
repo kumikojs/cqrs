@@ -8,6 +8,7 @@ import { ThrottleStrategy } from './strategies/throttle_strategy';
 import { TimeoutStrategy } from './strategies/timeout_strategy';
 
 import type { ResilienceStrategiesBuilder } from '../../types/core/options/resilience_options';
+import { DefaultHandlerStrategy } from './strategies/default_handler_strategy';
 
 /**
  * A factory function that creates a ResilienceStrategiesBuilder instance,
@@ -20,6 +21,7 @@ export const createResilienceStrategiesBuilder = (
   cache: QueryCache,
   logger: KumikoLogger
 ): ResilienceStrategiesBuilder => ({
+  defaultHandler: (options) => new DefaultHandlerStrategy(options),
   cache: (options) => new CacheStrategy(cache, options),
   retry: (options) => new RetryStrategy(options),
   throttle: (options) => new ThrottleStrategy(cache.l1, logger, options),

@@ -7,8 +7,8 @@ import { CommandCache } from './command_cache';
 
 import type {
   Command,
-  CommandWithOptions,
   CommandRegistry,
+  CommandWithOptions,
 } from '../../types/core/command';
 import type { MergedPartialOptions } from '../../types/core/options/options';
 import type {
@@ -101,6 +101,7 @@ export class CommandInterceptors<
       .addRetryInterceptor()
       .addTimeoutInterceptor()
       .addThrottleInterceptor()
+      .addDefaultHandlerInterceptor()
       .build();
 
     this.#addInvalidatingQueriesInterceptor(interceptorManager);

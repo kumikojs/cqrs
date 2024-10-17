@@ -92,6 +92,24 @@ export class ResilienceInterceptorsBuilder<
     this.#options = options;
   }
 
+  addDefaultHandlerInterceptor(): this {
+    this.#interceptorManager.use(
+      'kumiko.resilience.interceptors.defaultHandler',
+      async (command, next) => {
+        if (this.#options?.defaultHandler) {
+          const strategy = this.#strategyBuilder.defaultHandler({
+            defaultHandler: this.#options.defaultHandler,
+          });
+          return strategy.execute(command, async (request) => next?.(request));
+        }
+
+        return next?.(command);
+      }
+    );
+
+    return this;
+  }
+
   /**
    * Add the retry interceptor.
    *

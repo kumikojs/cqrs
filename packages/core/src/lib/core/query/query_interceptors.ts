@@ -70,6 +70,7 @@ export class QueryInterceptors<
       .addRetryInterceptor()
       .addTimeoutInterceptor()
       .addThrottleInterceptor()
+      .addDefaultHandlerInterceptor()
       .build();
 
     return interceptorManager;

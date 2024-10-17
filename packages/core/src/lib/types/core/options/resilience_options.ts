@@ -3,6 +3,12 @@ import { Strategy } from '../../../core/resilience/strategies/base_strategy';
 
 import type { DurationUnit } from '../../../utilities/ms/types';
 
+export type DefaultHandlerOptions = {
+  defaultHandler?: <TRequest = any, TResult = any>(
+    request: TRequest
+  ) => Promise<TResult>;
+};
+
 /**
  * Configuration options for tailoring cache behavior.
  */
@@ -163,6 +169,7 @@ export type ResilienceBuilderOptions =
       timeout: TimeoutOptions['timeout'];
       throttle: Omit<Partial<ThrottleOptions>, 'serialize'>;
       retry: Partial<RetryOptions>;
+      defaultHandler: (request: any) => Promise<any>;
     }>
   | undefined;
 
@@ -212,6 +219,16 @@ export type ResilienceOptions = Partial<{
  * potential issues and improve the robustness of asynchronous operations.
  */
 export type ResilienceStrategiesBuilder = {
+  /**
+   * Creates a default handler strategy for handling tasks that throw `NoHandlerFoundException`.
+   *
+   * @param options - The default handler options.
+   * @returns A default handler strategy instance.
+   */
+  defaultHandler: (
+    options: DefaultHandlerOptions
+  ) => Strategy<DefaultHandlerOptions>;
+
   /**
    * Creates a CacheStrategy instance for caching task results.
    *
