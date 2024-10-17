@@ -1,3 +1,4 @@
+import { NoHandlerFoundException } from '../../infrastructure/bus/bus_exception';
 import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
 import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
 import { ThrottleException } from '../resilience/strategies/exceptions/throttle_exception';
@@ -143,19 +144,50 @@ describe('QueryInterceptors', () => {
 
   describe('Throttle Interceptor', () => {
     it('should throttle query execution', async () => {
-      const query = {
+      const command = {
         queryName: 'TestQuery',
-        payload: { id: 1 },
-        options: { throttle: { rate: 1, interval: '1s' } },
+        payload: { id: 1, name: 'test', age: 20 },
+        options: {
+          throttle: { rate: 1, interval: '1s' },
+          cache: false,
+        },
       };
       const handler = vitest.fn();
-
       const interceptors = queryInterceptors.buildInterceptors();
-      await interceptors.execute(query, handler);
-      await expect(interceptors.execute(query, handler)).rejects.toThrow(
+      await interceptors.execute(command, handler);
+      await expect(interceptors.execute(command, handler)).rejects.toThrow(
         ThrottleException
       );
       expect(handler).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('Default Handler', () => {
+    it('should call defaultHandler when NoHandlerFoundException is thrown', async () => {
+      const query = {
+        queryName: 'TestQuery',
+        payload: { id: 1 },
+      };
+      const handler = vitest
+        .fn()
+        .mockRejectedValue(new NoHandlerFoundException('channel'));
+
+      const defaultHandler = vitest.fn().mockResolvedValue('DefaultHandler');
+
+      queryInterceptors = new QueryInterceptors(cache, logger, {
+        timeout: 1000,
+        retry: { maxAttempts: 3, delay: 100 },
+        throttle: { rate: 5, interval: '1s' },
+        defaultHandler,
+      });
+
+      const interceptors = queryInterceptors.buildInterceptors();
+
+      await expect(interceptors.execute(query, handler)).resolves.toBe(
+        'DefaultHandler'
+      );
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(defaultHandler).toHaveBeenCalledTimes(1);
     });
   });
 });
