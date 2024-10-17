@@ -1,7 +1,7 @@
 import { KumikoLogger } from '../../utilities/logger/kumiko_logger';
+import { KeyResolver } from '../../utilities/resolver/key_resolver';
 import { ResilienceInterceptorsBuilder } from '../resilience/resilience_interceptors_builder';
 import { QueryCache } from './query_cache';
-import { QueryKeyResolver } from './query_key_resolver';
 
 import type { MergedPartialOptions } from '../../types/core/options/options';
 import type {
@@ -35,6 +35,8 @@ export class QueryInterceptors<
 
   #logger: KumikoLogger;
 
+  #keyResolver = new KeyResolver();
+
   /**
    * Creates a new instance of `QueryInterceptors`.
    *
@@ -45,11 +47,17 @@ export class QueryInterceptors<
     logger: KumikoLogger,
     options: ResilienceBuilderOptions
   ) {
-    const keyResolver = new QueryKeyResolver();
     this.#resilienceInterceptorsBuilder =
       new ResilienceInterceptorsBuilder<TQuery>(cache, logger, {
         ...options,
-        serialize: keyResolver.generateKey.bind(keyResolver),
+        serialize: (query) =>
+          this.#keyResolver.generateKey(
+            {
+              name: query.queryName,
+              payload: query.payload,
+            },
+            'internal::query::interceptors'
+          ),
       });
 
     this.#logger = logger.child({});

@@ -5,7 +5,6 @@ import {
 } from '../utilities/logger/kumiko_logger';
 import type { Command } from './core/command';
 import type {
-  ResilienceBuilderOptions,
   RetryOptions,
   ThrottleOptions,
   TimeoutOptions,

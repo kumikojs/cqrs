@@ -1,14 +1,14 @@
 import { Cache } from '../../infrastructure/cache/cache';
 import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
 import type { QueryCacheOptions, QueryInput } from '../../types/core/query';
+import { KeyResolver } from '../../utilities/resolver/key_resolver';
 import { QueryCache } from './query_cache';
-import { QueryKeyResolver } from './query_key_resolver';
 
 describe('QueryCache', () => {
   let queryCache: QueryCache;
   let l1Cache: Cache;
   let l2Cache: Cache;
-  const resolver = new QueryKeyResolver();
+  const resolver = new KeyResolver();
 
   beforeEach(() => {
     const options: QueryCacheOptions = {
@@ -35,13 +35,22 @@ describe('QueryCache', () => {
     const query: QueryInput = { queryName: 'testQuery', payload: { id: 1 } };
     const value = { data: 'testData' };
 
-    l2Cache.set(resolver.generateKey(query), value);
+    l2Cache.set(
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      }),
+      value
+    );
 
     const cachedValue = await queryCache.get<typeof value>(query);
     expect(cachedValue).toEqual(value);
 
     const l1CachedValue = await l1Cache.get<typeof value>(
-      resolver.generateKey(query)
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      })
     );
     expect(l1CachedValue).toEqual(value);
   });
@@ -54,10 +63,16 @@ describe('QueryCache', () => {
     await queryCache.delete(query);
 
     const l1CachedValue = await l1Cache.get<typeof value>(
-      resolver.generateKey(query)
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      })
     );
     const l2CachedValue = await l2Cache.get<typeof value>(
-      resolver.generateKey(query)
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      })
     );
 
     expect(l1CachedValue).toBeNull();
@@ -72,10 +87,16 @@ describe('QueryCache', () => {
     await queryCache.clear();
 
     const l1CachedValue = await l1Cache.get<typeof value>(
-      resolver.generateKey(query)
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      })
     );
     const l2CachedValue = await l2Cache.get<typeof value>(
-      resolver.generateKey(query)
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      })
     );
 
     expect(l1CachedValue).toBeNull();
@@ -92,10 +113,16 @@ describe('QueryCache', () => {
     await queryCache.optimisticUpdate(query, newValue);
 
     const l1CachedValue = await l1Cache.get<typeof value>(
-      resolver.generateKey(query)
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      })
     );
     const l2CachedValue = await l2Cache.get<typeof value>(
-      resolver.generateKey(query)
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      })
     );
 
     expect(l1CachedValue).toEqual(newValue);
@@ -126,13 +153,22 @@ describe('QueryCache', () => {
     const query: QueryInput = { queryName: 'testQuery', payload: { id: 1 } };
     const value = { data: 'testData' };
 
-    await l2Cache.set(resolver.generateKey(query), value);
+    await l2Cache.set(
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      }),
+      value
+    );
 
     const cachedEntry = await queryCache.getEntry<typeof value>(query);
     expect(cachedEntry?.value).toEqual(value);
 
     const l1CachedEntry = await l1Cache.getEntry<typeof value>(
-      resolver.generateKey(query)
+      resolver.generateKey({
+        name: query.queryName,
+        payload: query.payload,
+      })
     );
     expect(l1CachedEntry?.value).toEqual(value);
   });
@@ -148,8 +184,14 @@ describe('QueryCache', () => {
     const query1: QueryInput = { queryName: 'testQuery', payload: { id: 1 } };
     const query2: QueryInput = { queryName: 'testQuery', payload: { id: 2 } };
 
-    const key1 = resolver.generateKey(query1);
-    const key2 = resolver.generateKey(query2);
+    const key1 = resolver.generateKey({
+      name: query1.queryName,
+      payload: query1.payload,
+    });
+    const key2 = resolver.generateKey({
+      name: query2.queryName,
+      payload: query2.payload,
+    });
 
     expect(key1).not.toEqual(key2); // Ensure keys are unique for different payloads
     expect(typeof key1).toBe('string'); // Check that the key is a string
@@ -194,10 +236,16 @@ describe('QueryCache', () => {
       await queryCache.invalidateQueries(query);
 
       const l1CachedValue = await l1Cache.get<typeof value>(
-        resolver.generateKey(query)
+        resolver.generateKey({
+          name: query.queryName,
+          payload: query.payload,
+        })
       );
       const l2CachedValue = await l2Cache.get<typeof value>(
-        resolver.generateKey(query)
+        resolver.generateKey({
+          name: query.queryName,
+          payload: query.payload,
+        })
       );
 
       expect(l1CachedValue).toBeNull();
@@ -217,16 +265,28 @@ describe('QueryCache', () => {
       await queryCache.invalidateQueries({ queryName: 'testQuery' });
 
       const l1CachedValue1 = await l1Cache.get<typeof value>(
-        resolver.generateKey(query1)
+        resolver.generateKey({
+          name: query1.queryName,
+          payload: query1.payload,
+        })
       );
       const l1CachedValue2 = await l1Cache.get<typeof value>(
-        resolver.generateKey(query2)
+        resolver.generateKey({
+          name: query2.queryName,
+          payload: query2.payload,
+        })
       );
       const l2CachedValue1 = await l2Cache.get<typeof value>(
-        resolver.generateKey(query1)
+        resolver.generateKey({
+          name: query1.queryName,
+          payload: query1.payload,
+        })
       );
       const l2CachedValue2 = await l2Cache.get<typeof value>(
-        resolver.generateKey(query2)
+        resolver.generateKey({
+          name: query2.queryName,
+          payload: query2.payload,
+        })
       );
 
       expect(l1CachedValue1).toBeNull();
@@ -236,10 +296,16 @@ describe('QueryCache', () => {
 
       expect(spyOnL1CacheInvalidate).toHaveBeenCalledTimes(2);
       expect(spyOnL1CacheInvalidate).toHaveBeenCalledWith(
-        resolver.generateKey(query1)
+        resolver.generateKey({
+          name: query1.queryName,
+          payload: query1.payload,
+        })
       );
       expect(spyOnL1CacheInvalidate).toHaveBeenCalledWith(
-        resolver.generateKey(query2)
+        resolver.generateKey({
+          name: query2.queryName,
+          payload: query2.payload,
+        })
       );
     });
   });

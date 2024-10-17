@@ -16,6 +16,7 @@ import type {
   ResilienceOptions,
 } from '../../types/core/options/resilience_options';
 import type { InterceptorManagerContract } from '../../types/infrastructure/interceptor';
+import { KeyResolver } from '../../utilities/resolver/key_resolver';
 
 /**
  * Constructs a collection of interceptors for a command bus, enhancing its functionality with resilience and query invalidation.
@@ -59,6 +60,8 @@ export class CommandInterceptors<
    */
   #logger: KumikoLogger;
 
+  #keyResolver: KeyResolver = new KeyResolver();
+
   /**
    * Constructs a `CommandInterceptors` instance.
    *
@@ -76,10 +79,13 @@ export class CommandInterceptors<
       new ResilienceInterceptorsBuilder<CommandType>(cache, logger, {
         ...options,
         serialize: (request) =>
-          JSON.stringify({
-            commandName: request.commandName,
-            payload: request.payload,
-          }),
+          this.#keyResolver.generateKey(
+            {
+              name: request.commandName,
+              payload: request.payload,
+            },
+            'internal::command::interceptors'
+          ),
       });
 
     this.#logger = logger.child({

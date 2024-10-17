@@ -1,8 +1,8 @@
 import { Cache, CACHE_EVENT_TYPES } from '../../infrastructure/cache/cache';
 import { MemoryStorageDriver } from '../../infrastructure/storage/drivers/memory_storage';
+import { KeyResolver } from '../../utilities/resolver/key_resolver';
 import { JsonSerializer } from '../../utilities/serializer/json_serializer';
 import { SubscriptionManager } from '../../utilities/subscription/subscription_manager';
-import { QueryKeyResolver } from './query_key_resolver';
 
 import type { CacheEvent } from '../../infrastructure/cache/cache';
 import type { QueryCacheOptions, QueryInput } from '../../types/core/query';
@@ -57,7 +57,7 @@ export class QueryCache {
   #l2: Cache;
   #subscriptionManager = new SubscriptionManager();
   #serializer: JsonSerializer = new JsonSerializer();
-  #keyResolver: QueryKeyResolver = new QueryKeyResolver();
+  #keyResolver: KeyResolver = new KeyResolver();
 
   constructor(options: QueryCacheOptions) {
     this.#l1 = new Cache({
@@ -107,7 +107,10 @@ export class QueryCache {
     const key =
       typeof queryOrKey === 'string'
         ? queryOrKey
-        : this.#keyResolver.generateKey(queryOrKey);
+        : this.#keyResolver.generateKey({
+            name: queryOrKey.queryName,
+            payload: queryOrKey.payload,
+          });
 
     const cachedValue = await this.#l1.get<TValue>(key);
     if (cachedValue) return cachedValue;
@@ -124,7 +127,10 @@ export class QueryCache {
     const key =
       typeof queryOrKey === 'string'
         ? queryOrKey
-        : this.#keyResolver.generateKey(queryOrKey);
+        : this.#keyResolver.generateKey({
+            name: queryOrKey.queryName,
+            payload: queryOrKey.payload,
+          });
 
     const cachedValue = await this.#l1.getEntry<TValue>(key);
     if (cachedValue) return cachedValue;
@@ -145,7 +151,10 @@ export class QueryCache {
     value: TValue,
     validityPeriod?: DurationUnit
   ) {
-    const key = this.#keyResolver.generateKey(query);
+    const key = this.#keyResolver.generateKey({
+      name: query.queryName,
+      payload: query.payload,
+    });
 
     await Promise.all([
       this.#l1.set(key, value, validityPeriod),
@@ -157,7 +166,10 @@ export class QueryCache {
    * Deletes a query result from both L1 and L2 caches.
    */
   async delete(query: QueryInput) {
-    const key = this.#keyResolver.generateKey(query);
+    const key = this.#keyResolver.generateKey({
+      name: query.queryName,
+      payload: query.payload,
+    });
 
     await Promise.all([this.#l1.delete(key), this.#l2.delete(key)]);
   }
@@ -208,7 +220,10 @@ export class QueryCache {
    * Performs an optimistic update of a cached value for a given query in the L1 cache.
    */
   async optimisticUpdate(previousQuery: QueryInput, value: unknown) {
-    const key = this.#keyResolver.generateKey(previousQuery);
+    const key = this.#keyResolver.generateKey({
+      name: previousQuery.queryName,
+      payload: previousQuery.payload,
+    });
 
     await this.#l1.optimisticUpdate(key, value);
   }
@@ -240,7 +255,7 @@ export class QueryCache {
       return;
     }
 
-    const key = this.#keyResolver.generateKey({ queryName, payload });
+    const key = this.#keyResolver.generateKey({ name: queryName, payload });
     await cache.invalidate(key);
   }
 
@@ -263,7 +278,7 @@ export class QueryCache {
     }
 
     for (const iteratorKey of allKeys) {
-      const cacheKeyQueryName = this.#keyResolver.extractQueryName(iteratorKey);
+      const cacheKeyQueryName = this.#keyResolver.extractName(iteratorKey);
 
       if (cacheKeyQueryName === queryName) {
         await cache.invalidate(iteratorKey);

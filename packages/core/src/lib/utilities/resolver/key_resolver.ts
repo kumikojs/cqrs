@@ -1,25 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { QueryInput } from '../../types/core/query';
 
-export class QueryKeyResolver {
+interface KeyInput {
+  name: string;
+  payload?: any;
+}
+
+export class KeyResolver {
   /**
-   * Generates a cache key from the query input.
+   * Generates a cache key from the input, which could be a query or a command.
    */
-  generateKey({ queryName, payload }: QueryInput): string {
+  generateKey({ name, payload }: KeyInput, prefix = 'cache'): string {
     if (!payload) {
-      return `cache:${queryName}`;
+      return `${prefix}:${name}`;
     }
 
     const payloadHash = this.#hashPayload(payload);
-    return `cache:${queryName}:${payloadHash}`;
+    return `${prefix}:${name}:${payloadHash}`;
   }
 
   /**
-   * Extracts the query name from a cache key.
+   * Extracts the name (query or command) from a key.
    */
-  extractQueryName(key: string): string | null {
+  extractName(key: string): string | null {
     const parts = key.split(':');
-    return parts.length > 1 ? parts[1] : null;
+
+    return parts.length > 1 ? (parts[1] === '' ? null : parts[1]) : null;
   }
 
   /**
