@@ -349,8 +349,9 @@ export class Cache {
 
       const deserialized = CacheEntry.deserialize(key, item);
 
-      if (!deserialized || deserialized.isDefunct()) {
-        await this.#cache.removeItem(key);
+      if (!deserialized || deserialized.isStale() || deserialized.isDefunct()) {
+        if (!deserialized || deserialized.isDefunct())
+          await this.#cache.removeItem(key);
         await this.#emit(CACHE_EVENT_TYPES.EXPIRED, key);
       }
     }
