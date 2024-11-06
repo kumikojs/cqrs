@@ -1,20 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 interface KeyInput {
   name: string;
   payload?: any;
+  meta?: any;
 }
 
 export class KeyResolver {
   /**
    * Generates a cache key from the input, which could be a query or a command.
    */
-  generateKey({ name, payload }: KeyInput, prefix = 'cache'): string {
-    if (!payload) {
+  generateKey({ name, payload, meta }: KeyInput, prefix = 'cache'): string {
+    if (!payload && !meta) {
       return `${prefix}:${name}`;
     }
 
-    const payloadHash = this.#hashPayload(payload);
+    const combined: any = {};
+
+    if (payload !== undefined) {
+      combined.payload = payload;
+    }
+
+    if (meta !== undefined) {
+      combined.meta = meta;
+    }
+
+    const payloadHash = this.#hashPayload(combined);
     return `${prefix}:${name}:${payloadHash}`;
   }
 
