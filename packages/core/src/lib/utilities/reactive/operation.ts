@@ -1,160 +1,170 @@
 import { Subject } from './subject';
 
-const STATUS = {
-  IDLE: 'idle',
-  PENDING: 'pending',
-  FULFILLED: 'fulfilled',
-  REJECTED: 'rejected',
-  STALE: 'stale',
+export const OPERATION_STATE = {
+  INITIAL: 'initial',
+  LOADING: 'loading',
+  SUCCESS: 'success',
+  ERROR: 'error',
+  OUTDATED: 'outdated',
 } as const;
 
-type PendingResult = {
-  status: 'pending';
-  isPending: true;
-  isIdle: false;
-  isFulfilled: false;
-  isRejected: false;
-  isStale: false;
-};
+export type OperationStateType =
+  (typeof OPERATION_STATE)[keyof typeof OPERATION_STATE];
 
-type IdleResult = {
-  status: 'idle';
-  isPending: false;
-  isIdle: true;
-  isFulfilled: false;
-  isRejected: false;
-  isStale: false;
-};
+export type BaseMetadata = Record<string, unknown>;
 
-type FulfilledResult = {
-  status: 'fulfilled';
-  isPending: false;
-  isIdle: false;
-  isFulfilled: true;
-  isRejected: false;
-  isStale: false;
-};
-
-type RejectedResult = {
-  status: 'rejected';
-  isPending: false;
-  isIdle: false;
-  isFulfilled: false;
-  isRejected: true;
-  isStale: false;
-};
-
-type StaleResult = {
-  status: 'stale';
-  isPending: false;
-  isIdle: false;
-  isFulfilled: false;
-  isRejected: false;
-  isStale: true;
-};
-
-type OperationState<T> = {
+export interface BaseState<T, M extends BaseMetadata = BaseMetadata> {
   response?: T;
   error?: Error;
+  metadata?: M;
+}
+
+type StateResult<S extends OperationStateType> = {
+  state: S;
+} & {
+  [K in OperationStateType as `is${Capitalize<K>}`]: K extends S ? true : false;
 };
 
-/**
- * The result of an operation.
- *
- * @template T - The type of the operation response.
- * @property {string} status - The status of the operation.
- * @property {boolean} isPending - Whether the operation is pending.
- * @property {boolean} isIdle - Whether the operation is idle.
- * @property {boolean} isFulfilled - Whether the operation is fulfilled.
- * @property {boolean} isRejected - Whether the operation is rejected.
- * @property {boolean} isStale - Whether the operation is stale.
- * @property {T | undefined} response - The response of the operation.
- * @property {Error | undefined} error - The error of the operation.
- */
-export type OperationResult<T> = OperationState<T> &
-  (PendingResult | IdleResult | FulfilledResult | RejectedResult | StaleResult);
+type OperationStateResult<
+  S extends OperationStateType,
+  T,
+  M extends BaseMetadata
+> = BaseState<T, M> & StateResult<S>;
 
-/**
- * Wraps an operation and provides a reactive interface for it.
- *
- * @template T - The type of the operation response.
- * @extends {Subject<OperationResult<T>>}
- */
-export class Operation<T> extends Subject<OperationResult<T>> {
-  constructor() {
+export type InitialState<T, M extends BaseMetadata> = OperationStateResult<
+  typeof OPERATION_STATE.INITIAL,
+  T,
+  M
+>;
+export type LoadingState<T, M extends BaseMetadata> = OperationStateResult<
+  typeof OPERATION_STATE.LOADING,
+  T,
+  M
+>;
+export type SuccessState<T, M extends BaseMetadata> = OperationStateResult<
+  typeof OPERATION_STATE.SUCCESS,
+  T,
+  M
+>;
+export type ErrorState<T, M extends BaseMetadata> = OperationStateResult<
+  typeof OPERATION_STATE.ERROR,
+  T,
+  M
+>;
+export type OutdatedState<T, M extends BaseMetadata> = OperationStateResult<
+  typeof OPERATION_STATE.OUTDATED,
+  T,
+  M
+>;
+
+export type OperationResult<T, M extends BaseMetadata = BaseMetadata> =
+  | InitialState<T, M>
+  | LoadingState<T, M>
+  | SuccessState<T, M>
+  | ErrorState<T, M>
+  | OutdatedState<T, M>;
+
+export interface OperationOptions<M extends BaseMetadata> {
+  metadata?: M;
+  onSuccess?: (response: any) => void;
+  onError?: (error: Error) => void;
+}
+
+export class Operation<
+  T,
+  M extends BaseMetadata = BaseMetadata
+> extends Subject<OperationResult<T, M>> {
+  constructor(initialMetadata?: M) {
     super({
-      status: STATUS.IDLE,
-      isIdle: true,
-      isPending: false,
-      isFulfilled: false,
-      isRejected: false,
-      isStale: false,
-    });
+      state: OPERATION_STATE.INITIAL,
+      isInitial: true,
+      isLoading: false,
+      isSuccess: false,
+      isError: false,
+      isOutdated: false,
+      ...(initialMetadata ? { metadata: initialMetadata } : {}),
+    } as OperationResult<T, M>);
   }
 
-  /**
-   * Executes an operation and updates the state accordingly.
-   *
-   * @template TOperation - The type of the operation.
-   * @template TResponse - The type of the operation response.
-   * @param {TOperation} operation - The operation to execute.
-   * @param {(operation: TOperation) => Promise<TResponse>} handlerFn - The handler function for the operation.
-   * @returns {Promise<TResponse>} The response of the operation.
-   */
   async execute<TOperation = unknown, TResponse extends T = T>(
     operation: TOperation,
-    handlerFn: (operation: TOperation) => Promise<TResponse>
+    handlerFn: (operation: TOperation) => Promise<TResponse>,
+    options: OperationOptions<M> = {}
   ): Promise<TResponse> {
     this.state = {
       ...this.state,
-      status: STATUS.PENDING,
-      isPending: true,
-      isIdle: false,
-      isFulfilled: false,
-      isRejected: false,
-      isStale: false,
-    };
+      state: OPERATION_STATE.LOADING,
+      isLoading: true,
+      isInitial: false,
+      isSuccess: false,
+      isError: false,
+      isOutdated: false,
+      ...(options.metadata ? { metadata: options.metadata } : {}),
+    } as OperationResult<T, M>;
 
     try {
       const response = await handlerFn(operation);
 
       this.state = {
-        status: STATUS.FULFILLED,
+        state: OPERATION_STATE.SUCCESS,
         response,
-        isPending: false,
-        isIdle: false,
-        isFulfilled: true,
-        isRejected: false,
-        isStale: false,
-      };
+        isLoading: false,
+        isInitial: false,
+        isSuccess: true,
+        isError: false,
+        isOutdated: false,
+        ...(this.state.metadata ? { metadata: this.state.metadata } : {}),
+      } as OperationResult<T, M>;
 
+      options.onSuccess?.(response);
       return response;
     } catch (error) {
+      const errorObject =
+        error instanceof Error ? error : new Error(String(error));
+
       this.state = {
-        error: error instanceof Error ? error : new Error(String(error)),
-        status: STATUS.REJECTED,
-        isPending: false,
-        isIdle: false,
-        isFulfilled: false,
-        isRejected: true,
-        isStale: false,
-      };
+        error: errorObject,
+        state: OPERATION_STATE.ERROR,
+        isLoading: false,
+        isInitial: false,
+        isSuccess: false,
+        isError: true,
+        isOutdated: false,
+        ...(this.state.metadata ? { metadata: this.state.metadata } : {}),
+      } as OperationResult<T, M>;
+
+      options.onError?.(errorObject);
       throw error;
     }
   }
 
-  /**
-   * Marks the operation as stale.
-   */
-  stale(value: T) {
+  updateMetadata(metadata: Partial<M>) {
     this.state = {
-      status: STATUS.STALE,
+      ...this.state,
+      metadata: {
+        ...this.state.metadata,
+        ...metadata,
+      },
+    } as OperationResult<T, M>;
+  }
+
+  markAsOutdated(value: T, metadata?: M) {
+    this.state = {
+      state: OPERATION_STATE.OUTDATED,
       response: value,
-      isPending: false,
-      isIdle: false,
-      isFulfilled: false,
-      isRejected: false,
-      isStale: true,
-    };
+      isLoading: false,
+      isInitial: false,
+      isSuccess: false,
+      isError: false,
+      isOutdated: true,
+      ...(metadata || this.state.metadata
+        ? {
+            metadata: {
+              ...this.state.metadata,
+              ...metadata,
+            },
+          }
+        : {}),
+    } as OperationResult<T, M>;
   }
 }
