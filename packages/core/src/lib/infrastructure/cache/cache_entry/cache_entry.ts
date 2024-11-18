@@ -2,169 +2,208 @@ import { ms } from '../../../utilities/ms/ms';
 import { JsonSerializer } from '../../../utilities/serializer/json_serializer';
 import type { DurationUnit } from '../../../utilities/ms/types';
 
-/**
- * Represents the data structure for a cache entry.
- */
-type CacheEntryData<TValue> = {
+interface CacheEntryData<TValue> {
   key: string;
   value?: TValue;
   expiration: number;
+  cacheExpiration: number;
   validityPeriod: DurationUnit;
-  gracePeriod?: DurationUnit;
-};
+  cacheTime: DurationUnit;
+}
 
-/**
- * Represents the properties of a cache entry.
- */
-type CacheEntryProps<TValue> = {
+interface CacheEntryOptions<TValue> {
   key: string;
   value?: TValue;
   validityPeriod?: DurationUnit;
+  cacheTime?: DurationUnit;
   expiration?: number;
-  gracePeriod?: DurationUnit;
-};
+  cacheExpiration?: number;
+}
 
-/*
- * ---------------------------------------------------------------------------
- * **CacheEntry Class**
- * ---------------------------------------------------------------------------
- * A utility for managing cache entries with expiration and stale states.
+/**
+ * CacheEntry manages cache entries with expiration and stale states.
  *
- * Key features:
- * - **State Management**: Defines valid, stale, and invalid states for cache entries.
- * - **Graceful Handling**: Allows using stale entries temporarily while refreshing.
+ * Features:
+ * - Immediate staleness when validityPeriod is 0
+ * - Separate cache expiration time for cleanup
+ * - Serialization support for persistence
  *
- * ---------------------------------------------------------------------------
+ * @template TValue - The type of value being cached
  */
 export class CacheEntry<TValue> {
-  #key: string;
-  #value?: TValue;
-  #expiration: number;
-  #validityPeriod: DurationUnit;
-  #gracePeriod?: DurationUnit;
-  #staleUntil?: number;
+  readonly #key: string;
+  readonly #value?: TValue;
+  readonly #validityPeriod: DurationUnit;
+  readonly #expiration: number;
+  readonly #cacheTime: DurationUnit;
+  readonly #cacheExpiration: number;
 
-  static #serializer: JsonSerializer = new JsonSerializer();
+  static readonly #serializer = new JsonSerializer();
+  static readonly DEFAULT_VALIDITY_PERIOD: DurationUnit = '0';
+  static readonly DEFAULT_CACHE_TIME: DurationUnit = '5m';
 
   constructor({
     key,
     value,
-    validityPeriod,
+    validityPeriod = CacheEntry.DEFAULT_VALIDITY_PERIOD,
+    cacheTime = CacheEntry.DEFAULT_CACHE_TIME,
     expiration,
-    gracePeriod,
-  }: CacheEntryProps<TValue>) {
+    cacheExpiration,
+  }: CacheEntryOptions<TValue>) {
     this.#key = key;
     this.#value = value;
-    this.#validityPeriod = validityPeriod ?? Infinity;
-    this.#expiration = expiration ?? Date.now() + ms(this.#validityPeriod);
-    this.#gracePeriod = gracePeriod;
-    this.#staleUntil = gracePeriod
-      ? this.#expiration + ms(gracePeriod)
-      : undefined;
+    this.#validityPeriod = validityPeriod;
+    this.#cacheTime = cacheTime;
+
+    // Calculate expiration times
+    const now = Date.now();
+    this.#expiration = this.#calculateExpiration(
+      now,
+      validityPeriod,
+      expiration
+    );
+    this.#cacheExpiration = this.#calculateCacheExpiration(
+      now,
+      cacheTime,
+      cacheExpiration
+    );
   }
 
-  /**
-   * Gets the key of the cache entry.
-   */
-  get key() {
+  // Public getters
+  get key(): string {
     return this.#key;
   }
-
-  /**
-   * Gets the value of the cache entry.
-   */
-  get value() {
+  get value(): TValue | undefined {
     return this.#value;
   }
-
-  /**
-   * Gets the expiration timestamp of the cache entry.
-   */
-  get expiration() {
-    return this.#expiration;
-  }
-
-  /**
-   * Gets the time-to-live duration of the cache entry.
-   */
-  get validityPeriod() {
+  get validityPeriod(): DurationUnit {
     return this.#validityPeriod;
   }
+  get cacheTime(): DurationUnit {
+    return this.#cacheTime;
+  }
+  get expiration(): number {
+    return this.#expiration;
+  }
+  get cacheExpiration(): number {
+    return this.#cacheExpiration;
+  }
 
-  /**
-   * Checks if the cache entry has expired and is no longer usable.
-   * @returns True if the cache entry has expired, false otherwise.
-   */
-  hasExpired() {
+  // State checks
+  isStale(): boolean {
     return Date.now() > this.#expiration;
   }
 
-  /**
-   * Checks if the cache entry is stale.
-   * @returns True if the cache entry is stale, false otherwise.
-   */
-  isStale() {
-    if (!this.#staleUntil) return false; // If no stale threshold, not stale
-    const now = Date.now();
-    return now > this.#expiration && now <= this.#staleUntil;
+  shouldDelete(): boolean {
+    return Date.now() > this.#cacheExpiration;
   }
 
   /**
-   * Checks if the cache entry is defunct (expired and not stale).
-   * @returns True if the cache entry is defunct, false otherwise.
+   * Creates a new entry with updated expiration times
    */
-  isDefunct() {
-    return this.hasExpired() && !this.isStale();
+  refresh(): CacheEntry<TValue> {
+    return new CacheEntry({
+      key: this.#key,
+      value: this.#value,
+      validityPeriod: this.#validityPeriod,
+      cacheTime: this.#cacheTime,
+    });
   }
 
   /**
-   * Serializes the cache entry to a string.
-   * @returns The serialized cache entry string, or null if serialization fails.
+   * Creates a new entry with a new value but same timing configuration
+   */
+  withValue<TNewValue>(value: TNewValue): CacheEntry<TNewValue> {
+    return new CacheEntry({
+      key: this.#key,
+      value,
+      validityPeriod: this.#validityPeriod,
+      cacheTime: this.#cacheTime,
+    });
+  }
+
+  /**
+   * Serializes the cache entry
    */
   serialize(): string | null {
-    const serialized = CacheEntry.#serializer.serialize({
+    const data: CacheEntryData<TValue> = {
       key: this.#key,
       value: this.#value,
       expiration: this.#expiration,
+      cacheExpiration: this.#cacheExpiration,
       validityPeriod: this.#validityPeriod,
-      gracePeriod: this.#gracePeriod,
-      staleUntil: this.#staleUntil,
-    });
+      cacheTime: this.#cacheTime,
+    };
 
-    if (serialized.isFailure()) {
+    const result = CacheEntry.#serializer.serialize(data);
+    if (result.isFailure()) {
       console.warn(`Failed to serialize cache entry: ${this.#key}`);
-      console.error(serialized.error);
+      console.error(result.error);
       return null;
     }
 
-    return serialized.value;
+    return result.value;
   }
 
   /**
-   * Deserializes a cache entry from a string.
-   * @param key - The key of the cache entry.
-   * @param serialized - The serialized cache entry string.
-   * @returns The deserialized cache entry, or undefined if deserialization fails.
+   * Deserializes a cache entry from string
    */
   static deserialize<TValue>(
     key: string,
     serialized: string
   ): CacheEntry<TValue> | undefined {
-    const deserialized =
+    const result =
       this.#serializer.deserialize<CacheEntryData<TValue>>(serialized);
-
-    if (deserialized.isFailure()) {
+    if (result.isFailure()) {
       console.warn(`Failed to deserialize cache entry: ${key}`);
-      console.error(deserialized.error);
+      console.error(result.error);
       return undefined;
     }
 
-    return new CacheEntry<TValue>({
+    return new CacheEntry({
       key,
-      value: deserialized.value.value,
-      expiration: deserialized.value.expiration,
-      validityPeriod: deserialized.value.validityPeriod,
-      gracePeriod: deserialized.value.gracePeriod,
+      value: result.value.value,
+      expiration: result.value.expiration,
+      cacheExpiration: result.value.cacheExpiration,
+      validityPeriod: result.value.validityPeriod,
+      cacheTime: result.value.cacheTime,
     });
+  }
+
+  /**
+   * Creates an immediately stale entry
+   */
+  static createStale<TValue>(
+    key: string,
+    value?: TValue,
+    cacheTime: DurationUnit = CacheEntry.DEFAULT_CACHE_TIME
+  ): CacheEntry<TValue> {
+    return new CacheEntry({
+      key,
+      value,
+      validityPeriod: '0',
+      cacheTime,
+    });
+  }
+
+  #calculateExpiration(
+    now: number,
+    validityPeriod: DurationUnit,
+    providedExpiration?: number
+  ): number {
+    if (providedExpiration !== undefined) {
+      return providedExpiration;
+    }
+
+    const validityMs = ms(validityPeriod);
+    return validityMs === 0 ? now - 1 : now + validityMs;
+  }
+
+  #calculateCacheExpiration(
+    now: number,
+    cacheTime: DurationUnit,
+    providedExpiration?: number
+  ): number {
+    return providedExpiration ?? now + ms(cacheTime);
   }
 }
