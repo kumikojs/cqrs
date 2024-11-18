@@ -20,14 +20,12 @@ export class LockManager {
     this.resolvers.set(key, resolveLock);
   }
 
-  // Release the lock for the given key
   unlock(key: string): void {
     const resolver = this.resolvers.get(key);
     if (!resolver) {
-      throw new Error(`Cannot unlock: No lock found for key: ${key}`);
+      return;
     }
 
-    // Resolve the lock and clean up
     resolver();
     this.locks.delete(key);
     this.resolvers.delete(key);

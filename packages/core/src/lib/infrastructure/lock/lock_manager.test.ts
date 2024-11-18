@@ -32,12 +32,10 @@ describe('LockManager', () => {
     expect(mockFn).toHaveBeenNthCalledWith(2, 'lock2 acquired');
   });
 
-  it('should throw an error if unlocking a non-existent lock', () => {
+  it('should gracefully handle unlocking a nonexistent key', () => {
     const lockManager = new LockManager();
 
-    expect(() => lockManager.unlock('nonexistentKey')).toThrowError(
-      'Cannot unlock: No lock found for key: nonexistentKey'
-    );
+    expect(() => lockManager.unlock('nonexistentKey')).not.toThrow();
   });
 
   it('should allow locking the same key multiple times sequentially and handle race conditions', async () => {
