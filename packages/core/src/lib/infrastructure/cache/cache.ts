@@ -5,26 +5,40 @@ import { CacheScheduler } from './cache_scheduler';
 import { AsyncCache } from './facades/async_cache';
 import { SyncCache } from './facades/sync_cache';
 
-import type { CacheOptions } from '../../types/infrastructure/cache';
 import type {
   AsyncStorageDriver,
   SyncStorageDriver,
 } from '../../types/infrastructure/storage';
 import type { DurationUnit } from '../../utilities/ms/types';
 
-type CacheProps = {
-  layer: 'l1' | 'l2';
+export type CacheOptions = {
+  validityPeriod?: DurationUnit;
+  cacheTime?: DurationUnit;
+};
+
+export type CacheConfig = {
+  name: string;
   storage: SyncStorageDriver | AsyncStorageDriver;
-} & CacheOptions;
+  validityPeriod?: DurationUnit;
+  cacheTime?: DurationUnit;
+  gcInterval?: DurationUnit;
+};
 
 /**
  * Defines the event types for the cache.
  */
 export const CACHE_EVENT_TYPES = {
-  INVALIDATED: 'invalidated',
-  OPTIMISTIC_UPDATE_BEGAN: 'optimistic_update_began',
-  OPTIMISTIC_UPDATE_ENDED: 'optimistic_update_ended',
-  EXPIRED: 'expired',
+  EXPIRED: 'cache:expired',
+  INVALIDATED: 'cache:invalidated',
+  REVALIDATED: 'cache:revalidated',
+  REVALIDATION_FAILED: 'cache:revalidation:failed',
+  REMOVED: 'cache:removed',
+  CLEARED: 'cache:cleared',
+  CLEARED_EXPIRED: 'cache:cleared:expired',
+  OPTIMISTIC_UPDATE: 'cache:optimistic:update',
+  OPTIMISTIC_ROLLBACK: 'cache:optimistic:rollback',
+  OPTIMISTIC_DELETE: 'cache:optimistic:delete',
+  STALE_UPDATED: 'cache:stale:updated',
 } as const;
 
 /**
@@ -34,155 +48,102 @@ export type CacheEvent =
   (typeof CACHE_EVENT_TYPES)[keyof typeof CACHE_EVENT_TYPES];
 
 export class Cache {
-  /**
-   * The cache to use for caching.
-   */
+  #name: string;
   #cache: SyncCache | AsyncCache;
-
-  /**
-   * The default time-to-live (TTL) for items in the cache.
-   */
   #validityPeriod: DurationUnit;
-
-  /**
-   * The default stale threshold for items in the cache
-   * after which they are considered stale.
-   */
-  #gracePeriod: DurationUnit;
-
-  /**
-   * The emitter used for caching events.
-   */
-  #emitter: MemoryBusDriver<string> = new MemoryBusDriver({
-    maxHandlersPerChannel: Infinity,
-    mode: 'soft',
-  });
-
-  /**
-   * The scheduler used for garbage collection.
-   */
+  #cacheTime: DurationUnit;
+  #emitter: MemoryBusDriver<string>;
   #scheduler: CacheScheduler;
+  #lockManager: LockManager;
 
-  #layer: 'l1' | 'l2';
-
-  #lockManager = new LockManager();
-
-  /**
-   * Creates a new instance of the Cache class.
-   * @param cache The cache to use for caching.
-   */
   constructor({
-    layer,
+    name,
     storage,
-    validityPeriod = '1m',
-    gcInterval = '5m',
-    gracePeriod = '1m',
-  }: CacheProps) {
-    this.#layer = layer;
-
-    /**
-     * Type check the storage to determine if it is an async or sync storage.
-     * If the storage has an `getAllKeys` method, it is an async storage.
-     * Otherwise, it is a sync storage.
-     * This is necessary because the cache needs to know whether to use async or sync facades.
-     */
-    if ('getAllKeys' in storage) {
-      this.#cache = new AsyncCache(storage);
-    } else {
-      this.#cache = new SyncCache(storage);
-    }
+    validityPeriod = CacheEntry.DEFAULT_VALIDITY_PERIOD,
+    cacheTime = CacheEntry.DEFAULT_CACHE_TIME,
+    gcInterval = '1m',
+  }: CacheConfig) {
+    this.#name = name;
+    this.#cache =
+      'getAllKeys' in storage
+        ? new AsyncCache(storage)
+        : new SyncCache(storage);
 
     this.#validityPeriod = validityPeriod;
-    this.#gracePeriod = gracePeriod;
+    this.#cacheTime = cacheTime;
+    this.#emitter = new MemoryBusDriver({
+      maxHandlersPerChannel: Infinity,
+      mode: 'soft',
+    });
+    this.#lockManager = new LockManager();
 
-    /**
-     * Schedule a garbage collection task to run at regular intervals.
-     * This task will clear all expired items from the cache.
-     */
+    // Schedule garbage collection
     this.#scheduler = new CacheScheduler(gcInterval)
       .schedule(async () => {
-        await this.clearExpired();
+        await this.#deleteExpired();
       })
       .connect();
 
-    /**
-     * Clear expired items when the cache is created
-     * to ensure that no expired items are present in the l2 cache.
-     */
-    this.clearExpired();
+    this.#deleteExpired();
   }
 
-  disconnect() {
-    this.#cache.disconnect();
-    this.#emitter.disconnect();
-    this.#scheduler.disconnect();
-    this.clearExpired();
+  get name(): string {
+    return this.#name;
   }
 
-  /**
-   * Gets the value associated with the specified key from the cache.
-   * @param key The key of the item to retrieve.
-   * @returns The value associated with the key, or null if the key does not exist or the item has expired.
-   */
-  async get<TValue>(key: string): Promise<TValue | null> {
+  async get<TValue>(
+    key: string
+  ): Promise<{ data: TValue | undefined; isStale: boolean }> {
     await this.#lockManager.lock(key);
 
     try {
-      const item = await this.#cache.getItem(key);
+      const entry = await this.#getEntry<TValue>(key);
 
-      if (!item) return null;
-
-      const deserialized = CacheEntry.deserialize<TValue>(key, item);
-      if (!deserialized) {
-        return null;
+      if (!entry) {
+        return { data: undefined, isStale: false };
       }
 
-      if (deserialized.isDefunct()) {
-        await this.#cache.removeItem(key);
-        return null;
+      if (entry.shouldDelete()) {
+        await this.#delete(key);
+
+        return { data: undefined, isStale: false };
       }
 
-      return deserialized.value ?? null;
+      return {
+        data: entry.value,
+        isStale: entry.isStale(),
+      };
     } finally {
       this.#lockManager.unlock(key);
     }
   }
 
-  async getEntry<TValue>(key: string): Promise<CacheEntry<TValue> | null> {
+  async getEntry<TValue>(key: string): Promise<CacheEntry<TValue> | undefined> {
     await this.#lockManager.lock(key);
 
     try {
-      const item = await this.#cache.getItem(key);
+      const entry = await this.#getEntry<TValue>(key);
 
-      if (!item) return null;
+      if (!entry) return undefined;
 
-      const deserialized = CacheEntry.deserialize<TValue>(key, item);
-      if (!deserialized) {
-        return null;
+      if (entry.shouldDelete()) {
+        await this.#delete(key);
+        return undefined;
       }
 
-      if (deserialized.isDefunct()) {
-        await this.#cache.removeItem(key);
-        return null;
-      }
-
-      return deserialized;
+      return entry;
     } finally {
       this.#lockManager.unlock(key);
     }
   }
 
-  /**
-   * Sets the value associated with the specified key in the cache.
-   * @param key The key of the item.
-   * @param value The value to set.
-   * @param ttl The time-to-live (TTL) of the item.
-   */
   async set<TValue>(
     key: string,
     value: TValue,
-    validityPeriod: DurationUnit = this.#validityPeriod,
-    gracePeriod: DurationUnit = this.#gracePeriod
+    options: CacheOptions = {
+      validityPeriod: this.#validityPeriod,
+      cacheTime: this.#cacheTime,
+    }
   ): Promise<void> {
     await this.#lockManager.lock(key);
 
@@ -190,174 +151,129 @@ export class Cache {
       const entry = new CacheEntry({
         key,
         value,
-        validityPeriod,
-        gracePeriod,
+        validityPeriod: options.validityPeriod,
+        cacheTime: options.cacheTime,
       });
-      const serialized = entry.serialize();
-      if (!serialized) {
-        return;
-      }
 
-      await this.#cache.setItem(key, serialized);
+      await this.#setEntry(key, entry);
     } finally {
       this.#lockManager.unlock(key);
     }
   }
 
-  /**
-   * Gets the expiration timestamp of the item with the specified key.
-   * @param key The key of the item.
-   * @returns The expiration timestamp of the item, or -Infinity if the item does not exist or has expired.
-   */
-  async expiration(key: string): Promise<number> {
-    const item = await this.#cache.getItem(key);
-    if (!item) return -Infinity;
+  async setEntry<TValue>(
+    key: string,
+    entry: CacheEntry<TValue>
+  ): Promise<void> {
+    await this.#lockManager.lock(key);
 
-    const deserialized = CacheEntry.deserialize(key, item);
-    if (!deserialized) {
-      return -Infinity;
+    try {
+      await this.#setEntry(key, entry);
+    } finally {
+      this.#lockManager.unlock(key);
     }
-
-    return deserialized.expiration;
   }
 
-  /**
-   * Gets the time-to-live (TTL) of the item with the specified key.
-   * @param key The key of the item.
-   * @returns The time-to-live (TTL) of the item, or undefined if the item does not exist.
-   */
-  async validityPeriod(key: string): Promise<DurationUnit> {
-    const item = await this.#cache.getItem(key);
-    if (!item) return this.#validityPeriod;
-
-    const deserialized = CacheEntry.deserialize(key, item);
-    if (!deserialized) {
-      return this.#validityPeriod;
-    }
-
-    return deserialized.validityPeriod;
-  }
-
-  /**
-   * Deletes the item with the specified key from the cache.
-   * @param key The key of the item to delete.
-   */
   async delete(key: string): Promise<void> {
     await this.#lockManager.lock(key);
     try {
-      await this.#cache.removeItem(key);
+      await this.#delete(key);
     } finally {
       this.#lockManager.unlock(key);
     }
   }
 
-  /**
-   * Clears all items from the cache.
-   */
   async clear(): Promise<void> {
     await this.#cache.clear();
+    this.emit(CACHE_EVENT_TYPES.CLEARED, '');
   }
 
-  /**
-   * Gets the key at the specified index in the cache.
-   * @param index The index of the key.
-   * @returns The key at the specified index, or null if the index is out of range.
-   */
-  async key(index: number): Promise<string | null> {
-    return await this.#cache.key(index);
+  async key(index: number): Promise<string | undefined> {
+    return (await this.#cache.key(index)) ?? undefined;
   }
 
-  /**
-   * Gets the number of items in the cache.
-   */
   async length() {
-    /**
-     * If the cache is an async cache, we need to call the `length` method
-     */
     if (typeof this.#cache.length === 'function') {
       return await this.#cache.length();
     }
 
-    /**
-     * If the cache is a sync cache, we can directly access the `length` property
-     */
     return this.#cache.length;
   }
 
-  /**
-   * Subscribes to the specified cache event.
-   * @param eventName The name of the cache event.
-   * @param handler The event handler function.
-   * @returns A function to unsubscribe from the cache event.
-   */
-  on(eventName: CacheEvent, handler: (key: string) => void) {
-    this.#emitter.subscribe(eventName, handler);
-
+  on(event: CacheEvent, handler: (key: string) => void): () => void {
+    this.#emitter.subscribe(event, handler);
     return () => {
-      this.#emitter.unsubscribe(eventName, handler);
+      this.#emitter.unsubscribe(event, handler);
     };
   }
 
-  /**
-   * The logic is different for each layer:
-   * - For the l1 cache, we simply remove the item from the cache.
-   * - For the l2 cache, we emit an event to notify the subscribers that the item has been invalidated.
-   *
-   * Reason:
-   * - When get is called, the l1 cache is checked first.
-   * - If the item is not found in the l1 cache, the l2 cache is checked.
-   * - If the item is found in the l2 cache, it is promoted to the l1 cache.
-   */
-  async invalidate(key: string) {
-    if (this.#layer === 'l1') {
-      await this.#cache.removeItem(key);
-      return;
+  emit(event: CacheEvent, key: string): void {
+    this.#emitter.publish(event, key);
+  }
+
+  disconnect(): void {
+    this.#cache.disconnect();
+    this.#emitter.disconnect();
+    this.#scheduler.disconnect();
+  }
+
+  async invalidate(key: string): Promise<void> {
+    await this.#lockManager.lock(key);
+
+    try {
+      const entry = await this.#getEntry(key);
+      if (entry) {
+        await this.#cache.removeItem(key);
+        this.emit(CACHE_EVENT_TYPES.INVALIDATED, key);
+      }
+    } finally {
+      this.#lockManager.unlock(key);
     }
-
-    await this.#emit(CACHE_EVENT_TYPES.INVALIDATED, key);
   }
 
-  /**
-   * Updates the item with the specified key in the cache optimistically.
-   */
-  async optimisticUpdate<TValue>(key: string, value: TValue) {
-    if (this.#layer === 'l2') return;
+  async invalidateMany(keys: string[]): Promise<void> {
+    await Promise.allSettled(keys.map((key) => this.invalidate(key)));
+  }
 
+  async #getEntry<TValue>(
+    key: string
+  ): Promise<CacheEntry<TValue> | undefined> {
     const item = await this.#cache.getItem(key);
-    if (!item) return;
+    if (!item) return undefined;
 
-    await this.#emit(CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_BEGAN, key);
-
-    const ttlToUse = await this.validityPeriod(key);
-    await this.set(key, value, ttlToUse);
-
-    await this.#emit(CACHE_EVENT_TYPES.OPTIMISTIC_UPDATE_ENDED, key);
+    return CacheEntry.deserialize<TValue>(key, item);
   }
 
-  /**
-   * Clears all expired items from the cache.
-   */
-  async clearExpired() {
+  async #setEntry<TValue>(
+    key: string,
+    entry: CacheEntry<TValue>
+  ): Promise<void> {
+    const serialized = entry.serialize();
+    if (!serialized) return;
+
+    await this.#cache.setItem(key, serialized);
+  }
+
+  async #delete(key: string): Promise<void> {
+    await this.#cache.removeItem(key);
+    this.emit(CACHE_EVENT_TYPES.REMOVED, key);
+  }
+
+  async #deleteExpired(): Promise<void> {
     const length = await this.length();
 
     for (let i = 0; i < length; i++) {
       const key = await this.#cache.key(i);
       if (!key) continue;
 
-      const item = await this.#cache.getItem(key);
-      if (!item) continue;
+      const entry = await this.#getEntry(key);
+      if (!entry) continue;
 
-      const deserialized = CacheEntry.deserialize(key, item);
-
-      if (!deserialized || deserialized.isStale() || deserialized.isDefunct()) {
-        if (!deserialized || deserialized.isDefunct())
-          await this.#cache.removeItem(key);
-        await this.#emit(CACHE_EVENT_TYPES.EXPIRED, key);
+      if (entry.shouldDelete()) {
+        await this.#delete(key);
       }
     }
-  }
 
-  async #emit(eventName: CacheEvent, key: string) {
-    await this.#emitter.publish(eventName, key);
+    this.emit(CACHE_EVENT_TYPES.CLEARED_EXPIRED, '');
   }
 }
