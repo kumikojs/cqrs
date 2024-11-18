@@ -1,4 +1,5 @@
 import { ms } from './ms';
+import { DurationUnit } from './types';
 
 describe('ms', () => {
   it('should return the absolute value of a number', () => {
@@ -36,7 +37,12 @@ describe('ms', () => {
   });
 
   it('should return 0 for invalid duration strings', () => {
-    expect(ms('invalid')).toBe(0);
-    expect(ms('1x')).toBe(0);
+    expect(ms('invalid' as unknown as DurationUnit)).toBe(0);
+    expect(ms('1x' as unknown as DurationUnit)).toBe(0);
+  });
+
+  it('should return the absolute value of a numeric string', () => {
+    expect(ms('1000')).toBe(1000);
+    expect(ms('-1000')).toBe(1000);
   });
 });

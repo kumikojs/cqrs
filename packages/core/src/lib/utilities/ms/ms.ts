@@ -40,8 +40,8 @@ const parseDuration = (duration: string): Array<[number, TimeUnit]> => {
  * @returns {number} The duration in milliseconds.
  */
 export const ms = (duration: DurationUnit): number => {
-  if (typeof duration === 'number') {
-    return Math.abs(duration);
+  if (typeof duration === 'number' || !isNaN(Number(duration))) {
+    return Math.abs(Number(duration));
   }
 
   const parsedValues = parseDuration(duration);

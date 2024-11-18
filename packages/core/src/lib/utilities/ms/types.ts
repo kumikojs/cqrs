@@ -1,5 +1,5 @@
 export type TimeUnit = 'ms' | 's' | 'm' | 'h' | 'd';
-type TimeFormat = `${number}${TimeUnit}`;
+type TimeFormat = `${number}${TimeUnit}` | number | `${number}`;
 
 /**
  * ---------------------------------------------------------------------------
@@ -19,5 +19,4 @@ export type DurationUnit =
   | TimeFormat
   | `${TimeFormat}${TimeFormat}`
   | `${TimeFormat}${TimeFormat}${TimeFormat}`
-  | `${TimeFormat}${TimeFormat}${TimeFormat}${TimeFormat}`
-  | number;
+  | `${TimeFormat}${TimeFormat}${TimeFormat}${TimeFormat}`;
