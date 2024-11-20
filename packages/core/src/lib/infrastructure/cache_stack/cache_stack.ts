@@ -13,14 +13,21 @@ import type {
   SyncStorageDriver,
 } from '../../types/infrastructure/storage';
 import type { CacheOptions } from '../cache/cache';
+import { DurationUnit } from '../../utilities/ms/types';
 
-type CacheStackOptions = {
-  layers: Array<{
-    name: string;
-    storage: SyncStorageDriver | AsyncStorageDriver;
-    options?: Partial<CacheOptions>;
-  }>;
-  defaultOptions?: CacheOptions;
+export type CacheLayerConfig = {
+  name: string;
+  storage: SyncStorageDriver | AsyncStorageDriver;
+  options?: Partial<CacheOptions>;
+};
+
+export type CacheStackOptions = {
+  layers: CacheLayerConfig[];
+  defaultOptions?: {
+    validityPeriod?: DurationUnit;
+    cacheTime?: DurationUnit;
+    gcInterval?: DurationUnit;
+  };
 };
 
 export class CacheStack {

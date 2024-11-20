@@ -57,10 +57,9 @@ export class CacheStackInvalidator extends CacheOperation {
         const cache = this.layers.get(layerName);
         if (!cache) return;
 
-        const length = await cache.length();
-        for (let i = 0; i < length; i++) {
-          const key = await cache.key(i);
-          if (key?.match(pattern)) {
+        const keys = cache.keys();
+        for await (const key of keys) {
+          if (key.match(pattern)) {
             matchingKeys.add(key);
           }
         }
@@ -78,11 +77,8 @@ export class CacheStackInvalidator extends CacheOperation {
         const cache = this.layers.get(layerName);
         if (!cache) return;
 
-        const length = await cache.length();
-        for (let i = 0; i < length; i++) {
-          const key = await cache.key(i);
-          if (!key) continue;
-
+        const keys = cache.keys();
+        for await (const key of keys) {
           const entry = await cache.getEntry(key);
           if (entry?.isStale() && !entry.shouldDelete()) {
             staleKeys.add(key);

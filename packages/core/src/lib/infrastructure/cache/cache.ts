@@ -188,16 +188,11 @@ export class Cache {
     this.emit(CACHE_EVENT_TYPES.CLEARED, '');
   }
 
-  async key(index: number): Promise<string | undefined> {
-    return (await this.#cache.key(index)) ?? undefined;
-  }
-
-  async length() {
-    if (typeof this.#cache.length === 'function') {
-      return await this.#cache.length();
+  async *keys(): AsyncGenerator<string> {
+    for (let i = 0; i < (await this.#length()); i++) {
+      const key = await this.#cache.key(i);
+      if (key) yield key;
     }
-
-    return this.#cache.length;
   }
 
   on(event: CacheEvent, handler: (key: string) => void): () => void {
@@ -260,12 +255,8 @@ export class Cache {
   }
 
   async #deleteExpired(): Promise<void> {
-    const length = await this.length();
-
-    for (let i = 0; i < length; i++) {
-      const key = await this.#cache.key(i);
-      if (!key) continue;
-
+    const keys = this.keys();
+    for await (const key of keys) {
       const entry = await this.#getEntry(key);
       if (!entry) continue;
 
@@ -275,5 +266,13 @@ export class Cache {
     }
 
     this.emit(CACHE_EVENT_TYPES.CLEARED_EXPIRED, '');
+  }
+
+  async #length() {
+    if (typeof this.#cache.length === 'function') {
+      return await this.#cache.length();
+    }
+
+    return this.#cache.length;
   }
 }

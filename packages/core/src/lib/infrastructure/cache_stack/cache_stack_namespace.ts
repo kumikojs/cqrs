@@ -101,25 +101,11 @@ export class CacheStackNamespace {
       const cache = this.#stack.getLayer(layerName);
       if (!cache) continue;
 
-      try {
-        const length = await cache.length();
-        for (let i = 0; i < length; i++) {
-          try {
-            const key = await cache.key(i);
-            if (key?.startsWith(prefix)) {
-              allKeys.add(key);
-            }
-          } catch (error) {
-            console.error(
-              `Failed to get key at index ${i} from layer ${layerName}:`,
-              error
-            );
-            continue;
-          }
+      const keys = cache.keys();
+      for await (const key of keys) {
+        if (key.startsWith(prefix)) {
+          allKeys.add(key);
         }
-      } catch (error) {
-        console.error(`Failed to get length from layer ${layerName}:`, error);
-        continue;
       }
     }
 
